@@ -18,6 +18,7 @@ export default function ProductEditScreen(props) {
   const [countInStock, setCountInStock] = useState('');
   const [brand, setBrand] = useState('');
   const [description, setDescription] = useState('');
+  const [itemId, setItemId] = useState('');
 
   const productDetails = useSelector((state) => state.productDetails);
   const { loading, error, product } = productDetails;
@@ -45,6 +46,7 @@ export default function ProductEditScreen(props) {
       setCountInStock(product.countInStock);
       setBrand(product.brand);
       setDescription(product.description);
+      setItemId(product.item_id);
     }
   }, [product, dispatch, productId, successUpdate, navigate]);
   const submitHandler = (e) => {
@@ -60,6 +62,7 @@ export default function ProductEditScreen(props) {
         brand,
         countInStock,
         description,
+        itemId
       })
     );
   };
@@ -103,11 +106,14 @@ export default function ProductEditScreen(props) {
 
       <section className="text-gray-600 body-font relative">
 
-  <div className="container px-5 py-24 mx-auto">
+  <div className="container px-5 mx-auto">
 
 
     <div className="flex flex-col text-center w-full mb-12">
-      <h1 className="sm:text-3xl text-2xl font-medium title-font mb-4 text-gray-900">Edit Product {productId}</h1>
+    <div className="text-center">
+          <p className='font-bold text-red-600 text-3xl mb-5 mt-5'>KK TRADING</p>
+      </div>
+      <p className="sm:text-3xl text-lg font-medium font-bold title-font mb-4 text-gray-900">Edit Product </p>
       {/* <p className="lg:w-2/3 mx-auto leading-relaxed text-base">Whatever cardigan tote bag tumblr hexagon brooklyn asymmetrical gentrify.</p> */}
     </div>
 
@@ -125,6 +131,18 @@ export default function ProductEditScreen(props) {
             className="w-full bg-gray-100 bg-opacity-50 rounded border border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 text-base outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out" />
           </div>
         </div>
+
+        <div className="p-2 w-1/2">
+              <label htmlFor="countInStock">Item ID</label>
+              <input
+                id="itemId"
+                type="text"
+                placeholder="Item Id"
+                value={itemId}
+                onChange={(e) => setItemId(e.target.value)}
+              className="w-full bg-gray-100 bg-opacity-50 rounded border border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 text-base outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out" 
+              ></input>
+            </div>
 
         <div className="p-2 w-1/2">
         <label htmlFor="price">Price</label>
@@ -153,14 +171,8 @@ export default function ProductEditScreen(props) {
 
               <div className="p-2 w-1/2">
               <label htmlFor="imageFile">Image File</label>
-              <input
-                type="file"
-                id="imageFile"
-                label="Choose Image"
-                onChange={uploadFileHandler}
-              className="w-full bg-gray-100 bg-opacity-50 rounded border border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 text-base outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out" 
+              <input onChange={uploadFileHandler} className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" id="imageFile" type="file" />
 
-              ></input>
               {loadingUpload && <LoadingBox></LoadingBox>}
               {errorUpload && (
                 <MessageBox variant="danger">{errorUpload}</MessageBox>
@@ -209,7 +221,9 @@ export default function ProductEditScreen(props) {
               ></input>
             </div>
 
-        <div className="p-2 w-full">
+
+
+        {/* <div className="p-2 w-full">
           <div className="relative">
             <label for="message" className="leading-7 text-sm text-gray-600">Message</label>
             <textarea 
@@ -223,7 +237,7 @@ onChange={(e) => setDescription(e.target.value)}
 
             className="w-full bg-gray-100 bg-opacity-50 rounded border border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 h-32 text-base outline-none text-gray-700 py-1 px-3 resize-none leading-6 transition-colors duration-200 ease-in-out"></textarea>
           </div>
-        </div>
+        </div> */}
 
 
         <div className="p-2 w-full mb-8">

@@ -42,7 +42,7 @@ export default function RegisterScreen(props) {
       <form className="form" onSubmit={submitHandler}>
       <div className='flex flex-col text-center w-full'>
         <h1 className="brand text-center mt-8">
-        <span className="firstWord">Dhanya </span> <span className="secondWord">Builders</span></h1>
+        <span className="firstWord">KK </span> <span className="secondWord">TRADING</span></h1>
           <h4 className='sm:text-sm text-sm font-bold title-font mb-4 text-gray-900 mt-4'>Register Your Profile</h4>
         </div>
         {loading && <LoadingBox></LoadingBox>}

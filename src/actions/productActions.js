@@ -162,3 +162,23 @@ export const createReview =
       dispatch({ type: PRODUCT_REVIEW_CREATE_FAIL, payload: message });
     }
   };
+
+
+  export const createPurchase = (purchaseData) => async (dispatch, getState) => {
+    try {
+      dispatch({ type: 'PURCHASE_REQUEST' });
+      const {
+        userSignin: { userInfo },
+      } = getState();
+      const { data } = await Axios.post('/api/products/purchase', purchaseData, {
+        headers: { Authorization: `Bearer ${userInfo.token}` },
+      });
+      dispatch({ type: 'PURCHASE_SUCCESS', payload: data });
+    } catch (error) {
+      dispatch({
+        type: 'PURCHASE_FAIL',
+        payload: error.message,
+      });
+    }
+  };
+  

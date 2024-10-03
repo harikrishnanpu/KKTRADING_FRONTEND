@@ -11,7 +11,7 @@ const LocationSender = () => {
 
     useEffect(() => {
         if (userInfo) {
-            const newSocket = io('https://dhanyabuilders-backend.onrender.com/'); // Replace with your server URL
+            const newSocket = io('http://localhost:4000/'); // Replace with your server URL
             setSocket(newSocket);
 
 

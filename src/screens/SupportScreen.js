@@ -6,7 +6,7 @@ import LoadingBox from "../components/LoadingBox";
 let allUsers = [];
 let allMessages = [];
 let allSelectedUser = {};
-const ENDPOINT = "https://dhanyabuilders-backend.onrender.com/";
+const ENDPOINT = "http://localhost:4000/";
 
 export default function SupportScreen() {
   const [selectedUser, setSelectedUser] = useState({});
@@ -177,7 +177,7 @@ export default function SupportScreen() {
       {loading === false && !selectedUser._id && (
         <div className="mx-auto text-center">
           <p className="font-bold text-red-600 text-2xl mb-5 mt-5">
-            Dhanya Builders Inbox
+            KK TRADING Inbox
           </p>
           <ul className="max-w-md mx-auto">
             {users && <p className="font-bold text-lg mb-5">Active Users</p>}

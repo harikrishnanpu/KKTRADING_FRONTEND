@@ -1,30 +1,34 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import Rating from './Rating';
+import React, { useState } from 'react';
 
-export default function Product(props) {
-  const { product } = props;
+export default function Product({ product }) {
+  const [imageError, setImageError] = useState(false);
+
   return (
-    <div key={product._id} className="card">
-      <Link to={`/product/${product._id}`}>
-        <img className="medium" src={product.image} alt={product.name} />
-      </Link>
-      <div className="card-body">
-        <Link to={`/product/${product._id}`}>
-          <h2>{product.name}</h2>
-        </Link>
-        <Rating
-          rating={product.rating}
-          numReviews={product.numReviews}
-        ></Rating>
-        <div className="row">
-          <div className="price">${product.price}</div>
-          <div>
-            <Link to={`/seller/${product.seller._id}`}>
-              {product.seller.seller.name}
-            </Link>
+    <div className="bg-white shadow-md rounded-lg p-3 flex flex-col items-center space-y-2 transition-transform hover:scale-105 hover:shadow-lg w-full sm:w-48">
+      {/* Product Image */}
+      <a href={`/product/${product._id}`} className="w-full">
+        <img
+          onError={() => setImageError(true)}
+          className={`object-cover rounded-md w-full h-32 ${imageError ? 'hidden' : ''}`}
+          src={`http://localhost:4000${product.image}`}
+          alt={product.name}
+        />
+        {imageError && (
+          <div className="flex justify-center items-center w-full h-20 bg-gray-200 rounded-md">
+            <p className="text-gray-500 text-sm">No image</p>
           </div>
-        </div>
+        )}
+      </a>
+
+      {/* Product Details */}
+      <div className="w-full text-center">
+        <a href={`/product/${product._id}`}>
+          <h2 className="text-sm font-medium text-gray-800 truncate w-full">{product.name}</h2>
+        </a>
+
+        <div className="text-xs text-gray-500 mt-1 truncate">{product.brand}</div>
+
+        {/* <div className="text-md font-semibold text-indigo-600 mt-1">${product.price}</div> */}
       </div>
     </div>
   );

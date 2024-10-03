@@ -50,12 +50,6 @@ html {
   /* a:hover {
     color: #ff8000;
   } */
-  ul {
-    padding: 0;
-    margin: 0;
-    list-style-type: none;
-  }
-  
   /* button {
     padding: 1rem;
     border-radius: 0.5rem;

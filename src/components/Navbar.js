@@ -39,11 +39,11 @@ function Navbar() {
   
   <header className="header mb-8" id="header">
     <nav className="navbar">
-       <a href="/" className="brand">Dhanya Builders</a>
+       <a href="/" className="brand">KK TRADING</a>
        <div className="search">
-          <form className="search-form">
+       <form class="flex items-center max-w-sm mx-auto search-form">  
              <SearchBox />
-             <button type="submit" className="search-submit" disabled><i className="bx bx-search"></i></button>
+             {/* <button type="submit" className="search-submit" disabled><i className="bx bx-search"></i></button> */}
           </form>
        </div>
        <div ref={navbarMenu} className="menu" id="menu">

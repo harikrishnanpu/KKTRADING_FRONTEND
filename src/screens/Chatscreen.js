@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import socketIOClient from 'socket.io-client';
 
-const ENDPOINT = 'https://dhanyabuilders-backend.onrender.com/';
+const ENDPOINT = 'http://localhost:4000/';
 
 export default function Chatscreen() {
   const userSignin = useSelector((state) => state.userSignin);
@@ -123,7 +123,7 @@ export default function Chatscreen() {
       <i className='fa fa-angle-left' /> Back
     </a>
     <div className="text-center flex flex-col">
-      <p className='font-bold text-red-600 text-xl mb-5'>Dhanya Builders Inbox</p>
+      <p className='font-bold text-red-600 text-xl mb-5'>KK TRADING Inbox</p>
       <p className='text-gray-600 text-sm font-bold'>{userInfo.name} (You)</p>
       <p className='text-xs mt-1 text-gray-300'><i className='fa fa-lock' /> All the messages are visible to admins only and are not saved</p>
     </div>

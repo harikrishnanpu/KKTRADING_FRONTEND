@@ -23,8 +23,6 @@ import SellerRoute from './components/SellerRoute';
 import SellerScreen from './screens/SellerScreen';
 import SearchScreen from './screens/SearchScreen';
 import { listProductCategories } from './actions/productActions';
-// import LoadingBox from './components/LoadingBox';
-// import MessageBox from './components/MessageBox';
 import MapScreen from './screens/MapScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import SupportScreen from './screens/SupportScreen';
@@ -35,8 +33,17 @@ import Facerecognition from './screens/Facerecognition';
 import Navbar from './components/Navbar';
 import Chatscreen from './screens/Chatscreen';
 import MapComponent from './screens/liveTracking';
+import BillingScreen from './screens/BillingScreen';
+import BillingList from './screens/BillingDetails';
+import ReturnBillingScreen from './screens/ReturnBillingScreen';
+import ReturnsPage from './screens/ReturnListPage';
+import PurchasePage from './screens/PurchaseScreen';
+import AllPurchases from './screens/Purchaselistscreen';
+import DamageBillPage from './screens/Damagebill';
+import DamagedDataScreen from './screens/listDamagebill';
+import DriverPage from './screens/driverScreen';
 
-axios.defaults.baseURL = 'https://dhanyabuilders-backend.onrender.com/'; // https://dhanyabuilders-backend.onrender.com/
+axios.defaults.baseURL = 'http://localhost:4000/'; // https://dhanyabuilders-backend.onrender.com/
 
 function App() {
   const userSignin = useSelector((state) => state.userSignin);
@@ -93,7 +100,7 @@ useEffect(() => {
     <BrowserRouter>
       <div>
 
-      { currentPath !== '/signin' && currentPath !== '/register' &&  currentPath !== '/face-id' && currentPath !== '/support' && currentPath !== '/chat' && currentPath !== '/live-tracking' && <Navbar />}
+      { currentPath === '/' && <Navbar />}
         <main>
                             <Routes>
             <Route path="/seller/:id" element={<SellerScreen />}></Route>
@@ -113,6 +120,15 @@ useEffect(() => {
             <Route path="/face-id" element={<Facerecognition />}></Route>
             <Route path="/register" element={<RegisterScreen />}></Route>
             <Route path="/shipping" element={<ShippingAddressScreen />}></Route>
+            <Route path="/create-bill" element={<BillingScreen/>}></Route>
+            <Route path="/bills" element={<BillingList/>}></Route>
+            <Route path="/purchase" element={<PurchasePage />}></Route>
+            <Route path="/allpurchases" element={<AllPurchases />}></Route>
+            <Route path="/returns" element={<ReturnsPage />}></Route>
+            <Route path="/create-damage" element={<DamageBillPage />}></Route>
+            <Route path="/damages" element={<DamagedDataScreen />}></Route>
+            <Route path="/create-return" element={<ReturnBillingScreen />}></Route>
+            <Route path="/driver" element={<DriverPage />}></Route>
             <Route path="/payment" element={<PaymentMethodScreen />}></Route>
             <Route path="/placeorder" element={<PlaceOrderScreen />}></Route>
             <Route path="/order/:id" element={<OrderScreen />}></Route>
@@ -131,6 +147,7 @@ useEffect(() => {
               element={<SearchScreen />}
               exact
             ></Route>
+
             <Route
               path="/search/category/:category/name/:name"
               element={<SearchScreen />}
@@ -242,6 +259,7 @@ useEffect(() => {
                 </SellerRoute>
               }
             />
+            
 
             <Route path="/chat" element={<Chatscreen />}></Route>
             <Route path="/live-tracking" element={<MapComponent />}></Route>

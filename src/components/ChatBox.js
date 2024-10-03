@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import socketIOClient from 'socket.io-client';
 
-const ENDPOINT = 'https://dhanyabuilders-backend.onrender.com/' // https://dhanyabuilders-backend.onrender.com/
+const ENDPOINT = 'http://localhost:4000/' // https://dhanyabuilders-backend.onrender.com/
 
 export default function ChatBox(props) {
   const { userInfo } = props;
@@ -70,7 +70,7 @@ export default function ChatBox(props) {
       ) : (
         <div className="card card-body">
           <div className="text-center">
-          <p className='font-bold text-red-600 text-lg mb-5 mt-5'>Dhanya Builders Inbox</p>
+          <p className='font-bold text-red-600 text-lg mb-5 mt-5'>KK TRADING INBOX</p>
           </div>
 
           <ul ref={uiMessagesRef}>

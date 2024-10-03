@@ -4,7 +4,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import moment from 'moment'; // Import moment.js for date formatting
 
-const socket = io('https://dhanyabuilders-backend.onrender.com/'); // Replace with your server URL
+const socket = io('http://localhost:4000/'); // Replace with your server URL
 
 const useMapLocations = (setMapCenter, setZoom) => {
   const [locations, setLocations] = useState({});
@@ -203,7 +203,7 @@ const MapComponent = () => {
                         <i className='fa fa-cog animate-spin' />
                     </div>
                     <h2 className='text-sm mt-5 text-gray-400 font-bold'>Loading user tracking system</h2>
-                    <p className='text-xs font-bold mt-2 text-gray-300'>Dhanya Builders</p>
+                    <p className='text-xs font-bold mt-2 text-gray-300'>KK TRADING</p>
                 </div>
             </div>
         );
@@ -212,7 +212,7 @@ const MapComponent = () => {
     return (
         <div className='mx-auto lg:w-1/2 text-center'>
             <a href='/' className='fixed top-5 left-3 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
-            <h2 className='text-2xl font-bold text-red-600 mb-2'>Dhanya Builders</h2>
+            <h2 className='text-2xl font-bold text-red-600 mb-2'>KK TRADING</h2>
             <p className='text-sm font-bold mb-10'>User Tracking System</p>
             <div>
                 <LoadScript googleMapsApiKey='AIzaSyBs0WiuZkmk-m_BSwwa_Hzc0Tu_D4HZ6l8' onLoad={handleMapLoad}>

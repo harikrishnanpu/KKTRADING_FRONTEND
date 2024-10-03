@@ -181,8 +181,8 @@
     width: 100%;
     height: auto;
     padding-inline: 1.5rem;
-    border-radius: 3rem;
-    background: var(--color-white-200);
+    /* border-radius: 3rem; */
+    /* background: var(--color-white-200); */
   }
   .search-input {
     display: block;
@@ -215,7 +215,7 @@
       height: auto;
     }
     .search-form {
-      max-width: 25rem;
+      max-width: 40rem;
     }
   }
   

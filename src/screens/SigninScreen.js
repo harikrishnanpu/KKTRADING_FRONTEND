@@ -36,7 +36,7 @@ export default function SigninScreen(props) {
       <form className="form" onSubmit={submitHandler}>
         <div className='flex flex-col text-center w-full'>
         <h1 className="brand text-center mt-8 mb-8">
-        <span className="firstWord">Dhanya </span> <span className="secondWord">Builders</span></h1>
+        <span className="firstWord">KK </span> <span className="secondWord">TRADING</span></h1>
           {/* <h1 className='sm:text-xl text-xl font-bold title-font mb-4 text-gray-900 mt-4'>Login</h1> */}
         </div>
         {loading && <LoadingBox></LoadingBox>}
@@ -48,7 +48,7 @@ export default function SigninScreen(props) {
           <input
             type="email"
             id="email"
-            placeholder="dhanya@builders.com"
+            placeholder="kk@trading.com"
             required
             onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-gray-100 bg-opacity-50 rounded border border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 text-base outline-none text-gray-700 py-1 px-3 leading-8 transition-colors duration-200 ease-in-out" 
@@ -86,8 +86,8 @@ export default function SigninScreen(props) {
 
 
         <div className="p-2 w-full pt-8 mt-8 border-t border-gray-200 text-center">
-          <a href='/signin' className="text-indigo-500">Sharath@dhanyabuilders.com</a>
-          <p className="leading-normal my-5">Dhanya Builders
+          <a href='/signin' className="text-indigo-500">kk@trading.com</a>
+          <p className="leading-normal my-5">KK TRADING
             <br/>Kerala, India, 689109
           </p>
           <span className="inline-flex">

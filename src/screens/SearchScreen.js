@@ -5,10 +5,9 @@ import { listProducts } from '../actions/productActions';
 import LoadingBox from '../components/LoadingBox';
 import MessageBox from '../components/MessageBox';
 import Product from '../components/Product';
-import Rating from '../components/Rating';
-import { prices, ratings } from '../utils';
+import SearchBox from '../components/SearchBox';
 
-export default function SearchScreen(props) {
+export default function SearchScreen() {
   const navigate = useNavigate();
   const {
     name = 'all',
@@ -19,16 +18,14 @@ export default function SearchScreen(props) {
     order = 'newest',
     pageNumber = 1,
   } = useParams();
+  
   const dispatch = useDispatch();
   const productList = useSelector((state) => state.productList);
-  const { loading, error, products, page, pages } = productList;
+  const { loading, error, products, page, pages , totalProducts } = productList;
 
   const productCategoryList = useSelector((state) => state.productCategoryList);
-  const {
-    loading: loadingCategories,
-    error: errorCategories,
-    categories,
-  } = productCategoryList;
+  const { loading: loadingCategories, error: errorCategories, categories } = productCategoryList;
+
   useEffect(() => {
     dispatch(
       listProducts({
@@ -41,35 +38,83 @@ export default function SearchScreen(props) {
         order,
       })
     );
-  }, [category, dispatch, max, min, name, order, rating, pageNumber]);
+  }, [dispatch, name, category, min, max, rating, order, pageNumber]);
 
   const getFilterUrl = (filter) => {
-    const filterPage = filter.page || pageNumber;
+    const filterPage = filter.page || 1; // Reset to page 1 for new filters
     const filterCategory = filter.category || category;
     const filterName = filter.name || name;
     const filterRating = filter.rating || rating;
     const sortOrder = filter.order || order;
-    const filterMin = filter.min ? filter.min : filter.min === 0 ? 0 : min;
-    const filterMax = filter.max ? filter.max : filter.max === 0 ? 0 : max;
+    const filterMin = filter.min ?? min;
+    const filterMax = filter.max ?? max;
+    
     return `/search/category/${filterCategory}/name/${filterName}/min/${filterMin}/max/${filterMax}/rating/${filterRating}/order/${sortOrder}/pageNumber/${filterPage}`;
   };
+
+  const handleCategoryChange = (e) => {
+    navigate(getFilterUrl({ category: e.target.value, page: 1 })); // Reset to page 1
+  };
+
+  const handleSortChange = (e) => {
+    navigate(getFilterUrl({ order: e.target.value, page: 1 })); // Reset to page 1
+  };
+
   return (
-    <div>
-      <div className="row">
+    <div className="container mx-auto ">
+      {/* Heading */}
+      <div className="mb-6">
         {loading ? (
-          <LoadingBox></LoadingBox>
+          <LoadingBox />
         ) : error ? (
           <MessageBox variant="danger">{error}</MessageBox>
         ) : (
-          <div>{products.length} Results</div>
+          <div className="font-semibold">
+                      <div className="text-center flex justify-between mb-10">
+                        <a href='/' className='text-blue-500'><i className='fa fa-angle-left' /> Back</a>
+          <p className='font-bold text-red-600 text-2xl items-center font-bold'>KK TRADING</p>
+          </div>
+          <div className='mb-3'>
+      <form class="flex items-center max-w-sm mx-auto search-form">  
+      <SearchBox />
+      </form>
+      </div>
+            <p className='text-gray-400 text-xs text-center'>Showing: {totalProducts} Results</p></div>
         )}
-        <div>
-          Sort by{' '}
+      </div>
+      
+      {/* Filter & Sort */}
+      <div className="flex flex-col lg:flex-row lg:space-x-4 mb-8">
+        {/* Categories */}
+        <div className="w-full lg:w-1/4 mb-4 lg:mb-0">
+          <h3 className="font-bold mb-2 text-lg">Categories: </h3>
+          {loadingCategories ? (
+            <LoadingBox />
+          ) : errorCategories ? (
+            <MessageBox variant="danger">{errorCategories}</MessageBox>
+          ) : (
+            <select
+              value={category}
+              onChange={handleCategoryChange}  // Reset page to 1 on category change
+              className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Any</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Sort Options */}
+        <div className="w-full lg:w-1/4 mb-4 lg:mb-0">
+          <h3 className="font-bold mb-2 text-lg">Sort by: </h3>
           <select
             value={order}
-            onChange={(e) => {
-              navigate(getFilterUrl({ order: e.target.value }));
-            }}
+            onChange={handleSortChange}  // Reset page to 1 on sort change
+            className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="newest">Newest Arrivals</option>
             <option value="lowest">Price: Low to High</option>
@@ -78,99 +123,45 @@ export default function SearchScreen(props) {
           </select>
         </div>
       </div>
-      <div className="row top">
-        <div className="col-1">
-          <h3>Department</h3>
-          <div>
-            {loadingCategories ? (
-              <LoadingBox></LoadingBox>
-            ) : errorCategories ? (
-              <MessageBox variant="danger">{errorCategories}</MessageBox>
-            ) : (
-              <ul>
-                <li>
-                  <Link
-                    className={'all' === category ? 'active' : ''}
-                    to={getFilterUrl({ category: 'all' })}
-                  >
-                    Any
-                  </Link>
-                </li>
-                {categories.map((c) => (
-                  <li key={c}>
-                    <Link
-                      className={c === category ? 'active' : ''}
-                      to={getFilterUrl({ category: c })}
-                    >
-                      {c}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div>
-            <h3>Price</h3>
-            <ul>
-              {prices.map((p) => (
-                <li key={p.name}>
-                  <Link
-                    to={getFilterUrl({ min: p.min, max: p.max })}
-                    className={
-                      `${p.min}-${p.max}` === `${min}-${max}` ? 'active' : ''
-                    }
-                  >
-                    {p.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h3>Avg. Customer Review</h3>
-            <ul>
-              {ratings.map((r) => (
-                <li key={r.name}>
-                  <Link
-                    to={getFilterUrl({ rating: r.rating })}
-                    className={`${r.rating}` === `${rating}` ? 'active' : ''}
-                  >
-                    <Rating caption={' & up'} rating={r.rating}></Rating>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <div className="col-3">
+
+      {/* Products List */}
+      <div className="w-full">
+        <div className="container mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {loading ? (
-            <LoadingBox></LoadingBox>
+            <LoadingBox />
           ) : error ? (
             <MessageBox variant="danger">{error}</MessageBox>
+          ) : products.length === 0 ? (
+            <MessageBox>No Products Found</MessageBox>
           ) : (
-            <>
-              {products.length === 0 && (
-                <MessageBox>No Product Found</MessageBox>
-              )}
-              <div className="row center">
-                {products !== undefined && products.map((product) => (
-                  <Product key={product._id} product={product}></Product>
-                ))}
-              </div>
-              <div className="row center pagination">
-                {[...Array(pages).keys()].map((x) => (
-                  <Link
-                    className={x + 1 === page ? 'active' : ''}
-                    key={x + 1}
-                    to={getFilterUrl({ page: x + 1 })}
-                  >
-                    {x + 1}
-                  </Link>
-                ))}
-              </div>
-            </>
+            products.map((product) => (
+              <Product key={product._id} product={product} />
+            ))
           )}
         </div>
+
+        {/* Pagination */}
+        {pages > 1 && (
+          <div className="flex justify-center mt-6 space-x-4">
+            {page > 1 && (
+              <button
+                onClick={() => navigate(getFilterUrl({ page: page - 1 }))}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+              >
+                Previous
+              </button>
+            )}
+            <span>Page {page}</span>
+            {page < pages && (
+              <button
+                onClick={() => navigate(getFilterUrl({ page: page + 1 }))}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+              >
+                Next
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
