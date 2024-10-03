@@ -1,80 +1,133 @@
 import React, { useEffect, useState } from 'react';
-import 'react-responsive-carousel/lib/styles/carousel.min.css';
-// import { Carousel } from 'react-responsive-carousel';
-// import Product from '../components/Product';
-import LoadingBox from '../components/LoadingBox';
-import MessageBox from '../components/MessageBox';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import LiveTracker from '../components/LocationTracker';
+import LowStockPreview from '../components/lowStockPreview';
 
 export default function HomeScreen() {
-  const navigate = useNavigate()
-  const [loading,setLoading] = useState(false)
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
 
-  useEffect(()=>{
-    async function fetchData () {
-    setLoading(true)
-    if(localStorage.getItem('faceId')){
-      navigate('/')
-    }
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      if (localStorage.getItem('faceId')) {
+        navigate('/');
+      }
 
-    if(!userInfo){
-      navigate('/signin')
-    }
+      if (!userInfo) {
+        navigate('/signin');
+      }
 
-    try {
-      const FoundFaceData = await axios.get(`/api/users/get-face-data/${userInfo?._id}`);
-      console.log(FoundFaceData)
-      if(FoundFaceData.data.faceDescriptor?.length !==0){
-        if(!localStorage.getItem('faceId')){
-          navigate('/face-id?ref=login')
-        }else{
-          setLoading(false)
-          console.log('HI WELCOME')
+      try {
+        const FoundFaceData = await axios.get(`/api/users/get-face-data/${userInfo?._id}`);
+        if (FoundFaceData.data.faceDescriptor?.length !== 0) {
+          if (!localStorage.getItem('faceId')) {
+            navigate('/face-id?ref=login');
+          } else {
+            setLoading(false);
+          }
+        } else {
+          navigate('/face-id?ref=new');
         }
-      }else{
-        navigate('/face-id?ref=new')
+      } catch (error) {
+        navigate('/face-id?ref=error');
+      } finally {
+        setLoading(false);
       }
-    
-      }catch(error){
-         navigate('/face-id?ref=error')
-      }
-
     }
 
-    fetchData()
+    fetchData();
+  }, [userInfo, navigate]);
 
-  },[userInfo,navigate])
-  
   return (
-    <>
-   {loading === true ? <p className='text-center font-bold items-center mt-10'><i className='fa fa-spinner animate-spin mr-2' /> Loading</p>  : ( <div style={{display:'grid',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
-      {userInfo && !userInfo.isAdmin && <LiveTracker />}
-      <h2 className='mx-auto text-center font-bold text-2xl text-red-600 mt-5'>Members Panel</h2>
-      <h1 className='sm:mx-auto text-lg font-bold mb-10 mt-2'>Hi, {userInfo?.name}</h1>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <div style={{textAlign:'center'}}>
-          <a href='/productlist/seller' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Add Products</a>
-          <a href='/create-bill' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Create Bill</a>
-          <a href='/bills' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>All Bills</a>
-          <a href='/create-return' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Add Return</a>
-          <a href='/returns' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>All Returns</a>
-          <a href='/purchase' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Add Purchases</a>
-          <a href='/allpurchases' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>All Purchases</a>
-          <a href='/create-damage' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Add Damage</a>
-          <a href='/damages' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Damages</a>
-          <a href={userInfo && userInfo?.isAdmin ? '/support' : '/chat'} style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'><i className='fa fa-comment'></i>  Inbox</a>
-          <a href='/attendence' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Attendence</a>
-          <a href='/workers' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>Workers</a>
-          {userInfo && userInfo?.isAdmin && <a href='/userlist' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'>All Users</a>}
-          {userInfo && userInfo.isAdmin && <a href='/live-tracking' style={{padding:'12px',backgroundColor:'hsl(349, 100%, 60%)',fontWeight:'bold',margin:'10px',color:'white'}} className='btn'><i className='fa fa-map-marker' /> Track Users</a>}
-            </div>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4">
+      {loading ? (
+        <div className="flex flex-col items-center">
+          <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32 mb-4"></div>
+          <p className="text-lg font-semibold text-gray-700">Loading...</p>
+        </div>
+      ) : (
+        <div className="w-full p-3 max-w-5xl">
+          {userInfo && !userInfo.isAdmin && <LiveTracker />}
+          <p className="text-md font-semibold text-gray-800 text-center mb-3">Welcome, {userInfo?.name}</p>
+
+          <LowStockPreview />
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* Billing Section */}
+            <CardSection title="Billing">
+              <ActionButton href="/create-bill" title="Create Bill" />
+              <ActionButton href="/bills" title="All Bills" />
+            </CardSection>
+
+            {/* Purchases Section */}
+            <CardSection title="Purchases">
+              <ActionButton href="/purchase" title="Add Purchases" />
+              <ActionButton href="/allpurchases" title="All Purchases" />
+            </CardSection>
+
+            {/* Returns Section */}
+            <CardSection title="Returns">
+              <ActionButton href="/create-return" title="Add Return" />
+              <ActionButton href="/returns" title="All Returns" />
+            </CardSection>
+
+            {/* Product Management Section */}
+            <CardSection title="Product Management">
+              <ActionButton href="/productlist/seller" title="Add Products" />
+              <ActionButton href="/get-product" title="Manage Product" />
+            </CardSection>
+
+            {/* Damages Section */}
+            <CardSection title="Damages">
+              <ActionButton href="/create-damage" title="Add Damage" />
+              <ActionButton href="/damages" title="Damages" />
+            </CardSection>
+
+            <CardSection title="Drivers Section">
+              <ActionButton href="/driver" title="See Invoices" />
+            </CardSection>
+
+            {/* Additional Options */}
+            <CardSection title="Others">
+              <ActionButton href={userInfo?.isAdmin ? '/support' : '/chat'} title="Inbox" />
+              <ActionButton href="/attendence" title="Attendance" />
+              {userInfo?.isAdmin && (
+                <>
+                  <ActionButton href="/userlist" title="All Users" />
+                  <ActionButton href="/live-tracking" title="Track Users" />
+                </>
+              )}
+            </CardSection>
           </div>
-    </div> )}
-    </>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// CardSection component
+function CardSection({ title, children }) {
+  return (
+    <div className="bg-white shadow-md rounded-lg p-4">
+      <h2 className="text-sm font-bold text-gray-500 mb-3">{title}</h2>
+      <div className="flex flex-col space-y-3">{children}</div>
+    </div>
+  );
+}
+
+// ActionButton component
+function ActionButton({ href, title }) {
+  return (
+    <a
+      href={href}
+      className="w-full px-3 py-2 bg-red-600 text-white font-bold text-xs md:text-sm rounded-md shadow-sm hover:bg-red-700 transition duration-150"
+    >
+      {title}
+    </a>
   );
 }

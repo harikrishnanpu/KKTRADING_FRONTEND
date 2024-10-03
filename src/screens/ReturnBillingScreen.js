@@ -9,67 +9,35 @@ export default function ReturnBillingScreen() {
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [products, setProducts] = useState([]);
-  const [itemId, setItemId] = useState('');
   const [suggestions, setSuggestions] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState('');
   const [step, setStep] = useState(0); // Step state to manage the current step
 
-  useEffect(() => {
-    const fetchBillingNos = async () => {
-      try {
-        const { data } = await Axios.get('/api/billing/numbers/getBillings');
-        setBillingNos(data);
-      } catch (err) {
-        setError('Error fetching billing numbers');
-      }
-    };
-
-    fetchBillingNos();
-  }, []);
-
-  const fetchSuggestions = async (query) => {
+  // Fetch billing suggestions based on the input
+  const fetchBillingSuggestions = async (query) => {
     try {
-      const { data } = await Axios.get(`/api/products/search/itemId?query=${query}`);
+      const { data } = await Axios.get(`/api/billing/billing/suggestions?search=${query}`);
       setSuggestions(data);
     } catch (err) {
-      setError('Error fetching suggestions');
+      setError('Error fetching billing suggestions');
     }
   };
 
   useEffect(() => {
-    if (itemId.length >= 2) {
-      fetchSuggestions(itemId);
-    } else {
-      setSuggestions([]);
-    }
-  }, [itemId]);
+      fetchBillingSuggestions(selectedBillingNo);
+  }, [selectedBillingNo]);
 
-  const addProductByItemId = async (product) => {
+  // Fetch full billing details once the invoice number is selected or typed
+  const fetchBillingDetails = async (id) => {
     try {
-      const { data } = await Axios.get(`/api/products/itemId/${product.item_id}`);
-      setSelectedProduct(data);
-      setQuantity(1);
-      setItemId('');
-      setSuggestions([]);
+      const { data } = await Axios.get(`/api/billing/${id}`);
+      setCustomerName(data.customerName);
+      setCustomerAddress(data.customerAddress);
+      setProducts(data.products.map(product => ({ ...product, quantity: 1 }))); // Set initial quantity to 1
+      setStep(1); // Move to next step after successful fetch
     } catch (err) {
-      setError('Product not found or server error.');
+      setError('Error fetching billing details');
     }
-  };
-
-  const handleAddProductWithQuantity = () => {
-    if (!selectedProduct) return;
-
-    const productWithQuantity = { ...selectedProduct, quantity };
-    setProducts([...products, productWithQuantity]);
-    setSelectedProduct(null);
-    setQuantity(1);
-  };
-
-  const handleRemoveProduct = (index) => {
-    const newProducts = products.filter((_, i) => i !== index);
-    setProducts(newProducts);
   };
 
   const handleReturnSubmit = async (e) => {
@@ -118,22 +86,32 @@ export default function ReturnBillingScreen() {
           {step === 0 && (
             <div>
               <h3 className="text-lg font-bold">Step 1: Select Billing No</h3>
-              <label className="block text-gray-700">Select Billing No</label>
-              <select
+              <label className="block text-gray-700">Billing Invoice No</label>
+              <input
+                type="text"
                 value={selectedBillingNo}
                 onChange={(e) => setSelectedBillingNo(e.target.value)}
                 className="w-full px-4 py-2 border rounded-md focus:outline-none"
-              >
-                <option value="">-- Select Billing No --</option>
-                {billingNos.map((billing) => (
-                  <option key={billing._id} value={billing.invoiceNo}>
+                placeholder="Enter or select Billing Invoice No"
+              />
+              <div className="mt-2 bg-white shadow-md">
+                {suggestions.map((billing) => (
+                  <div
+                    key={billing.invoiceNo}
+                    onClick={() => {
+                      setSelectedBillingNo(billing.invoiceNo);
+                      fetchBillingDetails(billing._id)
+                      setSuggestions([]);
+                    }}
+                    className="cursor-pointer p-2 hover:bg-gray-100"
+                  >
                     {billing.invoiceNo}
-                  </option>
+                  </div>
                 ))}
-              </select>
+              </div>
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={fetchBillingDetails}
                 className="mt-4 bg-blue-500 text-white py-2 px-4 rounded-md"
               >
                 Next
@@ -165,19 +143,7 @@ export default function ReturnBillingScreen() {
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="mt-4 bg-blue-500 text-white py-2 px-4 rounded-md"
-              >
-                Next
-              </button>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div>
-              <h3 className="text-lg font-bold">Step 3: Customer Information</h3>
+              <h3 className="text-lg font-bold mt-4">Step 3: Customer Information</h3>
               <div>
                 <label className="block text-gray-700">Customer Name</label>
                 <input
@@ -197,82 +163,35 @@ export default function ReturnBillingScreen() {
                   placeholder="Enter Customer Address"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setStep(3)}
-                className="mt-4 bg-blue-500 text-white py-2 px-4 rounded-md"
-              >
-                Next
-              </button>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div>
-              <h3 className="text-lg font-bold">Step 4: Add Products for Return</h3>
-              <div>
-                <label className="block text-gray-700">Item ID</label>
-                <input
-                  type="text"
-                  value={itemId}
-                  onChange={(e) => setItemId(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-md focus:outline-none"
-                  placeholder="Enter Item ID"
-                />
-                {error && <p className="text-red-500">{error}</p>}
-                <div className="mt-2">
-                  {suggestions.map((suggestion) => (
-                    <div
-                      key={suggestion.item_id}
-                      onClick={() => addProductByItemId(suggestion)}
-                      className="p-2 cursor-pointer hover:bg-gray-200"
-                    >
-                      {suggestion.name} - {suggestion.item_id}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {selectedProduct && (
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold">Selected Product: {selectedProduct.name}</h3>
-                  <label className="block text-gray-700">Quantity</label>
-                  <input
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none"
-                    min="1"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddProductWithQuantity}
-                    className="mt-2 bg-blue-500 text-white py-2 px-4 rounded-md"
-                  >
-                    Add Product with Quantity
-                  </button>
-                </div>
-              )}
+              <h3 className="text-lg font-bold mt-4">Step 4: Products</h3>
               {products.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-xl font-bold mb-2">Added Products</h3>
                   <ul className="list-disc ml-5">
                     {products.map((product, index) => (
-                      <li key={index} className="flex justify-between items-center">
-                        {product.name} - Quantity: {product.quantity}
-                        <button
-                          onClick={() => handleRemoveProduct(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          Remove
-                        </button>
+                      <li key={index} className="flex justify-between items-center mb-2">
+                        <div>
+                          {product.name} - {product.item_id} - ${product.price}
+                        </div>
+                        <div>
+                          <input
+                            type="number"
+                            value={product.quantity}
+                            onChange={(e) => {
+                              const newProducts = [...products];
+                              newProducts[index].quantity = e.target.value;
+                              setProducts(newProducts);
+                            }}
+                            className="w-20 px-2 py-1 border rounded-md focus:outline-none"
+                            min="1"
+                          />
+                        </div>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
               <button
-                type="button"
-                onClick={handleReturnSubmit}
+                type="submit"
                 className="mt-4 bg-green-500 text-white py-2 px-4 rounded-md"
               >
                 Submit Return

@@ -42,6 +42,8 @@ import AllPurchases from './screens/Purchaselistscreen';
 import DamageBillPage from './screens/Damagebill';
 import DamagedDataScreen from './screens/listDamagebill';
 import DriverPage from './screens/driverScreen';
+import ProductListPage from './screens/getProductscreen';
+import LowStockAndBillingPage from './screens/LowStockAndBillingPage';
 
 axios.defaults.baseURL = 'http://localhost:4000/'; // https://dhanyabuilders-backend.onrender.com/
 
@@ -129,6 +131,8 @@ useEffect(() => {
             <Route path="/damages" element={<DamagedDataScreen />}></Route>
             <Route path="/create-return" element={<ReturnBillingScreen />}></Route>
             <Route path="/driver" element={<DriverPage />}></Route>
+            <Route path="/low-stock" element={<LowStockAndBillingPage />}></Route>
+            <Route path="/get-product" element={<ProductListPage />}></Route>
             <Route path="/payment" element={<PaymentMethodScreen />}></Route>
             <Route path="/placeorder" element={<PlaceOrderScreen />}></Route>
             <Route path="/order/:id" element={<OrderScreen />}></Route>

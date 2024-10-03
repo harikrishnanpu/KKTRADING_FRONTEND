@@ -21,7 +21,7 @@ export default function SearchBox() {
     const fetchSuggestions = async () => {
       if (name.length > 0) {
         try {
-          const { data } = await axios.get(`/api/products/search?q=${name}`);
+          const { data } = await axios.get(`/api/products/searchform/search?q=${name}`);
           setSuggestions(data);
           console.log(data)
         } catch (error) {
@@ -38,7 +38,8 @@ export default function SearchBox() {
   const handleSuggestionClick = (suggestion) => {
     setName(suggestion.name);
     setSuggestions([]);
-    navigate(`/search/name/${suggestion.name}`);
+    const cleanName = suggestion.name.replace(/\s*\(.*?\)\s*/g, '').trim(); 
+    navigate(`/search/name/${cleanName}`);
   };
 
   return (
@@ -61,7 +62,7 @@ export default function SearchBox() {
               key={suggestion._id}
               className="p-3 font-semibold text-gray-600 text-sm"
               >
-              {suggestion.name}
+              {suggestion.name} - {suggestion.item_id}
             </li>
           <p className='ml-auto mt-auto mb-auto text-xs text-gray-400'>{suggestion.brand}</p>
               </div>
