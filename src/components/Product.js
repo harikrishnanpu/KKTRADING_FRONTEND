@@ -10,7 +10,7 @@ export default function Product({ product }) {
         <img
           onError={() => setImageError(true)}
           className={`object-cover rounded-md w-full h-32 ${imageError ? 'hidden' : ''}`}
-          src={`http://localhost:4000${product.image}`}
+          src={`https://kktrading-backend.onrender.com${product.image}`}
           alt={product.name}
         />
         {imageError && (

@@ -1,60 +1,73 @@
-import React, { useState } from 'react';
-import Axios from 'axios';
-import { useDispatch } from 'react-redux';
-import { createPurchase } from '../actions/productActions';
-import LoadingBox from '../components/LoadingBox';
-import MessageBox from '../components/MessageBox';
+import React, { useState } from "react";
+import Axios from "axios";
+import { useDispatch } from "react-redux";
+import { createPurchase } from "../actions/productActions";
+import LoadingBox from "../components/LoadingBox";
+import MessageBox from "../components/MessageBox";
+import { useNavigate } from "react-router-dom";
 
 export default function PurchasePage() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [sellerName, setSellerName] = useState('');
-  const [sellerId, setSellerId] = useState('');
-  const [invoiceNo, setInvoiceNo] = useState('');
-  const [items, setItems] = useState([{ itemId: '', name: '', quantity: '', isExisting: false }]);
+  const [sellerName, setSellerName] = useState("");
+  const [sellerId, setSellerId] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [itemFound, setItemFound] = useState(true); // Track if item is found
+  const [error, setError] = useState("");
+  const [itemId, setItemId] = useState("");
+  const [itemName, setItemName] = useState("");
+  const [itemQuantity, setItemQuantity] = useState("");
+  const [itemBrand, setItemBrand] = useState("");
+  const [itemCategory, setItemCategory] = useState("");
+  const [itemPrice, setItemPrice] = useState("");
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const addItem = () => {
-    setItems([...items, { itemId: '', name: '', quantity: '', isExisting: false }]);
+    if (!itemId || !itemQuantity || !itemBrand || !itemCategory || !itemPrice) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    const newItem = {
+      itemId,
+      name: itemName,
+      quantity: itemQuantity,
+      brand: itemBrand,
+      category: itemCategory,
+      price: itemPrice,
+    };
+
+    setItems([...items, newItem]);
+    clearItemFields();
+    setError("");
   };
 
-  const handleItemChange = (index, field, value) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-    setItems(newItems);
+  const clearItemFields = () => {
+    setItemId("");
+    setItemName("");
+    setItemQuantity("");
+    setItemBrand("");
+    setItemCategory("");
+    setItemPrice("");
   };
 
-  const handleSearchItem = async (index) => {
-    const itemId = items[index].itemId;
-    if (!itemId) return;
-
+  const handleSearchItem = async () => {
     try {
       setLoading(true);
       const { data } = await Axios.get(`/api/products/itemId/${itemId}`);
-      const newItems = [...items];
       if (data) {
-        newItems[index] = {
-          itemId: data.item_id,
-          name: data.name,
-          brand: data.brand,
-          category: data.category,
-          quantity: newItems[index].quantity || 1,
-          isExisting: true,
-        };
-        setItemFound(true);
+        setItemName(data.name);
+        setItemBrand(data.brand);
+        setItemCategory(data.category);
+        setItemPrice(data.price);
       } else {
-        newItems[index].isExisting = false;
-        setItemFound(false);
-        setError('Item not found');
+        setError("Item not found");
       }
-
-      setItems(newItems);
       setLoading(false);
     } catch (err) {
-      setError('Error fetching item');
+      setError("Error fetching item");
       setLoading(false);
     }
   };
@@ -64,36 +77,82 @@ export default function PurchasePage() {
     setItems(newItems);
   };
 
-  const nextStep = () => {
-    setCurrentStep(currentStep + 1);
-  };
-
-  const prevStep = () => {
-    setCurrentStep(currentStep - 1);
-  };
-
-  const submitHandler = (e) => {
+  const submitHandler = async (e) => {
     e.preventDefault();
-    const purchaseData = {
-      sellerName,
-      sellerId,
-      invoiceNo,
-      items,
-    };
-    dispatch(createPurchase(purchaseData));
+    setError("");
+
+    if (!sellerName || !sellerId || !invoiceNo || items.length == 0) {
+      setError("All Fields Are Required");
+    } else {
+      const purchaseData = {
+        sellerName,
+        sellerId,
+        invoiceNo,
+        items,
+      };
+      try {
+        dispatch(createPurchase(purchaseData));
+        window.confirm("Purchase Submitted Successfully");
+        navigate("/allpurchases"); // Redirect to home on successful purchase
+      } catch (error) {
+        setError("Error submitting purchase");
+      }
+    }
   };
 
   return (
+    <div>
+
+
+      <div className="flex justify-between mt-5 mx-4">
+        <div>
+        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+        </div>
+        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+      </div>
+
     <div className="max-w-3xl mx-auto mt-8 p-6 bg-white shadow-md rounded-md">
       {loading && <LoadingBox />}
       {error && <MessageBox variant="danger">{error}</MessageBox>}
+
+      <h1 className="text-lg font-semibold">Purchase Bill Form</h1>
+
+<div className="flex justify-between mb-5">
+
+       <div className="text-left">
+        <button
+              type="button"
+              onClick={() => setCurrentStep(1)}
+              className={`mt-2 w-full py-2 px-4  text-sm font-bold rounded-md ${currentStep == 2 ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 cursor-not-allowed text-gray-700'}`}
+              >
+              Back
+            </button> 
+       </div>
+
+        <div className="text-right">
+          <button
+            onClick={submitHandler}
+            className="py-2 font-bold px-4 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+            Submit
+          </button>
+          <p className="text-xs mt-1 text-gray-400">
+            Please click submit only all fields are filled
+          </p>
+        </div>
+            </div>
+
       <form onSubmit={submitHandler} className="space-y-8">
         {currentStep === 1 && (
           <div>
-            <h2 className="text-lg font-medium text-gray-900">Seller Information</h2>
+            <h2 className="text-sm font-bold text-gray-900">
+              Seller Information
+            </h2>
             <div className="mt-4 space-y-4">
               <div className="flex flex-col">
-                <label className="mb-1 text-sm text-gray-600">Seller Name</label>
+                <label className="mb-1 text-sm text-gray-600">
+                  Seller Name
+                </label>
                 <input
                   type="text"
                   value={sellerName}
@@ -113,7 +172,9 @@ export default function PurchasePage() {
                 />
               </div>
               <div className="flex flex-col">
-                <label className="mb-1 text-sm text-gray-600">Invoice No.</label>
+                <label className="mb-1 text-sm text-gray-600">
+                  Invoice No.
+                </label>
                 <input
                   type="text"
                   value={invoiceNo}
@@ -125,8 +186,8 @@ export default function PurchasePage() {
             </div>
             <button
               type="button"
-              onClick={nextStep}
-              className="mt-6 w-full py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700"
+              onClick={() => setCurrentStep(2)}
+              className="mt-6 w-1/3 py-2 px-4 bg-red-600 text-white text-sm font-bold rounded-md hover:bg-red-700"
             >
               Next
             </button>
@@ -135,158 +196,164 @@ export default function PurchasePage() {
 
         {currentStep === 2 && (
           <div>
-            <h2 className="text-lg font-medium text-gray-900">Item Details</h2>
-            <div className="mt-4 space-y-6">
-              {items.map((item, index) => (
-                <div key={index} className="flex items-center flex-wrap space-x-4">
-                  <div className="w-full md:w-1/4">
-                    <label className="mb-1 text-sm text-gray-600">Item ID</label>
-                    <input
-                      type="text"
-                      value={item.itemId}
-                      onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
-                      className="w-full border px-3 py-2 rounded-md"
-                      required
-                    />
-                  </div>
-
+            <h2 className="text-sm font-bold text-gray-900">Add Item</h2>
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-col">
+                <label className="mb-1 text-sm text-gray-600">Item ID</label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={itemId}
+                    onKeyDown={(e) => {
+                      if (e.key == "Enter") handleSearchItem();
+                    }}
+                    onChange={(e) => setItemId(e.target.value)}
+                    className="w-1/2 border px-3 py-2 rounded-md"
+                    required
+                  />
                   <button
                     type="button"
-                    onClick={() => handleSearchItem(index)}
-                    className="ml-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    onClick={handleSearchItem}
+                    className="ml-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                   >
                     Search
                   </button>
-
-                  {item.isExisting ? (
-                    <>
-                      <div className="w-full md:w-1/4">
-                        <label className="mb-1 text-sm text-gray-600">Item Name</label>
-                        <input type="text" value={item.name} disabled className="w-full border px-3 py-2 rounded-md" />
-                      </div>
-                      <div className="w-full md:w-1/4">
-                        <label className="mb-1 text-sm text-gray-600">Brand</label>
-                        <input type="text" value={item.brand} disabled className="w-full border px-3 py-2 rounded-md" />
-                      </div>
-                      <div className="w-full md:w-1/4">
-                        <label className="mb-1 text-sm text-gray-600">Category</label>
-                        <input type="text" value={item.category} disabled className="w-full border px-3 py-2 rounded-md" />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addItem()}
-                        className="mt-2 px-2 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                      >
-                        Add Item
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-full md:w-1/4">
-                        <label className="mb-1 text-sm text-gray-600">Item Name</label>
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                          className="w-full border px-3 py-2 rounded-md"
-                          required
-                        />
-                      </div>
-                      <div className="w-full md:w-1/4">
-                        <label className="mb-1 text-sm text-gray-600">Brand</label>
-                        <input
-                          type="text"
-                          value={item.brand}
-                          onChange={(e) => handleItemChange(index, 'brand', e.target.value)}
-                          className="w-full border px-3 py-2 rounded-md"
-                          required
-                        />
-                      </div>
-                      <div className="w-full md:w-1/4">
-                        <label className="mb-1 text-sm text-gray-600">Category</label>
-                        <input
-                          type="text"
-                          value={item.category}
-                          onChange={(e) => handleItemChange(index, 'category', e.target.value)}
-                          className="w-full border px-3 py-2 rounded-md"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="w-full md:w-1/4">
-                    <label className="mb-1 text-sm text-gray-600">Quantity</label>
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                      className="w-full border px-3 py-2 rounded-md"
-                      required
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Remove
-                  </button>
                 </div>
-              ))}
+              </div>
 
+              <div className="flex flex-col"></div>
+
+              <div className="flex">
+                <input
+                  type="text"
+                  placeholder="Item Name"
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                  className="w-1/2 border mr-2 px-3 py-2 rounded-md"
+                  required
+                />
+
+                <input
+                  type="text"
+                  placeholder="Item Brand"
+                  value={itemBrand}
+                  onChange={(e) => setItemBrand(e.target.value)}
+                  className="w-1/2 border px-3 py-2 rounded-md"
+                  required
+                />
+              </div>
+
+              <div className="flex">
+                <input
+                  type="text"
+                  value={itemCategory}
+                  placeholder="Category"
+                  onChange={(e) => setItemCategory(e.target.value)}
+                  className="w-full mr-2 border px-3 py-2 rounded-md"
+                  required
+                />
+
+                <input
+                  type="text"
+                  value={itemPrice}
+                  placeholder="Price"
+                  onChange={(e) => setItemPrice(e.target.value)}
+                  className="w-full border px-3 py-2 rounded-md"
+                  required
+                />
+              </div>
+              <div className="flex flex-col">
+                <input
+                  type="number"
+                  placeholder="Quantity"
+                  value={itemQuantity}
+                  onChange={(e) => setItemQuantity(e.target.value)}
+                  className="w-full border px-3 py-2 rounded-md"
+                  required
+                />
+              </div>
               <button
                 type="button"
                 onClick={addItem}
-                className={`mt-6 w-full py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 ${itemFound ? '' : 'hidden'}`}
+                className="mt-6 w-full py-2 px-4 bg-red-600 text-white text-sm font-bold rounded-md hover:bg-red-700"
               >
-                Add Another Item
+                Add Item
               </button>
+            </div>
 
-              <div className="flex justify-between mt-6">
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="w-full inline-flex justify-center py-2 px-4 mr-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <button
-                  type="submit"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                  Submit
-                </button>
+            <div className="mt-6">
+              <h2 className="text-sm font-bold text-gray-500">Added Items</h2>
+              <div className="overflow-x-auto hidden md:block">
+                <table className="min-w-full table-auto bg-white shadow-md rounded-md mt-4">
+                  <thead>
+                    <tr className="bg-gray-100 text-gray-600 text-sm leading-normal">
+                      <th className="py-3 px-6 text-left">Item ID</th>
+                      <th className="py-3 px-6 text-left">Name</th>
+                      <th className="py-3 px-6 text-left">Quantity</th>
+                      <th className="py-3 px-6 text-left">Price</th>
+                      <th className="py-3 px-6 text-left">Brand</th>
+                      <th className="py-3 px-6 text-left">Category</th>
+                      <th className="py-3 px-6 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-600 text-sm font-light">
+                    {items.map((item, index) => (
+                      <tr
+                        key={index}
+                        className="border-b border-gray-200 hover:bg-gray-100"
+                      >
+                        <td className="py-3 px-6">{item.itemId}</td>
+                        <td className="py-3 px-6">{item.name}</td>
+                        <td className="py-3 px-6">{item.quantity}</td>
+                        <td className="py-3 px-6">{item.price}</td>
+                        <td className="py-3 px-6">{item.brand}</td>
+                        <td className="py-3 px-6">{item.category}</td>
+                        <td className="py-3 px-6">
+                          <button
+                            onClick={() => removeItem(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Responsive: Cards for small screens, Table for large screens */}
+              <div className="block md:hidden">
+                {/* Cards for Small Screens */}
+                <div className="grid grid-cols-1 mt-2 gap-4 sm:grid-cols-2">
+                  {items.map((item, index) => (
+                    <div
+                      key={item._id}
+                      className="bg-white mt-2 shadow-lg rounded-lg p-6 border"
+                    >
+                      <p className="text-sm font-bold mb-2">
+                        Name: {item.name}
+                      </p>
+                      <p className="text-xs mb-2">Item Id: {item.itemId}</p>
+                      <p className="text-xs mb-2">Quantity: {item.quantity}</p>
+                      <p className="text-xs mb-2">Price: {item.price}</p>
+                      <p className="text-xs mb-2">Brand: {item.brand}</p>
+                      <p className="text-xs mb-2">Category: {item.category}</p>
+                      <button
+                        onClick={() => removeItem(index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         )}
       </form>
-
-      {/* Displaying the added items below */}
-      <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900">Added Items</h2>
-        <div className="space-y-4">
-          {items.map((item, index) => (
-            <div key={index} className="p-4 bg-gray-100 rounded-md flex justify-between items-center">
-              <div>
-                <p><strong>Item ID:</strong> {item.itemId}</p>
-                <p><strong>Name:</strong> {item.name}</p>
-                <p><strong>Brand:</strong> {item.brand}</p>
-                <p><strong>Category:</strong> {item.category}</p>
-                <p><strong>Quantity:</strong> {item.quantity}</p>
-              </div>
-              <button
-                onClick={() => removeItem(index)}
-                className="mt-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
+    </div>
     </div>
   );
 }

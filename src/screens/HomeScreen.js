@@ -43,6 +43,29 @@ export default function HomeScreen() {
     fetchData();
   }, [userInfo, navigate]);
 
+
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+useEffect(() => {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault(); // Prevent Chrome 67 and earlier from automatically showing the prompt
+    setDeferredPrompt(e); // Stash the event so it can be triggered later
+  });
+
+  return () => {
+    window.removeEventListener("beforeinstallprompt", () => {});
+  };
+}, []);
+
+const handleInstallClick = async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt(); // Show the prompt
+    const { outcome } = await deferredPrompt.userChoice; // Wait for the user to respond
+    console.log(`User response to the install prompt: ${outcome}`);
+    setDeferredPrompt(null); // Clear the prompt
+  }
+};
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4">
       {loading ? (
@@ -56,6 +79,12 @@ export default function HomeScreen() {
           <p className="text-md font-semibold text-gray-800 text-center mb-3">Welcome, {userInfo?.name}</p>
 
           <LowStockPreview />
+
+          {deferredPrompt && (
+        <button onClick={handleInstallClick}>
+          Install App
+        </button>
+      )}
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {/* Billing Section */}

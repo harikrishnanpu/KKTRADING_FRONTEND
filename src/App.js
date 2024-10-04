@@ -44,8 +44,9 @@ import DamagedDataScreen from './screens/listDamagebill';
 import DriverPage from './screens/driverScreen';
 import ProductListPage from './screens/getProductscreen';
 import LowStockAndBillingPage from './screens/LowStockAndBillingPage';
+import DriverBillingPage from './screens/driverInvoice';
 
-axios.defaults.baseURL = 'http://localhost:4000/'; // https://dhanyabuilders-backend.onrender.com/
+axios.defaults.baseURL = 'https://kktrading-backend.onrender.com/'; // 
 
 function App() {
   const userSignin = useSelector((state) => state.userSignin);
@@ -131,6 +132,7 @@ useEffect(() => {
             <Route path="/damages" element={<DamagedDataScreen />}></Route>
             <Route path="/create-return" element={<ReturnBillingScreen />}></Route>
             <Route path="/driver" element={<DriverPage />}></Route>
+            <Route path="/driver-invoice" element={<DriverBillingPage />}></Route>
             <Route path="/low-stock" element={<LowStockAndBillingPage />}></Route>
             <Route path="/get-product" element={<ProductListPage />}></Route>
             <Route path="/payment" element={<PaymentMethodScreen />}></Route>

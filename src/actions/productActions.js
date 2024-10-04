@@ -179,6 +179,8 @@ export const createReview =
         type: 'PURCHASE_FAIL',
         payload: error.message,
       });
+      throw new Error(error.message); // Throwing the error to be caught in the component
     }
   };
+  
   

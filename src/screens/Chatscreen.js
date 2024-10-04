@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import socketIOClient from 'socket.io-client';
 
-const ENDPOINT = 'http://localhost:4000/';
+const ENDPOINT = 'https://kktrading-backend.onrender.com/';
 
 export default function Chatscreen() {
   const userSignin = useSelector((state) => state.userSignin);

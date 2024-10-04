@@ -4,7 +4,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import moment from 'moment'; // Import moment.js for date formatting
 
-const socket = io('http://localhost:4000/'); // Replace with your server URL
+const socket = io('https://kktrading-backend.onrender.com/'); // Replace with your server URL
 
 const useMapLocations = (setMapCenter, setZoom) => {
   const [locations, setLocations] = useState({});

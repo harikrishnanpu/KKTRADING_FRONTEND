@@ -6,7 +6,7 @@ import LoadingBox from "../components/LoadingBox";
 let allUsers = [];
 let allMessages = [];
 let allSelectedUser = {};
-const ENDPOINT = "http://localhost:4000/";
+const ENDPOINT = "https://kktrading-backend.onrender.com/";
 
 export default function SupportScreen() {
   const [selectedUser, setSelectedUser] = useState({});

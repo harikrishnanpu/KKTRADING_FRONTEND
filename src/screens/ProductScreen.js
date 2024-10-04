@@ -74,7 +74,7 @@ export default function ProductScreen(props) {
           <div className="max-w-md mx-auto bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
             <img
               className="w-full h-64 object-cover"
-              src={`http://localhost:4000${product.image}`}
+              src={`https://kktrading-backend.onrender.com${product.image}`}
               alt={product.name}
             />
             <div className="p-6 space-y-4">
