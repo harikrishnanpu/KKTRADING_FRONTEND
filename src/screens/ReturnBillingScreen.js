@@ -24,7 +24,9 @@ export default function ReturnBillingScreen() {
   };
 
   useEffect(() => {
+    if (selectedBillingNo) {
       fetchBillingSuggestions(selectedBillingNo);
+    }
   }, [selectedBillingNo]);
 
   // Fetch full billing details once the invoice number is selected or typed
@@ -33,7 +35,7 @@ export default function ReturnBillingScreen() {
       const { data } = await Axios.get(`/api/billing/${id}`);
       setCustomerName(data.customerName);
       setCustomerAddress(data.customerAddress);
-      setProducts(data.products.map(product => ({ ...product, quantity: 1 }))); // Set initial quantity to 1
+      setProducts(data.products); // Set initial quantity to 1
       setStep(1); // Move to next step after successful fetch
     } catch (err) {
       setError('Error fetching billing details');
@@ -78,15 +80,26 @@ export default function ReturnBillingScreen() {
     }
   };
 
+  const nextStep = () => setStep(step + 1);
+  const prevStep = () => setStep(step - 1);
+
   return (
-    <div className="container mx-auto p-6">
+    <div>
+        <div className="flex justify-between mt-5 mx-4">
+        <div>
+        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+        </div>
+        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+      </div>
+
+    <div className="container mx-auto py-4">
       <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-8">
-        <h2 className="text-2xl font-bold mb-4">Product Return</h2>
+        <h2 className="text-lg font-bold text-red-600 mb-4">Product Return</h2>
         <form onSubmit={handleReturnSubmit} className="space-y-6">
           {step === 0 && (
-            <div>
-              <h3 className="text-lg font-bold">Step 1: Select Billing No</h3>
-              <label className="block text-gray-700">Billing Invoice No</label>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">Step 1: Select Billing No</h3>
+              <label className="block text-gray-700">Billing Invoice No.</label>
               <input
                 type="text"
                 value={selectedBillingNo}
@@ -94,13 +107,13 @@ export default function ReturnBillingScreen() {
                 className="w-full px-4 py-2 border rounded-md focus:outline-none"
                 placeholder="Enter or select Billing Invoice No"
               />
-              <div className="mt-2 bg-white shadow-md">
+              <div className="mt-2 bg-white shadow-md rounded-md max-h-32 overflow-y-auto">
                 {suggestions.map((billing) => (
                   <div
                     key={billing.invoiceNo}
                     onClick={() => {
                       setSelectedBillingNo(billing.invoiceNo);
-                      fetchBillingDetails(billing._id)
+                      fetchBillingDetails(billing._id);
                       setSuggestions([]);
                     }}
                     className="cursor-pointer p-2 hover:bg-gray-100"
@@ -109,19 +122,21 @@ export default function ReturnBillingScreen() {
                   </div>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={fetchBillingDetails}
-                className="mt-4 bg-blue-500 text-white py-2 px-4 rounded-md"
-              >
-                Next
-              </button>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="bg-red-500 text-white py-2 px-4 rounded-md"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
 
           {step === 1 && (
-            <div>
-              <h3 className="text-lg font-bold">Step 2: Enter Return Information</h3>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">Step 2: Enter Return Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700">Return No</label>
@@ -143,7 +158,28 @@ export default function ReturnBillingScreen() {
                   />
                 </div>
               </div>
-              <h3 className="text-lg font-bold mt-4">Step 3: Customer Information</h3>
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="bg-gray-500 text-white py-2 px-4 rounded-md"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="bg-red-500 text-white py-2 px-4 rounded-md"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">Step 3: Customer Information</h3>
               <div>
                 <label className="block text-gray-700">Customer Name</label>
                 <input
@@ -163,7 +199,28 @@ export default function ReturnBillingScreen() {
                   placeholder="Enter Customer Address"
                 />
               </div>
-              <h3 className="text-lg font-bold mt-4">Step 4: Products</h3>
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="bg-gray-500 text-white py-2 px-4 rounded-md"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="bg-red-500 text-white py-2 px-4 rounded-md"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">Step 4: Update Products</h3>
               {products.length > 0 && (
                 <div className="mt-4">
                   <ul className="list-disc ml-5">
@@ -175,6 +232,7 @@ export default function ReturnBillingScreen() {
                         <div>
                           <input
                             type="number"
+                            max={product.quantity}
                             value={product.quantity}
                             onChange={(e) => {
                               const newProducts = [...products];
@@ -182,7 +240,7 @@ export default function ReturnBillingScreen() {
                               setProducts(newProducts);
                             }}
                             className="w-20 px-2 py-1 border rounded-md focus:outline-none"
-                            min="1"
+                            min="0"
                           />
                         </div>
                       </li>
@@ -190,16 +248,26 @@ export default function ReturnBillingScreen() {
                   </ul>
                 </div>
               )}
-              <button
-                type="submit"
-                className="mt-4 bg-green-500 text-white py-2 px-4 rounded-md"
-              >
-                Submit Return
-              </button>
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="bg-gray-500 text-white py-2 px-4 rounded-md"
+                >
+                  Previous
+                </button>
+                <button
+                  type="submit"
+                  className="bg-red-600 text-white py-2 px-4 rounded-md"
+                >
+                  Submit Return
+                </button>
+              </div>
             </div>
           )}
         </form>
       </div>
+    </div>
     </div>
   );
 }

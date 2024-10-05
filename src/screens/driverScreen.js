@@ -109,9 +109,16 @@ const DriverPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">Driver Deliveries</h1>
-      <p className="font-bold text-center mb-4">Total Bills: {count}</p>
+    <div>
+              <div className="flex justify-between mt-5 mx-4">
+        <div>
+        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+        </div>
+        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+      </div>
+    <div className="min-h-screen p-3">
+      <h1 className="text-lg font-bold mb-6 text-center text-gray-800">All Deliveries</h1>
+      <p className="font-bold text-left mb-4">Total Bills: {count}</p>
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
       {/* Search Bar */}
@@ -146,29 +153,29 @@ const DriverPage = () => {
       {/* Billings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
        {oneItem === true ? (
-          <div key={billings._id} className="bg-white rounded-lg shadow-lg p-4 hover:shadow-xl transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-800">Invoice No: {billings.invoiceNo}</h3>
-            <p className="text-gray-600">Customer: {billings.customerName}</p>
-            <p className="text-gray-600">Expected Delivery: {new Date(billings.expectedDeliveryDate).toLocaleDateString()}</p>
-            <p className={`font-semibold ${billings.deliveryStatus === "Delivered" ? 'text-green-500' : 'text-red-500'}`}>
-              Status: {billings.deliveryStatus}
-            </p>
-            <button 
-              className="mt-4 bg-blue-500 text-white rounded-lg py-2 px-4 hover:bg-blue-600 transition"
-              onClick={() => handleDetailClick(billings)}>
-              View Details
-            </button>
-          </div>
+          <div key={billings._id} className="bg-white rounded-lg shadow-xl p-4 hover:shadow-2xl transition duration-200 text-right">
+          <h3 className="text-sm text-left font-semibold text-red-800 mb-2">Invoice No: {billings.invoiceNo}</h3>
+          <p className="text-gray-600 text-left text-xs font-bold mt-1">Customer: {billings.customerName}</p>
+          <p className="text-gray-600 text-left text-xs mt-1">Expected Delivery: {new Date(billings.expectedDeliveryDate).toLocaleDateString()}</p>
+          <p className={`font-semibold text-left text-xs mt-1 ${billings.deliveryStatus === "Delivered" ? 'text-red-500' : 'text-red-500'}`}>
+            Status: {billings.deliveryStatus}
+          </p>
+          <button 
+            className="mt-4 text-xs font-bold bg-red-500 text-white rounded-lg py-2 px-4 hover:bg-red-600 transition"
+            onClick={() => handleDetailClick(billings)}>
+            View Details
+          </button>
+        </div>
         ) :( billings.length > 0 ? billings.map((billing) => (
-          <div key={billing._id} className="bg-white rounded-lg shadow-lg p-4 hover:shadow-xl transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-800">Invoice No: {billing.invoiceNo}</h3>
-            <p className="text-gray-600">Customer: {billing.customerName}</p>
-            <p className="text-gray-600">Expected Delivery: {new Date(billing.expectedDeliveryDate).toLocaleDateString()}</p>
-            <p className={`font-semibold ${billing.deliveryStatus === "Delivered" ? 'text-green-500' : 'text-red-500'}`}>
+          <div key={billing._id} className="bg-white rounded-lg shadow-xl p-4 hover:shadow-2xl transition duration-200 text-right">
+            <h3 className="text-sm text-left font-semibold text-red-800 mb-2">Invoice No: {billing.invoiceNo}</h3>
+            <p className="text-gray-600 text-left text-xs font-bold mt-1">Customer: {billing.customerName}</p>
+            <p className="text-gray-600 text-left text-xs mt-1">Expected Delivery: {new Date(billing.expectedDeliveryDate).toLocaleDateString()}</p>
+            <p className={`font-semibold text-left text-xs mt-1 ${billing.deliveryStatus === "Delivered" ? 'text-red-500' : 'text-red-500'}`}>
               Status: {billing.deliveryStatus}
             </p>
             <button 
-              className="mt-4 bg-blue-500 text-white rounded-lg py-2 px-4 hover:bg-blue-600 transition"
+              className="mt-4 text-xs font-bold bg-red-500 text-white rounded-lg py-2 px-4 hover:bg-red-600 transition"
               onClick={() => handleDetailClick(billing)}>
               View Details
             </button>
@@ -182,11 +189,20 @@ const DriverPage = () => {
       {selectedBilling && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
           <div className="bg-white rounded-lg p-6 shadow-lg w-11/12 md:w-1/2">
-            <h2 className="text-2xl font-bold mb-4">Billing Details</h2>
-            <p>Invoice No: {selectedBilling.invoiceNo}</p>
-            <p>Invoice Date: {new Date(selectedBilling.invoiceDate).toLocaleDateString()}</p>
-            <p>Salesman: {selectedBilling.salesmanName}</p>
-            <p>Expected Delivery Date: {new Date(selectedBilling.expectedDeliveryDate).toLocaleDateString()}</p>
+            <h2 className="text-xl text-gray-600 font-bold mb-4">Billing Details</h2>
+            <p className="text-sm font-bold">Invoice No: {selectedBilling.invoiceNo}</p>
+            <p className="text-sm mt-1">Invoice Date: {new Date(selectedBilling.invoiceDate).toLocaleDateString()}</p>
+            <p className="text-sm mt-1">Salesman: {selectedBilling.salesmanName}</p>
+            <p className={`text-sm mt-1 ${selectedBilling.paymentStatus == 'Paid' ? 'text-green-600' : 'text-yellow-600'}`}>Current Payment Status: {selectedBilling.paymentStatus}</p>
+            <p className={`text-sm mt-1 ${selectedBilling.deliveryStatus == 'Delivered' ? 'text-green-600' : 'text-yellow-600'}`}>Current Delivery Status: {selectedBilling.deliveryStatus}</p>
+            <p className="text-sm mt-1">Expected Delivery Date: {new Date(selectedBilling.expectedDeliveryDate).toLocaleDateString()}</p>
+            {selectedBilling.products.map((item)=>(
+              <div className="ml-2 mb-2 mt-5 bg-gray-100 rounded-lg p-5">
+                <p className="text-sm font-bold">Id:{item.item_id}</p>
+                <p className="text-sm text-red-400">{item.name}</p>
+                <p className="text-sm">Quantity: {item.quantity}</p>
+              </div>
+            ))}
             <div className="mt-4">
               <label className="block text-gray-700 mb-1">Delivery Status:</label>
               <select
@@ -194,7 +210,7 @@ const DriverPage = () => {
                 onChange={(e) => setNewDeliveryStatus(e.target.value)}
                 className="border border-gray-300 rounded-md px-2 py-1 mb-2 w-full"
               >
-                <option value="">Select Status</option>
+                <option value={selectedBilling.deliveryStatus}>Select Status</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Undelivered">Undelivered</option>
               </select>
@@ -204,14 +220,14 @@ const DriverPage = () => {
                 onChange={(e) => setNewPaymentStatus(e.target.value)}
                 className="border border-gray-300 rounded-md px-2 py-1 mb-2 w-full"
               >
-                <option value="">Select Status</option>
+                <option value={selectedBilling.paymentStatus}>Select Status</option>
                 <option value="Paid">Paid</option>
                 <option value="Pending">Pending</option>
               </select>
             </div>
             {error && <p className="text-red-500 mb-2">{error}</p>}
             <button 
-              className="mt-4 bg-green-500 text-white rounded-lg py-2 px-4 hover:bg-green-600 transition"
+              className="mt-4 bg-red-500 text-white rounded-lg py-2 px-4 hover:bg-red-600 transition"
               onClick={handleUpdateStatus}>
               Update Status
             </button>
@@ -229,13 +245,14 @@ const DriverPage = () => {
         {Array.from({ length: totalPages }, (_, index) => (
           <button
             key={index + 1}
-            className={`mx-1 px-4 py-2 rounded-lg transition ${currentPage === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-700 hover:bg-blue-300'}`}
+            className={`mx-1 px-4 py-2 rounded-lg transition ${currentPage === index + 1 ? 'bg-red-500 text-white' : 'bg-red-300 text-gray-700 hover:bg-red-300'}`}
             onClick={() => handlePageChange(index + 1)}
           >
             {index + 1}
           </button>
         ))}
       </div>)}
+    </div>
     </div>
   );
 };

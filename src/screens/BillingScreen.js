@@ -11,6 +11,7 @@ export default function BillingScreen() {
   const [paymentStatus, setPaymentStatus] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [searchProduct,setSearchProduct] = useState(null);
 
   // Product Information
   const [itemId, setItemId] = useState('');
@@ -72,6 +73,7 @@ export default function BillingScreen() {
     setProducts([...products, productWithQuantity]);
     setSelectedProduct(null); // Reset selected product
     setQuantity(1); // Reset quantity
+    setSearchProduct(null);
   };
 
   const handleSubmitProduct = (e) => {
@@ -142,6 +144,15 @@ const handleBillingSubmit = async (e) => {
       alert('There was an error submitting the billing data. Please try again.');
     }
   };
+
+
+  useEffect(() => {
+    if (suggestions.length > 0) {
+      // Set the search product to the first suggestion (or any specific logic)
+      setSearchProduct(suggestions[0]);
+    }
+  }, [suggestions]); // This effect runs only when the suggestions array changes
+  
   
   
 
@@ -150,37 +161,33 @@ const handleBillingSubmit = async (e) => {
   const prevStep = () => setStep(step - 1);
 
   // Styles for the current step and button
-  const stepStyle = "bg-blue-500 text-white font-semibold py-2 px-4 rounded-full focus:outline-none";
-  const inactiveStepStyle = "bg-gray-300 text-gray-500 font-semibold py-2 px-4 w-lg mx-auto bg-white shadow-md rounded-lg p-6";
+  const stepStyle = "bg-red-500 text-sm  text-white font-bold py-2 px-4 rounded-lg focus:outline-none";
+  const inactiveStepStyle = "bg-gray-300 text-sm text-gray-500 font-bold py-2 px-4 bg-white shadow-md rounded-lg";
 
   return (
     <div className="container mx-auto p-6">
-      <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-8">
-        {/* Step Navigation */}
-        <div className="flex justify-between mb-8">
-          <button
-            disabled={step === 1}
-            onClick={prevStep}
-            className={`${step === 1 ? inactiveStepStyle : stepStyle}`}
+      <div className='flex justify-end'>
+      <a href='/' className='fixed top-5 font-bold left-4 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
+      <h2 className='text-2xl font-bold text-red-600 '>KK TRADING</h2>
+      </div>
+      <div className="max-w-4xl mx-auto mt-5 bg-white shadow-lg rounded-lg p-8">
+      <div className='flex justify-between mb-4'>
+        <p className='text-sm font-bold mb-5 text-gray-500'> <i className='fa fa-list'/> Billing</p>
+      <div className='text-right'>
+      <button
+          onClick={handleBillingSubmit}
+          className="mb-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg"
           >
-            Previous
-          </button>
-          <p className="text-xl font-bold">
-            Step {step} of 4
-          </p>
-          <button
-            disabled={step === 4}
-            onClick={nextStep}
-            className={`${step === 4 ? inactiveStepStyle : stepStyle}`}
-          >
-            Next
-          </button>
+          Submit Billing
+        </button>
+        <p className='text-xs text-gray-400'>Fill all fields before submission</p>
         </div>
+          </div>
 
         {/* Step 1: Customer Information */}
         {step === 1 && (
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-4">Customer Information</h2>
+            <h2 className="text-lg font-bold mb-4">Customer Information</h2>
             <div className="mb-4">
               <label className="block text-gray-700">Invoice No</label>
               <input
@@ -216,7 +223,7 @@ const handleBillingSubmit = async (e) => {
         {/* Step 2: Salesman Information */}
         {step === 2 && (
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-4">Salesman Information</h2>
+            <h2 className="text-lg font-bold mb-4">Salesman Information</h2>
             <div className="mb-4">
               <label className="block text-gray-700">Salesman Name</label>
               <input
@@ -242,7 +249,7 @@ const handleBillingSubmit = async (e) => {
         {/* Step 3: Payment and Delivery Information */}
         {step === 3 && (
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-4">Payment & Delivery Information</h2>
+            <h2 className="text-lg font-bold mb-4">Payment & Delivery Information</h2>
             <div className="mb-4">
               <label className="block text-gray-700">Expected Delivery Date</label>
               <input
@@ -274,6 +281,7 @@ const handleBillingSubmit = async (e) => {
                 <option value="">Select Status</option>
                 <option value="Paid">Paid</option>
                 <option value="Unpaid">Unpaid</option>
+                <option value="Partial">Partial</option>
               </select>
             </div>
           </div>
@@ -283,12 +291,13 @@ const handleBillingSubmit = async (e) => {
         {step === 4 && (
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-4">Add Products</h2>
-            <form onSubmit={handleSubmitProduct}>
+            <div>
               <div className="mb-4">
                 <label className="block text-gray-700">Item ID</label>
                 <input
                   type="text"
                   value={itemId}
+                  onKeyDown={(e)=> {if(e.key == 'Enter'){ if(searchProduct) { addProductByItemId(searchProduct) } } }}
                   onChange={(e) => setItemId(e.target.value)}
                   className="w-full px-4 py-2 border rounded-md focus:outline-none"
                   placeholder="Enter Item ID"
@@ -298,21 +307,26 @@ const handleBillingSubmit = async (e) => {
                   {suggestions.map((suggestion) => (
                     <div
                       key={suggestion.item_id}
-                      onClick={() => addProductByItemId(suggestion)}
+                      onClick={() =>{ addProductByItemId(suggestion) }}
                       className="p-2 cursor-pointer hover:bg-gray-200"
                     >
                       {suggestion.name} - {suggestion.item_id}
                     </div>
+                    
                   ))}
                 </div>
               </div>
               {selectedProduct && (
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold">Selected Product: {selectedProduct.name}</h3>
+                <div className="mb-4 text-right">
+                  <div className='bg-gray-100 p-4 rounded-lg mb-2 text-left'>
+                  <p className='font-bold text-xs'>ID: {selectedProduct.item_id}</p>
+                  <p className="text-sm font-bold truncate">Selected Product: {selectedProduct.name}</p>
                   <label className="block text-gray-700">Quantity (Max: {selectedProduct.countInStock})</label>
+                  </div>
                   <input
                     type="number"
                     value={quantity}
+                    onKeyDown={(e) =>{ if(e.key == 'Enter')  handleAddProductWithQuantity(); }}
                     onChange={(e) => setQuantity(Math.min(e.target.value, selectedProduct.countInStock))}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none"
                     min="1"
@@ -321,27 +335,29 @@ const handleBillingSubmit = async (e) => {
                   <button
                     type="button"
                     onClick={handleAddProductWithQuantity}
-                    className="mt-2 bg-blue-500 text-white font-semibold py-2 px-4 rounded-md"
+                    className="mt-2  bg-red-500 text-white font-semibold py-2 px-4 rounded-md"
                   >
-                    Add Product with Quantity
+                    Add <i className='fa fa-plus' />
                   </button>
                 </div>
               )}
-            </form>
+            </div>
 
             {/* Display added products */}
             {products.length > 0 && (
               <div className="mt-4">
-                <h3 className="text-xl font-bold mb-2">Added Products</h3>
-                <ul className="list-disc ml-5">
+                <h3 className="text-sm font-bold mb-2">Added Products</h3>
+                <ul className="container">
                   {products.map((product, index) => (
-                    <li key={index}>
-                      {product.name} - Quantity: {product.quantity}
+                    <li className='bg-gray-100 p-4 mt-2 rounded-lg text-right' key={index}>
+                      <p className='text-xs font-bold text-left'><i className='fa fa-dot-circle-o' /> ID: {product.item_id}</p>
+                      <p className='text-sm truncate text-left'>Item: {product.name}</p>
+                      <p className='text-sm text-left'>Quantity: {product.quantity}</p>
                       <button
                         onClick={() => deleteProduct(index)}
-                        className="text-red-500 ml-2"
+                        className="text-white rounded-lg py-2 px-4 font-bold bg-red-500"
                       >
-                        Remove
+                        <i className='fa fa-trash' />
                       </button>
                     </li>
                   ))}
@@ -350,14 +366,27 @@ const handleBillingSubmit = async (e) => {
             )}
           </div>
         )}
-        
-        {/* Submit Billing Information */}
-        <button
-          onClick={handleBillingSubmit}
-          className="mt-4 bg-green-500 text-white font-semibold py-2 px-4 rounded-md"
-        >
-          Submit Billing
-        </button>
+
+                {/* Step Navigation */}
+                <div className="flex justify-between mb-8">
+          <button
+            disabled={step === 1}
+            onClick={prevStep}
+            className={`${step === 1 ? inactiveStepStyle : stepStyle}`}
+          >
+            Previous
+          </button>
+          <p className="font-bold text-center text-sm mt-2">
+            Step {step} of 4
+          </p>
+          <button
+            disabled={step === 4}
+            onClick={nextStep}
+            className={`${step === 4 ? inactiveStepStyle : stepStyle}`}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

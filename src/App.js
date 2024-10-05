@@ -45,8 +45,9 @@ import DriverPage from './screens/driverScreen';
 import ProductListPage from './screens/getProductscreen';
 import LowStockAndBillingPage from './screens/LowStockAndBillingPage';
 import DriverBillingPage from './screens/driverInvoice';
+import Drivertracker from './screens/drivertracker';
 
-axios.defaults.baseURL = 'https://kktrading-backend.onrender.com/'; // 
+axios.defaults.baseURL = 'https://kktrading-backend.onrender.com/'; // https://kktrading-backend.onrender.com/
 
 function App() {
   const userSignin = useSelector((state) => state.userSignin);
@@ -138,6 +139,7 @@ useEffect(() => {
             <Route path="/payment" element={<PaymentMethodScreen />}></Route>
             <Route path="/placeorder" element={<PlaceOrderScreen />}></Route>
             <Route path="/order/:id" element={<OrderScreen />}></Route>
+            <Route path="/driver-tracker/:invoiceNo" element={<Drivertracker />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}

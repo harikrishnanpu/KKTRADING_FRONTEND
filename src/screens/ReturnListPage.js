@@ -6,6 +6,7 @@ import 'jspdf-autotable'; // Auto table plugin for jsPDF
 export default function ReturnsPage() {
   const [returns, setReturns] = useState([]);
   const [error, setError] = useState('');
+  const [selectedReturn,setSelectedReturn] = useState(null);
 
   // Fetch all returns from the server
   const fetchReturns = async () => {
@@ -80,10 +81,37 @@ export default function ReturnsPage() {
     doc.save(`Return_${returnData.returnNo}.pdf`);
   };
 
+
+  const handleRemove = async (id) => {
+    if (window.confirm('Are you sure you want to remove this returnEntry?')) {
+      try{
+         await Axios.delete(`/api/returns/return/delete/${id}`)
+      }catch(error){
+        setError('Error Occured')
+      }
+      setReturns(returns.filter(returnEntry => returnEntry._id !== id));
+    }
+  };
+
+  const handleView = (returnEntry) => {
+    setSelectedReturn(returnEntry);
+  };
+
+  const closeModal = () => {
+    setSelectedReturn(null);
+  };
+
   return (
-    <div className="container mx-auto p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6 md:p-8">
-        <h2 className="text-3xl font-bold text-center mb-6 text-red-600">All Returns</h2>
+    <div>
+              <div className="flex justify-between mt-5 mx-4">
+        <div>
+        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+        </div>
+        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+      </div>
+    <div className="container mx-auto mt-10">
+      <div className="max-w-full mx-auto bg-white shadow-lg rounded-lg p-6 md:p-6">
+        <h2 className="text-md font-bold text-left mb-6 text-red-600">All Returns</h2>
 
         {error && <p className="text-red-500 text-center">{error}</p>}
         
@@ -91,38 +119,48 @@ export default function ReturnsPage() {
           <p className="text-gray-600 text-center">No returns found.</p>
         ) : (
           <>
-            {/* Responsive table for larger screens */}
-            <div className="hidden md:block">
-              <table className="min-w-full table-auto border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-red-600 text-white">
-                    <th className="border border-gray-300 px-4 py-2">Return No</th>
-                    <th className="border border-gray-300 px-4 py-2">Return Date</th>
-                    <th className="border border-gray-300 px-4 py-2">Customer Name</th>
-                    <th className="border border-gray-300 px-4 py-2">Products</th>
-                    <th className="border border-gray-300 px-4 py-2">Actions</th>
+              {/* Table layout for larger screens */}
+              <div className="hidden md:block">
+              <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Invoice No</th>
+                    <th className="px-4 py-2 text-left">Return Date</th>
+                    <th className="px-4 py-2 text-left">Return No.</th>
+                    <th className="px-4 py-2 text-left">Customer Name</th>
+                    <th className="px-4 py-2 text-left">Total Products</th>
+                    <th className="px-4 py-2 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {returns.map((returnEntry) => (
-                    <tr key={returnEntry.returnNo} className="hover:bg-gray-100 transition duration-300 ease-in-out">
-                      <td className="border border-gray-300 px-4 py-2">{returnEntry.returnNo}</td>
-                      <td className="border border-gray-300 px-4 py-2">{new Date(returnEntry.returnData).toLocaleDateString()}</td>
-                      <td className="border border-gray-300 px-4 py-2">{returnEntry.customerName}</td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        {returnEntry.products.map((product) => (
-                          <div key={product.item_id}>
-                            {product.name} (Qty: {product.quantity})
-                          </div>
-                        ))}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2 text-center">
-                        <button
-                          className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                          onClick={() => generateReturnPDF(returnEntry)}
-                        >
-                          View PDF
-                        </button>
+                    <tr key={returnEntry._id} className="hover:bg-gray-100">
+                      <td className="border px-4 py-2">{returnEntry.billingNo}</td>
+                      <td className="border px-4 py-2">{new Date(returnEntry.createdAt).toLocaleDateString()}</td>
+                      <td className="border px-4 py-2">{returnEntry.returnNo}</td>
+                      <td className="border px-4 py-2">{returnEntry.customerName}</td>
+                      <td className="border px-4 py-2">{returnEntry.products.length}</td>
+                      <td className="border px-4 py-2">
+                      <div className="mt-4 flex justify-between text-right">
+                    <button
+                      className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
+                      onClick={() => generateReturnPDF(returnEntry)}
+                    >
+                      View PDF
+                    </button>
+                    <button 
+                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
+                    onClick={() => handleView(returnEntry)}
+                  >
+                    <i className="fa fa-eye mr-2"></i> View
+                  </button>
+                  <button 
+                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
+                    onClick={() => handleRemove(returnEntry._id)}
+                  >
+                    <i className="fa fa-trash mr-2"></i> Remove
+                  </button>
+                  </div>
                       </td>
                     </tr>
                   ))}
@@ -137,23 +175,38 @@ export default function ReturnsPage() {
                   <h3 className="text-lg font-semibold text-red-600 mb-2">
                     Return No: {returnEntry.returnNo}
                   </h3>
-                  <p className="text-sm mb-1">Return Date: {returnEntry.returnDate}</p>
+                  <p className="text-sm mb-1">Return Date: {new Date(returnEntry.returnDate).toLocaleDateString()}</p>
                   <p className="text-sm mb-1">Customer: {returnEntry.customerName}</p>
                   <p className="text-sm font-semibold mb-2">Products:</p>
                   <ul className="pl-4 list-disc text-sm">
                     {returnEntry.products.map((product) => (
+                      <>
                       <li key={product.item_id}>
                         {product.name} (Qty: {product.quantity})
                       </li>
-                    ))}
+                      <p className='font-bold'>....</p>
+                    </>
+                    )).slice(0,1)}
                   </ul>
-                  <div className="mt-4 text-right">
+                  <div className="mt-4 flex justify-between text-right">
                     <button
                       className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
                       onClick={() => generateReturnPDF(returnEntry)}
                     >
                       View PDF
                     </button>
+                    <button 
+                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
+                    onClick={() => handleView(returnEntry)}
+                  >
+                    <i className="fa fa-eye mr-2"></i> View
+                  </button>
+                  <button 
+                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
+                    onClick={() => handleRemove(returnEntry._id)}
+                  >
+                    <i className="fa fa-trash mr-2"></i> Remove
+                  </button>
                   </div>
                 </div>
               ))}
@@ -161,6 +214,53 @@ export default function ReturnsPage() {
           </>
         )}
       </div>
+
+         {/* Modal for Viewing Details */}
+         {selectedReturn && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-lg w-full shadow-lg relative">
+            <button 
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+              onClick={closeModal}
+            >
+              <i className="fa fa-times"></i>
+            </button>
+
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Return Details</h2>
+            <p><strong>Customer Name:</strong> {selectedReturn.customerName}</p>
+            <p><strong>Return No.:</strong> {selectedReturn.returnNo}</p>
+            <p><strong>Return Date:</strong> {new Date(selectedReturn.returnDate).toLocaleDateString()}</p>
+            <p><strong>Invoice No:</strong> {selectedReturn.billingNo}</p>
+            <p><strong>Customer Address:</strong> {selectedReturn.customerAddress}</p>
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Items:</h3>
+              <ul className="list-inside list-[square] ml-5">
+                {selectedReturn.products.map((item, index) => (
+                  <>
+                  <li key={index} className="text-gray-600 flex">
+                    <span class="bg-golden-gradient bg-clip-text text-transparent">Test1</span>
+                  </li>
+                  <li className='flex '>
+                  <p className='text-sm'>{item.name} </p> 
+                  <p className='text-sm font-bold'> - {item.itemId} </p>
+                  <p className='text-sm'> -- {item.quantity} Nos</p>
+                  </li>
+                  </>
+                ))}
+              </ul>
+            </div>
+
+            <button 
+              className="mt-6 w-full bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition duration-150"
+              onClick={closeModal}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
     </div>
   );
 }

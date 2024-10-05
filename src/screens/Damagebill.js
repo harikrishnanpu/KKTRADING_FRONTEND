@@ -83,12 +83,30 @@ export default function DamageBillPage() {
   };
 
   return (
+    <div>
+      <div className="flex justify-between mt-5 mx-4">
+        <div>
+        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+        </div>
+        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+      </div>
     <div className="container mx-auto p-6">
       <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-8">
-        <h2 className="text-2xl font-bold mb-4">Damage Bill</h2>
-        <form onSubmit={handleSubmitDamageBill} className="space-y-6">
+        <div className='flex justify-between mb-8'>
+        <h2 className="text-lg font-bold truncate"><i className='fa fa-list' /> Damage Bill</h2>
+        <div className='text-right'>
+        <button
+            onClick={(e)=>{ e.preventDefault();  handleSubmitDamageBill(e) }}
+            className="bg-red-500 font-bold text-white py-2 px-4 rounded-md"
+          >
+            Submit
+          </button>
+          <p className='text-xs truncate mt-1 text-gray-400'>Please check all fields are filled before submit</p>
+          </div>
+        </div>
+        <div className="space-y-6">
           <div>
-            <label className="block text-gray-700">User Name</label>
+            <label className="block text-gray-700">Biller Name</label>
             <input
               type="text"
               value={userName}
@@ -120,12 +138,16 @@ export default function DamageBillPage() {
             </div>
           </div>
           {selectedProduct && (
-            <div className="mb-4">
-              <h3 className="text-lg font-bold">Selected Product: {selectedProduct.name}</h3>
-              <label className="block text-gray-700">Quantity</label>
+            <div className="mb-4 text-right">
+              <div className='bg-gray-100 p-4 rounded-lg mb-2 mt-2'>
+              <p className="text-sm text-left font-bold">ID: {selectedProduct.item_id}</p>
+              <p className="text-sm text-left truncate mt-1">Selected Product: {selectedProduct.name}</p>
+              </div>
+              <label className="block text-left text-gray-700">Quantity</label>
               <input
                 type="number"
                 value={quantity}
+                onKeyDown={(e)=>{ e.preventDefault(); if(e.key == 'Enter')  handleAddDamagedItem() }}
                 onChange={(e) => setQuantity(e.target.value)}
                 className="w-full px-4 py-2 border rounded-md focus:outline-none"
                 min="1"
@@ -133,38 +155,37 @@ export default function DamageBillPage() {
               <button
                 type="button"
                 onClick={handleAddDamagedItem}
-                className="mt-2 bg-blue-500 text-white py-2 px-4 rounded-md"
+                className="mt-2 bg-red-500 text-white py-2 px-4 rounded-md"
               >
-                Add Damaged Item
+               <i className='fa fa-plus' />
               </button>
             </div>
           )}
           {damagedItems.length > 0 && (
             <div className="mt-4">
-              <h3 className="text-xl font-bold mb-2">Added Damaged Items</h3>
-              <ul className="list-disc ml-5">
+              <h3 className="text-md mt-10 font-bold mb-2">Added Damaged Items</h3>
+              <ul className="list-disc">
                 {damagedItems.map((item, index) => (
-                  <li key={index} className="flex justify-between items-center">
-                    {item.name} - Quantity: {item.quantity}
+                  <li key={index} className="mt-5 bg-gray-100 p-4 rounded-lg">
+                   <p className='text-sm font-bold'>ID: {item.item_id}</p>
+                   <p className='text-sm'>{item.name}</p>
+                   <div className='flex justify-between'>
+                   <p className='text-sm'>Quantity: {item.quantity}</p>
                     <button
                       onClick={() => handleRemoveDamagedItem(index)}
                       className="text-red-500 hover:text-red-700"
-                    >
-                      Remove
+                      >
+                      <i className='fa fa-trash' />
                     </button>
+                      </div>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          <button
-            type="submit"
-            className="mt-4 bg-green-500 text-white py-2 px-4 rounded-md"
-          >
-            Submit Damage Bill
-          </button>
-        </form>
+        </div>
       </div>
+    </div>
     </div>
   );
 }

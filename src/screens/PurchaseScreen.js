@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Axios from "axios";
 import { useDispatch } from "react-redux";
 import { createPurchase } from "../actions/productActions";
@@ -14,15 +14,26 @@ export default function PurchasePage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [itemId, setItemId] = useState("");
   const [itemName, setItemName] = useState("");
   const [itemQuantity, setItemQuantity] = useState("");
   const [itemBrand, setItemBrand] = useState("");
   const [itemCategory, setItemCategory] = useState("");
   const [itemPrice, setItemPrice] = useState("");
-
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+
+  useEffect(() => {
+    if (message || error) {
+      const timer = setTimeout(() => {
+        setMessage("");
+        setError("");
+      }, 3000);
+      return () => clearTimeout(timer); // Cleanup the timer
+    }
+  }, [message, error]);
 
   const addItem = () => {
     if (!itemId || !itemQuantity || !itemBrand || !itemCategory || !itemPrice) {
@@ -40,14 +51,16 @@ export default function PurchasePage() {
     };
 
     setItems([...items, newItem]);
+    setItemQuantity(0);
     clearItemFields();
     setError("");
+    setMessage("Item added successfully!");
   };
 
   const clearItemFields = () => {
     setItemId("");
     setItemName("");
-    setItemQuantity("");
+    setItemQuantity(0);
     setItemBrand("");
     setItemCategory("");
     setItemPrice("");
@@ -62,10 +75,11 @@ export default function PurchasePage() {
         setItemBrand(data.brand);
         setItemCategory(data.category);
         setItemPrice(data.price);
+        setLoading(false);
       } else {
         setError("Item not found");
+        setLoading(false);
       }
-      setLoading(false);
     } catch (err) {
       setError("Error fetching item");
       setLoading(false);
@@ -75,6 +89,7 @@ export default function PurchasePage() {
   const removeItem = (index) => {
     const newItems = items.filter((_, i) => i !== index);
     setItems(newItems);
+    setMessage("Item removed successfully!");
   };
 
   const submitHandler = async (e) => {
@@ -92,7 +107,7 @@ export default function PurchasePage() {
       };
       try {
         dispatch(createPurchase(purchaseData));
-        window.confirm("Purchase Submitted Successfully");
+        setMessage("Purchase Submitted Successfully");
         navigate("/allpurchases"); // Redirect to home on successful purchase
       } catch (error) {
         setError("Error submitting purchase");
@@ -102,6 +117,31 @@ export default function PurchasePage() {
 
   return (
     <div>
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-500 bg-opacity-50 z-50">
+          <div className="bg-white p-4 rounded-md shadow-md">
+            <p>Loading...</p>
+          </div>
+        </div>
+      )}
+
+
+{(error || message) && (
+        <div className={`fixed top-0 left-0 w-full z-50 p-4 ${error ? "bg-red-500" : "bg-green-500"} text-white`}>
+          <div className="flex justify-between items-center">
+            <span>{error || message}</span>
+            <button
+              className="text-xl font-bold"
+              onClick={() => {
+                setError("");
+                setMessage("");
+              }}
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
 
 
       <div className="flex justify-between mt-5 mx-4">
@@ -112,8 +152,8 @@ export default function PurchasePage() {
       </div>
 
     <div className="max-w-3xl mx-auto mt-8 p-6 bg-white shadow-md rounded-md">
-      {loading && <LoadingBox />}
-      {error && <MessageBox variant="danger">{error}</MessageBox>}
+      {/* {loading && <LoadingBox />} */}
+      {/* {error && <MessageBox variant="danger">{error}</MessageBox>} */}
 
       <h1 className="text-lg font-semibold">Purchase Bill Form</h1>
 
@@ -140,9 +180,10 @@ export default function PurchasePage() {
             Please click submit only all fields are filled
           </p>
         </div>
+
             </div>
 
-      <form onSubmit={submitHandler} className="space-y-8">
+      <div className="space-y-8">
         {currentStep === 1 && (
           <div>
             <h2 className="text-sm font-bold text-gray-900">
@@ -205,7 +246,7 @@ export default function PurchasePage() {
                     type="text"
                     value={itemId}
                     onKeyDown={(e) => {
-                      if (e.key == "Enter") handleSearchItem();
+                      if (e.key == "Enter") { e.preventDefault(); handleSearchItem(); }
                     }}
                     onChange={(e) => setItemId(e.target.value)}
                     className="w-1/2 border px-3 py-2 rounded-md"
@@ -267,14 +308,16 @@ export default function PurchasePage() {
                   type="number"
                   placeholder="Quantity"
                   value={itemQuantity}
+                  onKeyDown={(e)=>{ if(e.key === 'Enter') addItem()}}
                   onChange={(e) => setItemQuantity(e.target.value)}
                   className="w-full border px-3 py-2 rounded-md"
+                  min="1"
                   required
                 />
               </div>
               <button
                 type="button"
-                onClick={addItem}
+                onClick={() => addItem()}
                 className="mt-6 w-full py-2 px-4 bg-red-600 text-white text-sm font-bold rounded-md hover:bg-red-700"
               >
                 Add Item
@@ -352,7 +395,7 @@ export default function PurchasePage() {
             </div>
           </div>
         )}
-      </form>
+      </div>
     </div>
     </div>
   );

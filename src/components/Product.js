@@ -11,7 +11,7 @@ export default function Product({ product }) {
           onError={() => setImageError(true)}
           className={`object-cover rounded-md w-full h-32 ${imageError ? 'hidden' : ''}`}
           src={`https://kktrading-backend.onrender.com${product.image}`}
-          alt={product.name}
+          alt={product.image}
         />
         {imageError && (
           <div className="flex justify-center items-center w-full h-20 bg-gray-200 rounded-md">
