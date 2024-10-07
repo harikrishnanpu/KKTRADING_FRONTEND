@@ -10,8 +10,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallModal, setShowInstallModal] = useState(false);
+
 
   useEffect(() => {
     async function fetchData() {
@@ -37,7 +36,7 @@ export default function HomeScreen() {
           navigate('/face-id?ref=new');
         }
       } catch (error) {
-        navigate('/face-id?ref=error');
+        navigate('/signin');
       } finally {
         setLoading(false);
       }
@@ -46,38 +45,13 @@ export default function HomeScreen() {
     fetchData();
   }, [userInfo, navigate]);
 
-  // PWA Install Prompt Handling
-  useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e); // Save the event so it can be triggered later
-      setShowInstallModal(true); // Show modal when app install is available
-    });
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', () => {});
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt(); // Show the prompt
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`User response to the install prompt: ${outcome}`);
-      setDeferredPrompt(null); // Clear the prompt after use
-      setShowInstallModal(false); // Hide the modal
-    }
-  };
-
-  const handleCloseModal = () => {
-    setShowInstallModal(false);
-  };
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4" >
       {loading ? (
         // Full page skeleton loader with card layout
-        <div className="w-full p-3 max-w-5xl">
+        <div className=" fixed top-0 bg-white z-10 w-full overflow-hidden	 p-3 max-w-5xl">
+          <p className='text-sm font-bold text-red-400 animate-pulse pb-2 text-center  mt-20 pt-10'>KK TRADING</p>
+          <p className='text-center text-gray-400 animate-pulse pb-20 text-xs'>It takes more than 30 secs to load the site at the first time, <br/> getting server data</p>
           <div className="animate-pulse grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {/* Render multiple skeleton card sections */}
             {[1, 2, 3, 4, 5, 6, 7].map((_, index) => (
@@ -138,40 +112,10 @@ export default function HomeScreen() {
             </CardSection>
 
             {/* Additional Options */}
-            <CardSection title="Others">
+            <CardSection title="Admin Panel">
               <ActionButton href={userInfo?.isAdmin ? '/support' : '/chat'} title="Inbox" />
-              <ActionButton href="/attendence" title="Attendance" />
-              {userInfo?.isAdmin && (
-                <>
-                  <ActionButton href="/userlist" title="All Users" />
-                  <ActionButton href="/live-tracking" title="Track Users" />
-                </>
-              )}
+              <ActionButton href="/dashboard" title="Dashboard" />
             </CardSection>
-          </div>
-        </div>
-      )}
-
-      {/* Modal for PWA Install */}
-      {showInstallModal && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-            <h2 className="text-xl font-semibold mb-4">Install App</h2>
-            <p className="text-gray-700 mb-6">Do you want to install this app for easy access?</p>
-            <div className="flex justify-between">
-              <button
-                onClick={handleCloseModal}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleInstallClick}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
-              >
-                Install
-              </button>
-            </div>
           </div>
         </div>
       )}

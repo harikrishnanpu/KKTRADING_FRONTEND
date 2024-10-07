@@ -12,6 +12,7 @@ export default function BillingScreen() {
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [searchProduct,setSearchProduct] = useState(null);
+  const [billingAmount,setBillingAmount] = useState('');
 
   // Product Information
   const [itemId, setItemId] = useState('');
@@ -110,6 +111,7 @@ const handleBillingSubmit = async (e) => {
       expectedDeliveryDate,
       deliveryStatus,
       paymentStatus,
+      billingAmount,
       customerName,
       customerAddress,
       products: products.map((product) => ({
@@ -230,6 +232,16 @@ const handleBillingSubmit = async (e) => {
                 type="text"
                 value={salesmanName}
                 onChange={(e) => setSalesmanName(e.target.value)}
+                className="w-full px-4 py-2 border rounded-md focus:outline-none"
+                placeholder="Enter Salesman Name"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700">Bill Amount</label>
+              <input
+                type="text"
+                value={billingAmount}
+                onChange={(e) => setBillingAmount(e.target.value)}
                 className="w-full px-4 py-2 border rounded-md focus:outline-none"
                 placeholder="Enter Salesman Name"
               />

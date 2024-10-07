@@ -46,6 +46,7 @@ import ProductListPage from './screens/getProductscreen';
 import LowStockAndBillingPage from './screens/LowStockAndBillingPage';
 import DriverBillingPage from './screens/driverInvoice';
 import Drivertracker from './screens/drivertracker';
+import PWAInstallPrompt from './components/pwaInstall';
 
 axios.defaults.baseURL = 'https://kktrading-backend.onrender.com/'; // https://kktrading-backend.onrender.com/
 
@@ -53,13 +54,6 @@ function App() {
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
   const dispatch = useDispatch();
-
-  // const productCategoryList = useSelector((state) => state.productCategoryList);
-  // const {
-  //   loading: loadingCategories,
-  //   error: errorCategories,
-  //   categories,
-  // } = productCategoryList;
   
   useEffect(() => {
     dispatch(listProductCategories());
@@ -103,7 +97,7 @@ useEffect(() => {
   return (
     <BrowserRouter>
       <div>
-
+      <PWAInstallPrompt />
       { currentPath === '/' && <Navbar />}
         <main>
                             <Routes>

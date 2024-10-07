@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import MessageBox from './MessageBox';
 import { useNavigate } from 'react-router-dom';
+import { signout } from '../actions/userActions';
 
 const FaceRecognition = ({modal,login}) => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const webcamRef = useRef(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [descriptor, setDescriptor] = useState(null);
@@ -119,6 +121,7 @@ const FaceRecognition = ({modal,login}) => {
   // Send the face descriptor to the backend
   const sendDescriptorToBackend = async (descriptor) => {
     try {
+      setLoading(true)
        await axios.post(`/api/users/register-face/${userInfo._id}`, {
      // Add user ID here for identification
         faceDescriptor: Array.from(descriptor),
@@ -129,14 +132,23 @@ const FaceRecognition = ({modal,login}) => {
     }
   };
 
+  const signoutHandler = () => {
+    dispatch(signout(userInfo._id));
+  };
+
   return (
     <div className='text-center mx-auto'>
         {error && <MessageBox variant="danger">{error}</MessageBox>}
       <Webcam ref={webcamRef} audio={false} screenshotFormat="image/jpeg" /> 
-      {login ? ( <button  className="mt-5 w-2/3 font-bold text-white bg-red-500 border-0 py-2 px-8 focus:outline-none hover:bg-red-600 rounded text-lg"
+      {login ? ( 
+        <div>
+        <button  className="mt-5 w-2/3 font-bold text-white bg-red-500 border-0 py-2 px-8 focus:outline-none hover:bg-red-600 rounded text-lg"
        onClick={unlockFace} disabled={!modelsLoaded || Loading}>
         {Loading ? 'loading..' : 'Unlock'}
-      </button> ): (<button  className="mt-5 w-2/3 font-bold text-white bg-red-500 border-0 py-2 px-8 focus:outline-none hover:bg-red-600 rounded text-lg"
+      </button> 
+      <p onClick={()=> signoutHandler()} className='text-blue-500 cursor-pointer mt-5'>Signout</p>
+      </div>
+      ): (<button  className="mt-5 w-2/3 font-bold text-white bg-red-500 border-0 py-2 px-8 focus:outline-none hover:bg-red-600 rounded text-lg"
        onClick={captureFace} disabled={!modelsLoaded || Loading}>
         {Loading ? 'loading..' : 'Register'}
       </button> ) }

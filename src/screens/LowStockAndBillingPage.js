@@ -10,8 +10,10 @@ const LowStockAndBillingPage = () => {
   useEffect(() => {
     const fetchLowStockProducts = async () => {
       try {
-        const { data } = await axios.get('/api/products/low-stock/all');
-        setProducts(data);
+        const stockres = await axios.get('/api/products/low-stock/all');
+        const deliveryres = await axios.get('/api/billing/alldelivery/all');
+        setProducts(stockres.data);
+        setBillings(deliveryres.data);
         setLoading(false);
       } catch (err) {
         setError('Error fetching products');
@@ -19,19 +21,7 @@ const LowStockAndBillingPage = () => {
       }
     };
 
-    const fetchExpectedDeliveryBillings = async () => {
-      try {
-        const { data } = await axios.get('/api/billing/alldelivery/all');
-        setBillings(data);
-        setLoading(false);
-      } catch (err) {
-        setError('Error fetching billings');
-        setLoading(false);
-      }
-    };
-
     fetchLowStockProducts();
-    fetchExpectedDeliveryBillings();
   }, []);
 
 
@@ -65,12 +55,20 @@ const LowStockAndBillingPage = () => {
       };
 
 
-  if (loading) return <div className="text-center">Loading...</div>;
+  if (loading) return(
+     <div className="text-center mt-40">
+      <p className='text-sm animate-pulse font-bold'><i className='fa fa-spinner fa-spin'/> Loading....</p>
+    </div>
+  )
   if (error) return <div className="text-center text-red-500">{error}</div>;
 
   return (
     <div className="max-w-4xl mx-auto p-2">
-      <h1 className="text-xl font-bold text-gray-800 text-center mb-6">Out of Stock Products & Upcoming Deliveries</h1>
+      <div className='flex justify-end mb-10'>
+      <a href='/' className='fixed text-sm top-5 font-bold left-4 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
+      <h2 className='text-xl font-bold text-red-600 '>KK TRADING</h2>
+      </div>
+      <h1 className="text-sm font-bold text-gray-600 text-center mb-6">Out of Stock Products & Upcoming Deliveries</h1>
       
       <div className="grid grid-cols-2 lg:grid-cols-2 gap-6">
         {/* Out of Stock Products */}

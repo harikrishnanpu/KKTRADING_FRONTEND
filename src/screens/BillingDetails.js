@@ -126,8 +126,8 @@ const BillingList = () => {
   return (
     <>
       <div className="container mx-auto p-6">
-      <div className='flex justify-end'>
-      <a href='/' className='fixed top-5 font-bold left-4 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
+      <div className='flex justify-between'>
+      <a href='/' className='font-bold left-4 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
       <h2 className='text-2xl font-bold text-red-600 '>KK TRADING</h2>
       </div>
         <p className='font-bold text-lg lg:text-center mb-5'>All Billings</p>
@@ -329,9 +329,12 @@ const BillingList = () => {
             </button>
 
             <h2 className="text-2xl font-semibold mb-4 text-gray-800">Billing Details</h2>
-            <p><strong>Salesman Name:</strong> {selectedBillings.salesmanName}</p>
-            <p><strong>Invoice No:</strong> {selectedBillings.invoiceNo}</p>
-            <p><strong>Invoice Date:</strong> {new Date(selectedBillings.invoiceDate).toLocaleDateString()}</p>
+            <p className="text-sm font-bold mb-1">Invoice no: {selectedBillings.invoiceNo}</p>
+            <p className="text-sm mb-1">salesman name: {selectedBillings.salesmanName}</p>
+            <p className="text-sm mb-1">Customer: {selectedBillings.customerName}</p>
+            <p className="text-sm mb-1">Address: {selectedBillings.customerAddress}</p>
+            <p className="text-sm mb-1">Expected Delivery Date: {new Date(selectedBillings.expectedDeliveryDate).toLocaleDateString()}</p>
+            <p className="text-sm mb-1">Invoice Date: {new Date(selectedBillings.invoiceDate).toLocaleDateString()}</p>
             <p className={`text-sm mb-1 ${selectedBillings.deliveryStatus == 'Delivered' ? 'text-green-500' : 'text-yellow-600'}`}>Delivery Status: {selectedBillings.deliveryStatus}</p>
             <p className={`text-sm mb-1 ${selectedBillings.paymentStatus == 'Paid' ? 'text-green-500' : 'text-yellow-600'}`}>Payment: {selectedBillings.paymentStatus}</p>
             <div className="mt-4">
@@ -339,13 +342,10 @@ const BillingList = () => {
               <ul className="list-inside list-[square] ml-5">
                 {selectedBillings.products.map((item, index) => (
                   <>
-                  <li key={index} className="text-gray-600 flex">
-                    <span class="bg-golden-gradient bg-clip-text text-transparent">Test1</span>
-                  </li>
-                  <li className='flex '>
+                  <li key={index} className='flex'>
                   <p className='text-sm'>{item.name} </p> 
                   <p className='text-sm font-bold'> - {item.item_id} - </p>
-                  <p className='text-sm'> - {item.quantity} Nos</p>
+                  <p className='text-sm'>{item.quantity} Nos</p>
                   </li>
                   </>
                 ))}

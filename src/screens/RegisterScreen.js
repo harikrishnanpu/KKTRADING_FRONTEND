@@ -46,7 +46,7 @@ export default function RegisterScreen(props) {
           <h4 className='sm:text-sm text-sm font-bold title-font mb-4 text-gray-900 mt-4'>Register Your Profile</h4>
         </div>
         {loading && <LoadingBox></LoadingBox>}
-        {error && <MessageBox variant="danger">{error}</MessageBox>}
+        {error && <MessageBox variant="danger">Error Creating Account</MessageBox>}
         
         
         <div className="p-2 w-full">
@@ -63,7 +63,7 @@ export default function RegisterScreen(props) {
 
 
         <div className="p-2 w-full">
-          <label htmlFor="email">Email address</label>
+          <label htmlFor="email">User_Name</label>
           <input
             type="email"
             id="email"

@@ -56,15 +56,15 @@ function Navbar() {
         )}
        {userInfo && userInfo.isSeller && (
  
-          <li className="menu-item"><a href="/productlist/seller" onClick={sidebarClose} ref={menuLink} className="menu-link">Member</a></li>
+          <li className="menu-item"><a href="/productlist" onClick={sidebarClose} ref={menuLink} className="menu-link">Products</a></li>
  
          ) }
           { userInfo ? (
  <>           
             {/* <li className="menu-item"><a href="/orderhistory" onClick={sidebarClose}  ref={menuLink} className="menu-link">Order History</a></li> */}
-             <li className="menu-item"><a href="/cart" onClick={sidebarClose}  ref={menuLink} className="menu-link">Pending               {cartItems.length > 0 && (
+             {/* <li className="menu-item"><a href="/cart" onClick={sidebarClose}  ref={menuLink} className="menu-link">Pending               {cartItems.length > 0 && (
                <span className="badge">{cartItems.length}</span>
-             )} </a></li>
+             )} </a></li> */}
              <li className="menu-item"><button onClick={signoutHandler} ref={menuLink} className="menu-link">SignOut</button></li>
              </>
    ) : (

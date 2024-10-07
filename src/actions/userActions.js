@@ -132,6 +132,7 @@ export const signout = (userId) => async (dispatch) => {
     localStorage.removeItem('shippingAddress');
     localStorage.removeItem('faceId');
     localStorage.removeItem('modalShown');
+    localStorage.clear();
     dispatch({ type: USER_SIGNOUT });
     document.location.href = '/signin';
   } else {
@@ -140,6 +141,7 @@ export const signout = (userId) => async (dispatch) => {
     localStorage.removeItem('shippingAddress');
     localStorage.removeItem('faceId');
     localStorage.removeItem('modalShown');
+    localStorage.clear();
     dispatch({ type: USER_SIGNOUT });
     document.location.href = '/signin';
     console.error('Logout failed');
@@ -170,6 +172,8 @@ export const detailsUser = (userId) => async (dispatch, getState) => {
     dispatch({ type: USER_DETAILS_FAIL, payload: message });
   }
 };
+
+
 export const updateUserProfile = (user) => async (dispatch, getState) => {
   dispatch({ type: USER_UPDATE_PROFILE_REQUEST, payload: user });
   const {
@@ -190,6 +194,7 @@ export const updateUserProfile = (user) => async (dispatch, getState) => {
     dispatch({ type: USER_UPDATE_PROFILE_FAIL, payload: message });
   }
 };
+
 export const updateUser = (user) => async (dispatch, getState) => {
   dispatch({ type: USER_UPDATE_PROFILE_REQUEST, payload: user });
   const {
@@ -208,6 +213,7 @@ export const updateUser = (user) => async (dispatch, getState) => {
     dispatch({ type: USER_UPDATE_FAIL, payload: message });
   }
 };
+
 export const listUsers = () => async (dispatch, getState) => {
   dispatch({ type: USER_LIST_REQUEST });
   try {

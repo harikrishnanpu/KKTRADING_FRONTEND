@@ -6,6 +6,7 @@ import LoadingBox from '../components/LoadingBox';
 import MessageBox from '../components/MessageBox';
 
 export default function SigninScreen(props) {
+  
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +23,8 @@ export default function SigninScreen(props) {
     e.preventDefault();
     dispatch(signin(email, password));
   };
+
+
   useEffect(() => {
     if (userInfo) {
       navigate(redirect);
@@ -40,11 +43,11 @@ export default function SigninScreen(props) {
           {/* <h1 className='sm:text-xl text-xl font-bold title-font mb-4 text-gray-900 mt-4'>Login</h1> */}
         </div>
         {loading && <LoadingBox></LoadingBox>}
-        {error && <MessageBox variant="danger">{error}</MessageBox>}
+        {error && <MessageBox variant="danger">Username Or Password Not Recognised</MessageBox>}
         
         
         <div className="p-2 w-full">
-          <label htmlFor="email" className='mb-2'>Email address</label>
+          <label htmlFor="email" className='mb-2'>Username</label>
           <input
             type="email"
             id="email"
