@@ -38,7 +38,7 @@ export default function HomeScreen() {
 
           if (FoundFaceData.data.faceDescriptor?.length !== 0) {
             if (!localStorage.getItem('faceId')) {
-              navigate('/face-id?ref=login');
+              // navigate('/face-id?ref=login');
             } else {
               setLoading(false);
             }
