@@ -276,8 +276,8 @@ const BillingList = () => {
 
                   <p className="text-sm mb-1">Invoice Date: {new Date(billing.invoiceDate).toLocaleDateString()}</p>
                   <p className="text-sm mb-1">Customer: {billing.customerName}</p>
-                  <p className={`text-sm mb-1 ${billing.deliveryStatus == 'Delivered' ? 'text-green-500' : 'text-yellow-600'}`}>Delivery Status: {billing.deliveryStatus}</p>
-                  <p className={`text-sm mb-1 ${billing.paymentStatus == 'Paid' ? 'text-green-500' : 'text-yellow-600'}`}>Payment: {billing.paymentStatus}</p>
+                  <p className={`text-sm mb-1 ${billing.deliveryStatus === 'Delivered' ? 'text-green-500' : 'text-yellow-600'}`}>Delivery Status: {billing.deliveryStatus}</p>
+                  <p className={`text-sm mb-1 ${billing.paymentStatus === 'Paid' ? 'text-green-500' : 'text-yellow-600'}`}>Payment: {billing.paymentStatus}</p>
                   <p className="text-sm font-semibold mb-2">Products:</p>
                   <ul className="pl-4 list-disc text-sm text-gray-600">
                     {billing.products.map((product) => (
@@ -335,8 +335,8 @@ const BillingList = () => {
             <p className="text-sm mb-1">Address: {selectedBillings.customerAddress}</p>
             <p className="text-sm mb-1">Expected Delivery Date: {new Date(selectedBillings.expectedDeliveryDate).toLocaleDateString()}</p>
             <p className="text-sm mb-1">Invoice Date: {new Date(selectedBillings.invoiceDate).toLocaleDateString()}</p>
-            <p className={`text-sm mb-1 ${selectedBillings.deliveryStatus == 'Delivered' ? 'text-green-500' : 'text-yellow-600'}`}>Delivery Status: {selectedBillings.deliveryStatus}</p>
-            <p className={`text-sm mb-1 ${selectedBillings.paymentStatus == 'Paid' ? 'text-green-500' : 'text-yellow-600'}`}>Payment: {selectedBillings.paymentStatus}</p>
+            <p className={`text-sm mb-1 ${selectedBillings.deliveryStatus === 'Delivered' ? 'text-green-500' : 'text-yellow-600'}`}>Delivery Status: {selectedBillings.deliveryStatus}</p>
+            <p className={`text-sm mb-1 ${selectedBillings.paymentStatus === 'Paid' ? 'text-green-500' : 'text-yellow-600'}`}>Payment: {selectedBillings.paymentStatus}</p>
             <div className="mt-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Items:</h3>
               <ul className="list-inside list-[square] ml-5">

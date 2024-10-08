@@ -76,6 +76,7 @@ const LowStockPreview = () => {
       <p className="text-xs font-bold mb-4 text-gray-400 text-center">Important Updates</p>
       <div className="grid gap-4">
         <div className="flex justify-between items-center p-2 border-b border-gray-200">
+        {products.length === 0 && <p className='font-bold text-xs text-gray-400 text-center'>No Products Found </p>}
           {products.map((product) => (
             <div key={product.item_id} className="flex items-center gap-2">
               <div>
@@ -88,6 +89,7 @@ const LowStockPreview = () => {
         </div>
 
         <div className="flex justify-between items-center p-2 border-b border-gray-200">
+          {billings.length === 0 && <p className='font-bold text-xs text-gray-400 text-center'>No Upcomming Billings Found </p>}
           {billings.map((bill) => (
             <div key={bill.invoiceNo} className="flex items-center gap-2">
               <div>

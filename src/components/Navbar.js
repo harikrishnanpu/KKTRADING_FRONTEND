@@ -6,8 +6,6 @@ import { useDispatch, useSelector } from 'react-redux';
 function Navbar() {
 
     const dispatch = useDispatch();
-    const cart = useSelector((state) => state.cart);
-    const { cartItems } = cart;
     const userSignin = useSelector((state) => state.userSignin);
     const { userInfo } = userSignin;
 

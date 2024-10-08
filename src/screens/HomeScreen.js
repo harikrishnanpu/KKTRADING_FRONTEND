@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import LiveTracker from '../components/LocationTracker';
 import LowStockPreview from '../components/lowStockPreview';
+import ApprovalModal from '../components/ApprovalModal';  // Import the modal
 
 export default function HomeScreen() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [isPendingApproval, setIsPendingApproval] = useState(false); // Track approval status
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
-
 
   useEffect(() => {
     async function fetchData() {
@@ -26,16 +26,28 @@ export default function HomeScreen() {
 
       try {
         const FoundFaceData = await axios.get(`/api/users/get-face-data/${userInfo?._id}`);
-        if (FoundFaceData.data.faceDescriptor?.length !== 0) {
-          if (!localStorage.getItem('faceId')) {
-            navigate('/face-id?ref=login');
+
+        if (FoundFaceData) {
+          if (!FoundFaceData.data.isSeller) {
+            // Show approval modal when the user is not yet approved
+            setIsPendingApproval(true);
           } else {
-            setLoading(false);
+            // Hide modal if user is approved
+            setIsPendingApproval(false);
           }
-        } else {
-          navigate('/face-id?ref=new');
+
+          if (FoundFaceData.data.faceDescriptor?.length !== 0) {
+            if (!localStorage.getItem('faceId')) {
+              navigate('/face-id?ref=login');
+            } else {
+              setLoading(false);
+            }
+          } else {
+            navigate('/face-id?ref=new');
+          }
         }
       } catch (error) {
+        localStorage.clear();
         navigate('/signin');
       } finally {
         setLoading(false);
@@ -46,15 +58,17 @@ export default function HomeScreen() {
   }, [userInfo, navigate]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4" >
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4">
       {loading ? (
         // Full page skeleton loader with card layout
-        <div className=" fixed top-0 bg-white z-10 w-full overflow-hidden	 p-3 max-w-5xl">
-          <p className='text-sm font-bold text-red-400 animate-pulse pb-2 text-center  mt-20 pt-10'>KK TRADING</p>
-          <p className='text-center text-gray-400 animate-pulse pb-20 text-xs'>It takes more than 30 secs to load the site at the first time, <br/> getting server data</p>
+        <div className="fixed top-0 bg-white z-10 w-full overflow-hidden p-3">
+          <p className="text-sm font-bold text-red-400 animate-pulse pb-2 text-center mt-20 pt-10">KK TRADING</p>
+          <p className="text-center text-gray-400 animate-pulse pb-20 text-xs">
+            It takes more than 30 secs to load the site the first time, <br /> getting server data
+          </p>
           <div className="animate-pulse grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {/* Render multiple skeleton card sections */}
-            {[1, 2, 3, 4, 5, 6, 7].map((_, index) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((_, index) => (
               <div key={index} className="bg-white p-4 rounded-lg shadow animate-pulse">
                 <div className="h-4 bg-gray-300 rounded mb-4"></div>
                 <div className="h-6 bg-gray-300 rounded mb-3"></div>
@@ -65,12 +79,13 @@ export default function HomeScreen() {
         </div>
       ) : (
         <div className="w-full p-3 max-w-5xl">
-          {/* {userInfo && !userInfo.isAdmin && <LiveTracker />} */}
           <p className="text-md font-semibold text-gray-800 text-center mb-3">Welcome, {userInfo?.name}</p>
 
+          {/* Show the LowStockPreview component */}
           <LowStockPreview />
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* Render the various card sections */}
             {/* Billing Section */}
             <CardSection title="Billing">
               <ActionButton href="/create-bill" title="Create Bill" />
@@ -119,6 +134,9 @@ export default function HomeScreen() {
           </div>
         </div>
       )}
+
+      {/* Render Approval Modal */}
+      <ApprovalModal isVisible={isPendingApproval} />
     </div>
   );
 }

@@ -208,7 +208,7 @@ const DriverBillingPage = () => {
             placeholder="Enter Invoice Number"
             value={invoiceNo}
             onChange={(e) => setInvoiceNo(e.target.value)}
-            className="w-full uppercase p-3 border border-gray-300 rounded-md"
+            className="w-full p-3 border border-gray-300 rounded-md"
             readOnly={driverName.length === 0}
           />
         </div> }

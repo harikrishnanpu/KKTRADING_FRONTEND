@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { signin } from '../actions/userActions';
 import LoadingBox from '../components/LoadingBox';
 import MessageBox from '../components/MessageBox';
+import axios from 'axios';
 
 export default function SigninScreen(props) {
   
@@ -27,7 +28,17 @@ export default function SigninScreen(props) {
 
   useEffect(() => {
     if (userInfo) {
-      navigate(redirect);
+      async function fetchUser () {
+        const user = await axios.get(`/api/users/user/${userInfo._id}`)
+        if(user){
+          navigate(redirect)
+        }else{
+          localStorage.clear();
+          navigate('/signin')
+        }
+      }
+
+      fetchUser();
     }
   }, [navigate, redirect, userInfo]);
 

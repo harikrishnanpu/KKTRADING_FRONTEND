@@ -147,7 +147,7 @@ export default function DamageBillPage() {
               <input
                 type="number"
                 value={quantity}
-                onKeyDown={(e)=>{ e.preventDefault(); if(e.key == 'Enter')  handleAddDamagedItem() }}
+                onKeyDown={(e)=>{ e.preventDefault(); if(e.key === 'Enter')  handleAddDamagedItem() }}
                 onChange={(e) => setQuantity(e.target.value)}
                 className="w-full px-4 py-2 border rounded-md focus:outline-none"
                 min="1"

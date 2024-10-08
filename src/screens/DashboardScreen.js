@@ -40,10 +40,10 @@ export default function DashboardScreen() {
 
     <div className="min-h-screen p-4">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-700">Dashboard</h1>
+        <h1 className="text-xl font-bold text-gray-700">Admin Dashboard</h1>
       </div>
 
-      <p onClick={()=> navigate('/userlist')} className='font-bold p-5 bg-red-500 w-1/2 text-center mx-auto rounded-lg text-white mb-10 cursor-pointer'>All Users</p>
+      <p onClick={()=> navigate('/userlist')} className='font-bold px-5 py-3 bg-red-500 w-1/2 text-center mx-auto rounded-lg text-white mb-10 cursor-pointer'>All Users</p>
 
       {loading ? (
         <LoadingBox />
@@ -125,18 +125,18 @@ export default function DashboardScreen() {
               </div>
             </div>
 
-            <div className="bg-white shadow-lg rounded-lg p-6">
+          </div>
+            <div className="bg-white shadow-lg mb-2  rounded-lg p-6">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-medium text-gray-600">
-                  <i className="fa fa-money mr-2 text-yellow-500" />
-                  Sales
+                  <i className="fa fa-money mr-2 text-green-500" />
+                  Total Sales
                 </span>
               </div>
               <div className="text-3xl font-bold text-gray-800 mt-4">
               ₹ {summary1?.Billingsum ? summary1.Billingsum : 0}
               </div>
             </div>
-          </div>
 
           {/* Sales Chart */}
           {/* <div className="bg-white shadow-lg rounded-lg p-6 mb-8">

@@ -12,7 +12,7 @@ export default function BillingScreen() {
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [searchProduct,setSearchProduct] = useState(null);
-  const [billingAmount,setBillingAmount] = useState('');
+  const [billingAmount,setBillingAmount] = useState(null);
 
   // Product Information
   const [itemId, setItemId] = useState('');
@@ -77,14 +77,14 @@ export default function BillingScreen() {
     setSearchProduct(null);
   };
 
-  const handleSubmitProduct = (e) => {
-    e.preventDefault();
-    if (suggestions.length === 0) {
-      setError('Please select a valid product');
-    } else {
-      addProductByItemId(suggestions[0]);
-    }
-  };
+  // const handleSubmitProduct = (e) => {
+  //   e.preventDefault();
+  //   if (suggestions.length === 0) {
+  //     setError('Please select a valid product');
+  //   } else {
+  //     addProductByItemId(suggestions[0]);
+  //   }
+  // };
 
   // Delete a product from the list
   const deleteProduct = (indexToDelete) => {
@@ -98,7 +98,7 @@ const handleBillingSubmit = async (e) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!customerName || !customerAddress || !salesmanName || products.length === 0) {
+    if (!customerName || !customerAddress || !billingAmount || !invoiceNo || !expectedDeliveryDate || !salesmanName || products.length === 0) {
       alert('Please fill all required fields and add at least one product.');
       return;
     }
@@ -225,7 +225,7 @@ const handleBillingSubmit = async (e) => {
         {/* Step 2: Salesman Information */}
         {step === 2 && (
           <div className="mb-6">
-            <h2 className="text-lg font-bold mb-4">Salesman Information</h2>
+            <h2 className="text-lg font-bold mb-4">Salesman Information and Bill</h2>
             <div className="mb-4">
               <label className="block text-gray-700">Salesman Name</label>
               <input
@@ -239,7 +239,7 @@ const handleBillingSubmit = async (e) => {
             <div className="mb-4">
               <label className="block text-gray-700">Bill Amount</label>
               <input
-                type="text"
+                type="number"
                 value={billingAmount}
                 onChange={(e) => setBillingAmount(e.target.value)}
                 className="w-full px-4 py-2 border rounded-md focus:outline-none"
@@ -309,7 +309,7 @@ const handleBillingSubmit = async (e) => {
                 <input
                   type="text"
                   value={itemId}
-                  onKeyDown={(e)=> {if(e.key == 'Enter'){ if(searchProduct) { addProductByItemId(searchProduct) } } }}
+                  onKeyDown={(e)=> {if(e.key === 'Enter'){ if(searchProduct) { addProductByItemId(searchProduct) } } }}
                   onChange={(e) => setItemId(e.target.value)}
                   className="w-full px-4 py-2 border rounded-md focus:outline-none"
                   placeholder="Enter Item ID"
@@ -338,7 +338,7 @@ const handleBillingSubmit = async (e) => {
                   <input
                     type="number"
                     value={quantity}
-                    onKeyDown={(e) =>{ if(e.key == 'Enter')  handleAddProductWithQuantity(); }}
+                    onKeyDown={(e) =>{ if(e.key === 'Enter')  handleAddProductWithQuantity(); }}
                     onChange={(e) => setQuantity(Math.min(e.target.value, selectedProduct.countInStock))}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none"
                     min="1"

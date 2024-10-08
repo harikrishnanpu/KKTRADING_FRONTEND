@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Axios from 'axios';
 
 export default function ReturnBillingScreen() {
-  const [billingNos, setBillingNos] = useState([]);
+  // const [billingNos, setBillingNos] = useState([]);
   const [selectedBillingNo, setSelectedBillingNo] = useState('');
   const [returnNo, setReturnNo] = useState('');
   const [returnDate, setReturnDate] = useState('');

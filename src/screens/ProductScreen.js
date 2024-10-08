@@ -13,7 +13,7 @@ export default function ProductScreen(props) {
   const params = useParams();
   const { id: productId } = params;
 
-  const [qty, setQty] = useState(1);
+  // const [qty, setQty] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -35,10 +35,6 @@ export default function ProductScreen(props) {
     }
     dispatch(detailsProduct(productId));
   }, [dispatch, productId, successReviewCreate]);
-
-  const addToCartHandler = () => {
-    navigate(`/cart/${productId}?qty=${qty}`);
-  };
 
   const submitHandler = (e) => {
     e.preventDefault();

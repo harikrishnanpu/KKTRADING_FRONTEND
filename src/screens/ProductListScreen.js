@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
+import {  useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   createProduct,
   deleteProduct,

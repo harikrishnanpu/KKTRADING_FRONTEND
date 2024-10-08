@@ -2,8 +2,6 @@ import React, { useEffect, useState } from "react";
 import Axios from "axios";
 import { useDispatch } from "react-redux";
 import { createPurchase } from "../actions/productActions";
-import LoadingBox from "../components/LoadingBox";
-import MessageBox from "../components/MessageBox";
 import { useNavigate } from "react-router-dom";
 
 export default function PurchasePage() {
@@ -96,7 +94,7 @@ export default function PurchasePage() {
     e.preventDefault();
     setError("");
 
-    if (!sellerName || !sellerId || !invoiceNo || items.length == 0) {
+    if (!sellerName || !sellerId || !invoiceNo || items.length === 0) {
       setError("All Fields Are Required");
     } else {
       const purchaseData = {
@@ -163,7 +161,7 @@ export default function PurchasePage() {
         <button
               type="button"
               onClick={() => setCurrentStep(1)}
-              className={`mt-2 w-full py-2 px-4  text-sm font-bold rounded-md ${currentStep == 2 ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 cursor-not-allowed text-gray-700'}`}
+              className={`mt-2 w-full py-2 px-4  text-sm font-bold rounded-md ${currentStep === 2 ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 cursor-not-allowed text-gray-700'}`}
               >
               Back
             </button> 
@@ -246,7 +244,7 @@ export default function PurchasePage() {
                     type="text"
                     value={itemId}
                     onKeyDown={(e) => {
-                      if (e.key == "Enter") { e.preventDefault(); handleSearchItem(); }
+                      if (e.key === "Enter") { e.preventDefault(); handleSearchItem(); }
                     }}
                     onChange={(e) => setItemId(e.target.value)}
                     className="w-1/2 border px-3 py-2 rounded-md"
