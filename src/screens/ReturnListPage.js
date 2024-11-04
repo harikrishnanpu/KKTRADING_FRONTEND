@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Axios from 'axios';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Auto table plugin for jsPDF
+import 'jspdf-autotable';
 
-export default function ReturnsPage() {
+export default function ReturnListingScreen() {
   const [returns, setReturns] = useState([]);
   const [error, setError] = useState('');
-  const [selectedReturn,setSelectedReturn] = useState(null);
+  const [selectedReturn, setSelectedReturn] = useState(null);
 
   // Fetch all returns from the server
   const fetchReturns = async () => {
@@ -81,13 +81,12 @@ export default function ReturnsPage() {
     doc.save(`Return_${returnData.returnNo}.pdf`);
   };
 
-
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this returnEntry?')) {
-      try{
-         await Axios.delete(`/api/returns/return/delete/${id}`)
-      }catch(error){
-        setError('Error Occured')
+      try {
+        await Axios.delete(`/api/returns/return/delete/${id}`);
+      } catch (error) {
+        setError('Error Occurred');
       }
       setReturns(returns.filter(returnEntry => returnEntry._id !== id));
     }
@@ -103,164 +102,150 @@ export default function ReturnsPage() {
 
   return (
     <div>
-              <div className="flex justify-between mt-5 mx-4">
-        <div>
-        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+      {/* Top Banner */}
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+        <div onClick={() => { window.history.back(); }} className="text-center cursor-pointer">
+          <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+          <p className="text-gray-400 text-xs font-bold">Return Listing and Management</p>
         </div>
-        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+        <i className="fa fa-undo text-gray-500" />
       </div>
-    <div className="container mx-auto mt-10">
-      <div className="max-w-full mx-auto bg-white shadow-lg rounded-lg p-6 md:p-6">
-        <h2 className="text-md font-bold text-left mb-6 text-red-600">All Returns</h2>
 
-        {error && <p className="text-red-500 text-center">{error}</p>}
-        
-        {returns.length === 0 ? (
-          <p className="text-gray-600 text-center">No returns found.</p>
-        ) : (
-          <>
+      <div className="container mx-auto mt-10">
+        <div className="max-w-full mx-auto bg-white rounded-lg p-4">
+          {error && <p className="text-red-500 text-center">{error}</p>}
+
+          {returns.length === 0 ? (
+            <p className="text-gray-600 text-center">No returns found.</p>
+          ) : (
+            <>
               {/* Table layout for larger screens */}
               <div className="hidden md:block">
-              <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
-                <thead className="bg-gray-200">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Invoice No</th>
-                    <th className="px-4 py-2 text-left">Return Date</th>
-                    <th className="px-4 py-2 text-left">Return No.</th>
-                    <th className="px-4 py-2 text-left">Customer Name</th>
-                    <th className="px-4 py-2 text-left">Total Products</th>
-                    <th className="px-4 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {returns.map((returnEntry) => (
-                    <tr key={returnEntry._id} className="hover:bg-gray-100">
-                      <td className="border px-4 py-2">{returnEntry.billingNo}</td>
-                      <td className="border px-4 py-2">{new Date(returnEntry.createdAt).toLocaleDateString()}</td>
-                      <td className="border px-4 py-2">{returnEntry.returnNo}</td>
-                      <td className="border px-4 py-2">{returnEntry.customerName}</td>
-                      <td className="border px-4 py-2">{returnEntry.products.length}</td>
-                      <td className="border px-4 py-2">
-                      <div className="mt-4 flex justify-between text-right">
-                    <button
-                      className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                      onClick={() => generateReturnPDF(returnEntry)}
-                    >
-                      View PDF
-                    </button>
-                    <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleView(returnEntry)}
-                  >
-                    <i className="fa fa-eye mr-2"></i> View
-                  </button>
-                  <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleRemove(returnEntry._id)}
-                  >
-                    <i className="fa fa-trash mr-2"></i> Remove
-                  </button>
-                  </div>
-                      </td>
+                <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Invoice No</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Return Date</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Return No.</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Customer Name</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Total Products</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody >
+                    {returns.map((returnEntry) => (
+                      <tr key={returnEntry._id} className="hover:bg-gray-50 transition">
+                        <td className="border-t font-bold text-xs px-4 py-2 text-gray-600">{returnEntry.billingNo}</td>
+                        <td className="border-t text-xs px-4 py-2 text-gray-600">{new Date(returnEntry.createdAt).toLocaleDateString()}</td>
+                        <td className="border-t text-xs px-4 py-2 text-gray-600">{returnEntry.returnNo}</td>
+                        <td className="border-t text-xs px-4 py-2 text-gray-600">{returnEntry.customerName}</td>
+                        <td className="border-t text-xs px-4 py-2 text-gray-600">{returnEntry.products.length}</td>
+                        <td className="border-t px-4 py-2">
+                          <div className="flex text-xs space-x-2">
+                            <button
+                              className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                              onClick={() => generateReturnPDF(returnEntry)}
+                            >
+                              <i className="fa fa-file-pdf-o mr-1"></i> PDF
+                            </button>
+                            <button
+                              className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                              onClick={() => handleView(returnEntry)}
+                            >
+                              <i className="fa fa-eye mr-1"></i> View
+                            </button>
+                            <button
+                              className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                              onClick={() => handleRemove(returnEntry._id)}
+                            >
+                              <i className="fa fa-trash mr-1"></i> Remove
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Card layout for mobile screens */}
-            <div className="md:hidden space-y-4">
-              {returns.map((returnEntry) => (
-                <div key={returnEntry.returnNo} className="bg-gray-100 p-4 rounded-lg shadow-sm">
-                  <h3 className="text-lg font-semibold text-red-600 mb-2">
-                    Return No: {returnEntry.returnNo}
-                  </h3>
-                  <p className="text-sm mb-1">Return Date: {new Date(returnEntry.returnDate).toLocaleDateString()}</p>
-                  <p className="text-sm mb-1">Customer: {returnEntry.customerName}</p>
-                  <p className="text-sm font-semibold mb-2">Products:</p>
-                  <ul className="pl-4 list-disc text-sm">
-                    {returnEntry.products.map((product) => (
-                      <>
-                      <li key={product.item_id}>
-                        {product.name} (Qty: {product.quantity})
-                      </li>
-                      <p className='font-bold'>....</p>
-                    </>
-                    )).slice(0,1)}
-                  </ul>
-                  <div className="mt-4 flex justify-between text-right">
-                    <button
-                      className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                      onClick={() => generateReturnPDF(returnEntry)}
-                    >
-                      View PDF
-                    </button>
-                    <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleView(returnEntry)}
-                  >
-                    <i className="fa fa-eye mr-2"></i> View
-                  </button>
-                  <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleRemove(returnEntry._id)}
-                  >
-                    <i className="fa fa-trash mr-2"></i> Remove
-                  </button>
+              {/* Card layout for mobile screens */}
+              <div className="md:hidden space-y-4">
+                {returns.map((returnEntry) => (
+                  <div key={returnEntry.returnNo} className="bg-white p-4 rounded-lg shadow-md">
+                    <h3 className="text-sm font-bold text-red-600 mb-2">
+                      Return No: {returnEntry.returnNo}
+                    </h3>
+                    <p className="text-xs font-bold mb-1 text-gray-500">Return Date: {new Date(returnEntry.returnDate).toLocaleDateString()}</p>
+                    <p className="text-xs font-bold mb-1 text-gray-500">Customer: {returnEntry.customerName}</p>
+                    <div className="mt-4 text-xs font-bold flex space-x-2">
+                      <button
+                        className="flex-grow font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                        onClick={() => generateReturnPDF(returnEntry)}
+                      >
+                        <i className="fa fa-file-pdf-o mr-1"></i> PDF
+                      </button>
+                      <button
+                        className="flex-grow font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                        onClick={() => handleView(returnEntry)}
+                      >
+                        <i className="fa fa-eye mr-1"></i> View
+                      </button>
+                      <button
+                        className="flex-grow bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                        onClick={() => handleRemove(returnEntry._id)}
+                      >
+                        <i className="fa fa-trash mr-1"></i> Remove
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Modal for Viewing Details */}
+        {selectedReturn && (
+          <div className="fixed p-4 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-lg w-full shadow-lg relative">
+              <button
+                className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+                onClick={closeModal}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+
+              <h2 className="text-sm font-semibold mb-4 text-gray-800">Return Details</h2>
+              <p className='text-xs mt-1'><strong>Customer Name:</strong> {selectedReturn.customerName}</p>
+              <p className='text-xs mt-1'><strong>Return No.:</strong> {selectedReturn.returnNo}</p>
+              <p className='text-xs mt-1'><strong>Return Date:</strong> {new Date(selectedReturn.returnDate).toLocaleDateString()}</p>
+              <p className='text-xs mt-1'><strong>Invoice No:</strong> {selectedReturn.billingNo}</p>
+              <p className='text-xs mt-1'><strong>Customer Address:</strong> {selectedReturn.customerAddress}</p>
+              <div className="mt-4">
+                <h3 className="text-xs font-semibold text-gray-800 mb-3">All Items:</h3>
+                <table className="min-w-full rounded-lg bg-white">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="py-2 px-4 text-xs font-semibold text-gray-700">Item ID</th>
+                      <th className="py-2 px-4 text-xs font-semibold text-gray-700">Name</th>
+                      <th className="py-2 px-4 text-xs font-semibold text-gray-700">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedReturn.products.map((item, index) => (
+                      <tr key={index} className="border-t">
+                        <td className="py-2 px-4 text-xs text-gray-600">{item.item_id}</td>
+                        <td className="py-2 px-4 text-xs text-gray-600">{item.name}</td>
+                        <td className="py-2 px-4 text-xs text-gray-600">{item.quantity} Nos</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
-
-         {/* Modal for Viewing Details */}
-         {selectedReturn && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-lg w-full shadow-lg relative">
-            <button 
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
-              onClick={closeModal}
-            >
-              <i className="fa fa-times"></i>
-            </button>
-
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Return Details</h2>
-            <p><strong>Customer Name:</strong> {selectedReturn.customerName}</p>
-            <p><strong>Return No.:</strong> {selectedReturn.returnNo}</p>
-            <p><strong>Return Date:</strong> {new Date(selectedReturn.returnDate).toLocaleDateString()}</p>
-            <p><strong>Invoice No:</strong> {selectedReturn.billingNo}</p>
-            <p><strong>Customer Address:</strong> {selectedReturn.customerAddress}</p>
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Items:</h3>
-              <ul className="list-inside list-[square] ml-5">
-                {selectedReturn.products.map((item, index) => (
-                  <>
-                  <li key={index} className="text-gray-600 flex">
-                    <span class="bg-golden-gradient bg-clip-text text-transparent">Test1</span>
-                  </li>
-                  <li className='flex '>
-                  <p className='text-sm'>{item.name} </p> 
-                  <p className='text-sm font-bold'> - {item.itemId} </p>
-                  <p className='text-sm'> -- {item.quantity} Nos</p>
-                  </li>
-                  </>
-                ))}
-              </ul>
-            </div>
-
-            <button 
-              className="mt-6 w-full bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition duration-150"
-              onClick={closeModal}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-    </div>
     </div>
   );
 }

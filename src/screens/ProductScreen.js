@@ -6,6 +6,7 @@ import LoadingBox from '../components/LoadingBox';
 import MessageBox from '../components/MessageBox';
 import Rating from '../components/Rating';
 import { PRODUCT_REVIEW_CREATE_RESET } from '../constants/productConstants';
+import axios from 'axios';
 
 export default function ProductScreen(props) {
   const navigate = useNavigate();
@@ -13,6 +14,10 @@ export default function ProductScreen(props) {
   const params = useParams();
   const { id: productId } = params;
 
+
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [soldOut,setSoldOut] = useState(null);
   // const [qty, setQty] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [rating, setRating] = useState(0);
@@ -24,6 +29,18 @@ export default function ProductScreen(props) {
   const { userInfo } = userSignin;
   const productReviewCreate = useSelector((state) => state.productReviewCreate);
   const { loading: loadingReviewCreate, error: errorReviewCreate, success: successReviewCreate } = productReviewCreate;
+
+
+  useEffect(()=>{
+    try {
+      async function fetch(){
+      const { data } = await axios.get(`api/billing/product/get-sold-out/${productId}`);
+      setSoldOut(data)
+      }
+    } catch (error) {
+      console.error("Error fetching sold out status:", error);
+    } 
+  },[])
 
   useEffect(() => {
     if (successReviewCreate) {
@@ -52,59 +69,117 @@ export default function ProductScreen(props) {
     }
   };
 
+
+
   return (
     <div className="container mx-auto p-4">
+             <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 mb-4 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg  relative">
+  <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
+    <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+    <p className="text-gray-400 text-xs font-bold">Product Informations</p>
+  </div>
+  <i className="fa fa-box text-gray-500" />
+</div>
       {loading ? (
         <LoadingBox />
       ) : error ? (
         <MessageBox variant="danger">{error}</MessageBox>
       ) : (
         <div className="space-y-6">
-          <div className="text-center flex justify-between items-center mb-8">
-            <Link to="/" className="text-blue-500">
-              <i className="fa fa-angle-left" /> Back
-            </Link>
-            <h2 className="text-xl font-bold text-red-600">KK TRADING</h2>
-          </div>
 
-          <div className="max-w-md mx-auto bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-            <img
-              className="w-full h-64 object-cover"
-              src={`https://kktrading-backend.onrender.com${product.image}`}
-              alt={product.name}
-            />
-            <div className="p-6 space-y-4">
-              <h3 className="text-xl font-bold text-gray-900">{product.name}</h3>
-              <div className="text-sm text-gray-600 flex justify-between">
-                <p>ID: {product.item_id}</p>
-                <p>Brand: {product.brand}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mt-1">
+            {loading ? (
+              <div className="flex justify-center items-center h-48">
+                <i className='fa fa-spinner fa-spin' />
               </div>
-              <div className="text-sm text-gray-600 flex justify-between">
-                <p>Supplier: {product.seller?.seller?.name || 'Unknown'}</p>
-                <p className="font-bold">Price: ${product.price || '0'}</p>
-              </div>
-              <div className={`font-bold text-sm ${product.countInStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                In Stock: {product.countInStock}
-              </div>
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => navigate(`/product/${product._id}/edit`)}
-                  className="flex-1 bg-yellow-500 text-white py-2 rounded-lg text-sm hover:bg-yellow-600 transition"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => deleteHandler(product)}
-                  className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm hover:bg-red-600 transition"
-                >
-                  Delete
-                </button>
-              </div>
+            ) : (
+
+                <div className="w-full max-w-md mx-auto bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+    <div className="relative">
+        {/* Badge for In Stock */}
+        <span className={`absolute z-20 top-2 right-2 text-white text-xs font-semibold px-3 py-2 rounded-full animate-pulse shadow-lg ${product.countInStock > 10 ? 'bg-green-600' : product.countInStock === 0 ?  'bg-red-600' : ' bg-yellow-600'}`}>
+            {product.countInStock > 10 ? 'In Stock' : product.countInStock === 0 ? 'Out Of Stock' : 'Moving Out' }
+        </span>
+
+        <a href={`https://kktrading-backend.onrender.com${product.image}`}>
+            <div className="relative w-full h-56 bg-gray-200 rounded-t-lg flex items-center justify-center overflow-hidden">
+                {!isImageLoaded && !isError && (
+                    <div className="w-full h-full bg-gray-300 animate-pulse" />
+                )}
+                {isError ? (
+                    <span className="text-gray-500 dark:text-gray-400">No image found</span>
+                ) : (
+                    <img
+                        className={`rounded-t-lg object-cover w-full h-full transition-transform duration-300 ease-in-out transform ${isImageLoaded ? 'scale-100' : 'scale-105'}`}
+                        src={`https://kktrading-backend.onrender.com${product.image}`}
+                        alt={product.image}
+                        onLoad={() => setIsImageLoaded(true)}
+                        onError={() => {
+                            setIsImageLoaded(false);
+                            setIsError(true);
+                        }}
+                    />
+                )}
             </div>
+        </a>
+    </div>
+
+    <div className="p-6 space-y-2">
+        <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">
+            Product ID: <span className="text-gray-700 dark:text-white">{product.item_id}</span>
+        </p>
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-white tracking-tight">
+            {product.name}
+        </h2>
+        <div className="flex justify-between text-xs">
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                Brand: <span className="font-semibold text-gray-800 dark:text-white">{product.brand}</span>
+            </p>
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                Category: <span className="font-semibold text-gray-800 dark:text-white">{product.category}</span>
+            </p>
+        </div>
+
+        <div className="flex justify-between items-center border-t pt-2">
+            <div className="text-xs">
+                <p className="text-gray-400 uppercase font-medium mb-2">Stock Details</p>
+                <p className={`font-bold dark:text-white ${product.countInStock > 10 ? 'text-gray-600' : product.countInStock === 0 ? 'text-red-600' : 'text-yellow-700'}`}>
+                    In Stock: {product.countInStock}
+                </p>
+            </div>
+            <p className="text-xs mt-5 font-semibold text-gray-500 dark:text-gray-400">
+                Stock Cleared: {soldOut ? soldOut : 0}
+            </p>
+        </div>
+        <div className='flex justify-between'>
+        <p
+        onClick={()=> navigate(`/product/${product._id}/edit`)}
+            className="inline-flex cursor-pointer items-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-900 transition-all"
+        >
+            Edit Product
+            <i className="fa fa-arrow-right ml-2" />
+        </p>
+
+        <p
+        onClick={()=> deleteHandler(product)}
+            className="inline-flex cursor-pointer items-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-900 transition-all">
+            <i className="fa fa-trash" />
+        </p>
+
+
+        </div>
+    </div>
+</div>
+
+
+
+                
+              
+            )}
           </div>
 
-          <div className="max-w-md mx-auto space-y-4">
-            <h3 className="text-lg font-bold">Reviews</h3>
+          <div className="max-w-md shadow-xl p-6 mx-auto space-y-4">
+            <h3 className="text-sm font-bold">Remarks</h3>
             {product.reviews.length === 0 ? (
               <MessageBox>No reviews yet</MessageBox>
             ) : (
@@ -120,21 +195,38 @@ export default function ProductScreen(props) {
 
             {userInfo ? (
               <>
+              <div className='flex '>
+
                 <button
                   onClick={() => setShowModal(true)}
-                  className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
-                >
+                  className="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition"
+                  >
                   Write a Review
                 </button>
+
+                  </div>
+
 
                 {/* Review Modal */}
                 {showModal && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 space-y-4 w-full max-w-lg">
-                      <h2 className="text-xl font-bold">Write a Review</h2>
+                      <div className='flex justify-between'>
+
+                      <h2 className="text-sm text-gray-500 font-bold">Write a Review</h2>
+
+                                     
+                <button
+                        onClick={() => setShowModal(false)}
+                        className="p-3 font-bold py-1 bg-gray-500 text-white  rounded-lg hover:bg-gray-600 transition mt-4"
+                      >
+                        x
+                      </button>
+
+                      </div>
                       <form onSubmit={submitHandler} className="space-y-4">
                         <div>
-                          <label htmlFor="rating" className="block text-sm font-medium text-gray-700">
+                          <label htmlFor="rating" className="block font-bold text-xs font-medium text-gray-700">
                             Rating
                           </label>
                           <select
@@ -167,7 +259,7 @@ export default function ProductScreen(props) {
 
                         <button
                           type="submit"
-                          className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
+                          className="w-2/4 text-xs font-bold bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition"
                         >
                           Submit Review
                         </button>
@@ -175,12 +267,6 @@ export default function ProductScreen(props) {
                         {loadingReviewCreate && <LoadingBox />}
                         {errorReviewCreate && <MessageBox variant="danger">{errorReviewCreate}</MessageBox>}
                       </form>
-                      <button
-                        onClick={() => setShowModal(false)}
-                        className="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition mt-4"
-                      >
-                        Cancel
-                      </button>
                     </div>
                   </div>
                 )}
@@ -191,6 +277,10 @@ export default function ProductScreen(props) {
               </MessageBox>
             )}
           </div>
+
+
+          <a href={'/get-product'} className='text-center cursor-pointer text-xs font-bold text-gray-400'>Search Another Product ? <span className='text-red-500'>Click Here</span></a>
+
         </div>
       )}
     </div>

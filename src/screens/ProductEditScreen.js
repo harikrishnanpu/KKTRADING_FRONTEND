@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import Axios from 'axios';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { detailsProduct, updateProduct } from '../actions/productActions';
 import LoadingBox from '../components/LoadingBox';
 import MessageBox from '../components/MessageBox';
@@ -109,18 +109,20 @@ export default function ProductEditScreen(props) {
 
   <div className="container px-5 mx-auto">
 
+      {/* Top Banner */}
+      <div className="flex items-center justify-between bg-gradient-to-r from-gray-100 via-gray-100 to-gray-50 p-5 rounded-lg mb-2 relative">
+  <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
+    <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+    <p className="text-gray-400 text-xs font-bold">Product Information</p>
+  </div>
+  <i className="fa fa-box text-gray-500" />
+</div>
 
-    <div className="flex flex-col text-center w-full mb-12">
-    <div className="text-center">
-          <p className='font-bold text-red-600 text-3xl mb-5 mt-5'>KK TRADING</p>
-      </div>
-      <p className="sm:text-3xl text-lg font-medium font-bold title-font mb-4 text-gray-900">Edit Product </p>
-      {/* <p className="lg:w-2/3 mx-auto leading-relaxed text-base">Whatever cardigan tote bag tumblr hexagon brooklyn asymmetrical gentrify.</p> */}
-    </div>
+      <p className='font-bold text-center'>Edit Product</p>
 
 
-    <div className="lg:w-1/2 md:w-2/3 mx-auto">
-      <div className="flex flex-wrap -m-2">
+    <div className="lg:w-1/2 md:w-1/3 mx-auto">
+      <div className="flex flex-wrap m-2">
         <div className="p-2 w-full">
           <div className="relative">
             <label for="name" className="leading-7 text-sm text-gray-600">Name</label>

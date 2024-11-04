@@ -55,7 +55,7 @@ export default function SearchBox() {
 
       {/* Suggestions Dropdown */}
       {suggestions.length > 0 && (
-        <ul className="absolute divide-y divide-red-200 p-5 mt-20 w-full rounded-lg bg-white border border-red-300 max-h-50 overflow-auto">
+        <ul className="absolute divide-y z-10 divide-red-200 p-5 mt-20 w-full rounded-lg bg-white border border-red-300 max-h-50 overflow-auto">
           {suggestions.map((suggestion) => (
             <div className='flex hover:bg-gray-100 cursor-pointer px-2'  onClick={() => handleSuggestionClick(suggestion)}>
             <li

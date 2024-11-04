@@ -47,8 +47,10 @@ import LowStockAndBillingPage from './screens/LowStockAndBillingPage';
 import DriverBillingPage from './screens/driverInvoice';
 import Drivertracker from './screens/drivertracker';
 import PWAInstallPrompt from './components/pwaInstall';
+import EditBillScreen from './screens/EditBillScreen';
+import EditPurchaseScreen from './screens/EditPurchaseScreen';
 
-axios.defaults.baseURL = 'https://kktrading-backend.onrender.com/'; // https://kktrading-backend.onrender.com/
+axios.defaults.baseURL = 'http://localhost:4000/'; // https://kktrading-backend.onrender.com/
 
 function App() {
   const userSignin = useSelector((state) => state.userSignin);
@@ -120,16 +122,22 @@ useEffect(() => {
             <Route path="/shipping" element={<ShippingAddressScreen />}></Route>
             <Route path="/create-bill" element={<BillingScreen/>}></Route>
             <Route path="/bills" element={<BillingList/>}></Route>
+            <Route path="/bills/edit/:id" element={<EditBillScreen/>}></Route>
+            <Route path="/bills/edit/" element={<EditBillScreen/>}></Route>
             <Route path="/purchase" element={<PurchasePage />}></Route>
+            <Route path="/purchase/edit/:id" element={<EditPurchaseScreen />}></Route>
+            <Route path="/purchase/edit" element={<EditPurchaseScreen />}></Route>
             <Route path="/allpurchases" element={<AllPurchases />}></Route>
             <Route path="/returns" element={<ReturnsPage />}></Route>
             <Route path="/create-damage" element={<DamageBillPage />}></Route>
             <Route path="/damages" element={<DamagedDataScreen />}></Route>
             <Route path="/create-return" element={<ReturnBillingScreen />}></Route>
             <Route path="/driver" element={<DriverPage />}></Route>
+            <Route path="/driver/:id" element={<DriverPage />}></Route>
             <Route path="/driver-invoice" element={<DriverBillingPage />}></Route>
             <Route path="/low-stock" element={<LowStockAndBillingPage />}></Route>
             <Route path="/get-product" element={<ProductListPage />}></Route>
+            <Route path="/get-product/:id" element={<ProductListPage />}></Route>
             <Route path="/payment" element={<PaymentMethodScreen />}></Route>
             <Route path="/placeorder" element={<PlaceOrderScreen />}></Route>
             <Route path="/order/:id" element={<OrderScreen />}></Route>

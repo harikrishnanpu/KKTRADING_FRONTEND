@@ -142,58 +142,20 @@ const DriverBillingPage = () => {
 
   return (
     <div>
-    <div className='flex justify-end'>
-    <a href='/' className='fixed top-5 font-bold left-4 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
-    <h2 className='text-2xl font-bold text-red-600 '>KK TRADING</h2>
-    </div>
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+  <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
+    <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+    <p className="text-gray-400 text-xs font-bold">Driver Panel And Delivery Updation</p>
+  </div>
+  <i className="fa fa-list text-gray-500" />
+</div>
     <div className="flex min-h-screen flex-col justify-center items-center p-2">
-      <div className="bg-white shadow-lg rounded-lg w-full max-w-lg p-6">
+      <div className="bg-white shadow-xl rounded-lg w-full max-w-lg p-6">
         <div className="flex justify-between">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Driver Billing Page</h1>
-
-
-
-                   {/* Indicator Dot */}
-  {newDeliveryStatus === 'Delivered' && newPaymentStatus === 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-      </span>
-    </div>
-  )}
-
-  {newDeliveryStatus === 'Delivered' && newPaymentStatus !== 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-      </span>
-    </div>
-  )}
-
-  {newDeliveryStatus !== 'Delivered' && newPaymentStatus === 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-      </span>
-    </div>
-  )}
-
-{newDeliveryStatus !== 'Delivered' && newPaymentStatus !== 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-      </span>
-    </div>
-  )}
-
-
+        <h1 className="text-xl font-bold text-gray-500 mb-4">Driver Panel</h1>
         </div>
 
-        <p className="text-sm text-gray-500 mb-6">Please fill in the driver name and select an invoice number.</p>
+        {!billingDetails && <p className="text-sm text-gray-500 mb-6">Please fill in the driver name and select an invoice number.</p> }
 
       {!billingDetails &&  <div className="mb-4">
           <input
@@ -201,7 +163,7 @@ const DriverBillingPage = () => {
             placeholder="Enter Driver Name"
             value={driverName}
             onChange={(e) => setDriverName(e.target.value)}
-            className="w-full uppercase p-3 border border-gray-300 rounded-md mb-4"
+            className="w-full p-3 border border-gray-300 rounded-md mb-4"
           />
           <input
             type="text"
@@ -215,14 +177,19 @@ const DriverBillingPage = () => {
 
         {!billingDetails && suggestions.length > 0 && (
           <ul className="bg-white shadow-lg rounded-md overflow-hidden mb-4">
+            <p className="text-xs italic text-gray-300 ml-3 mb-3">similar suggestion</p>
             {suggestions.map((suggestion) => (
+              <>
               <li
                 key={suggestion._id}
-                className="p-3 cursor-pointer hover:bg-gray-100"
+                className="p-3 cursor-pointer flex justify-between hover:bg-gray-100"
                 onClick={() => handleSuggestionClick(suggestion)}
               >
-                {suggestion.invoiceNo}
+                <span className="text-gray-500 font-bold text-xs">{suggestion.invoiceNo}</span>
+                <i className="fa fa-arrow-right text-gray-300" />
               </li>
+              <hr/>
+              </>
             ))}
           </ul>
         )} 
@@ -231,35 +198,121 @@ const DriverBillingPage = () => {
 
         {/* Billing Details Section */}
         {showDetails && billingDetails && (
-          <div className="mt-4">
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">Billing Details</h2>
-            <p><strong>Invoice No:</strong> {billingDetails.invoiceNo}</p>
-            <p><strong>Date:</strong> {new Date(billingDetails.invoiceDate).toLocaleDateString()}</p>
-            <p><strong>Customer:</strong> {billingDetails.customerName}</p>
-            <p><strong>Address:</strong> {billingDetails.customerAddress}</p>
-            <p><strong>Exp. Delivery Date:</strong> {new Date(billingDetails.expectedDeliveryDate).toLocaleDateString()}</p>
-            <p><strong>Delivery Date:</strong> {new Date().toLocaleDateString()}</p>
+          <div>
+          <div className="mt-4 flex justify-between">
+<a href="#">
+      <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{billingDetails.invoiceNo}</h5>
+  </a>
 
-            <h3 className="mt-4 text-sm font-bold mb-2">Products</h3>
-            
-            
-           {localStorage.getItem("billingProducts") ?  JSON.parse(localStorage.getItem("billingProducts")).map((item, idx) => (
-              <div key={idx} className="flex justify-between mt-2">
-                <p className="font-bold">{item.item_id}</p>
-                <p className="truncate">{item.name}</p>
-                <p className="font-bold">{item.quantity}</p>
-              </div>
-            )) :
+<div>
+          {/* Indicator Dot */}
+          {billingDetails.deliveryStatus === 'Delivered' && billingDetails.paymentStatus === 'Paid' && (
+    <div className="top-2 right-2">
+      <span className="relative flex h-3 w-3">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+      </span>
+    </div>
+  )}
 
-billingDetails.products.map((item, idx) => (
-              <div key={idx} className="flex justify-between">
-                <p>{item.name}</p>
-                <p>{item.quantity}</p>
-              </div>
-            )) }
+  {billingDetails.deliveryStatus === 'Delivered' && billingDetails.paymentStatus !== 'Paid' && (
+    <div className="top-2 right-2">
+      <span className="relative flex h-3 w-3">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+      </span>
+    </div>
+  )}
+
+  {billingDetails.deliveryStatus !== 'Delivered' && billingDetails.paymentStatus === 'Paid' && (
+    <div className="top-2 right-2">
+      <span className="relative flex h-3 w-3">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+      </span>
+    </div>
+  )}
+
+{billingDetails.deliveryStatus !== 'Delivered' && billingDetails.paymentStatus !== 'Paid' && (
+    <div className="top-2 right-2">
+      <span className="relative flex h-3 w-3">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+      </span>
+    </div>
+  )}
+  </div>
+
+ </div>
+  <div className="flex justify-between">
+  <p className="mt-1 text-xs truncate font-bold text-gray-600 dark:text-gray-400">Customer: {billingDetails.customerName}</p>
+  <p className="mt-1 text-xs truncate font-normal text-gray-700 dark:text-gray-400">Exp. DeliveryDate: {new Date(billingDetails.expectedDeliveryDate).toLocaleDateString()}</p>
+  </div>
+  <div className="flex justify-between">
+  <p className={`mt-1 text-xs font-medium ${billingDetails.deliveryStatus !== 'Delivered' ? 'text-red-400' : 'text-green-500'} `}>Delivery Sts: {billingDetails.deliveryStatus}</p>
+  <p className={`mt-1 text-xs font-medium ${billingDetails.paymentStatus !== 'Paid' ? 'text-red-400' : 'text-green-500'} `}>Payment Sts: {billingDetails.paymentStatus}</p>
+  </div>
+
+  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Customer Addrs: {billingDetails.customerAddress} , Kerala,India</p>
+  <div className="flex justify-between">
+  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Products Qty: {billingDetails.products.length}</p>
+  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500"> {billingDetails.billingAmount} </span></p>
+  </div>
+
+  <div className="mx-auto my-8">
+
+
+<div className="relative overflow-hidden">
+    <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+                <th scope="col" className="px-4 text-xs py-3">
+                    Product
+                </th>
+                <th scope="col" className="px-2 text-center text-xs py-3">
+                  ID
+                </th>
+                <th scope="col" className="px-2 text-xs py-3">
+                  Qty.
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+          
+        { localStorage.getItem("billingProducts") ?  JSON.parse(localStorage.getItem("billingProducts")).map((product, index) => (
+            <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <th scope="row" className="px-2 py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    {product.name}
+               </th>
+                <td className="px-6 text-center text-xs py-4">
+                    {product.item_id}
+                </td>
+                <td className="px-6 text-xs py-4">
+                    {product.quantity}
+                </td>
+            </tr> 
+          )) : billingDetails.products.map((product, index) => ( 
+            <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <th scope="row" className="px-2 py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    {product.name}
+               </th>
+                <td className="px-6 text-center text-xs py-4">
+                    {product.item_id}
+                </td>
+                <td className="px-6 text-xs py-4">
+                    {product.quantity}
+                </td>
+            </tr> 
+           ))}
+
+        </tbody>
+    </table>
+</div>
+</div>
+            
 
             <div className="mt-4">
-              <label className="font-bold">Delivery Status</label>
+              <label className="font-bold text-xs">Delivery Status</label>
               <select
                 value={newDeliveryStatus}
                 onChange={(e) => setNewDeliveryStatus(e.target.value)}
@@ -272,7 +325,7 @@ billingDetails.products.map((item, idx) => (
             </div>
 
             <div className="mt-4 font-bold">
-              <label>Payment Status</label>
+              <label className="text-xs">Payment Status</label>
               <select
                 value={newPaymentStatus}
                 onChange={(e) => setNewPaymentStatus(e.target.value)}

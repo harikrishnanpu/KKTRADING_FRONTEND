@@ -2,14 +2,24 @@ import React, { useState, useEffect } from 'react';
 import Axios from 'axios';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { useNavigate } from 'react-router-dom';
 
 const BillingList = () => {
+  const navigate = useNavigate();
   const [billings, setBillings] = useState([]);
-  const [selectedBillings, setSelectedBillings] = useState(null);  // For modal details
+  const [selectedBillings, setSelectedBillings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
-  // Fetch all billings from the backend
+  const paginateBillings = () => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return billings?.slice(start, start + itemsPerPage);
+  };
+
+  const totalPages = Math.ceil(billings.length / itemsPerPage);
+
   const fetchBillings = async () => {
     try {
       const response = await Axios.get('/api/billing'); // Replace with your endpoint
@@ -28,26 +38,18 @@ const BillingList = () => {
 
   const generatePDF = (billing) => {
     const doc = new jsPDF();
-
-    // Set title with color and bold font
     doc.setFontSize(18);
-    doc.setTextColor(0, 102, 204); // Set color to a shade of blue
-    doc.setFont("Helvetica", "bold"); // Set font to bold
+    doc.setTextColor(0, 102, 204);
+    doc.setFont('Helvetica', 'bold');
     doc.text('Invoice', 14, 22);
+    doc.setFont('Helvetica', 'normal');
 
-    // Reset font style for other texts
-    doc.setFont("Helvetica", "normal"); // Reset to normal
-
-    // Convert invoiceDate to Date object if it's a string
     const invoiceDate = new Date(billing.invoiceDate);
-
-    // Add invoice details
     doc.setFontSize(12);
     doc.text(`Invoice No: ${billing.invoiceNo}`, 14, 40);
     doc.text(`Invoice Date: ${invoiceDate.toLocaleDateString()}`, 14, 50);
     doc.text(`Salesman Name: ${billing.salesmanName}`, 14, 60);
 
-    // Add Billing To Section
     doc.setFontSize(14);
     doc.text('Bill To:', 14, 75);
 
@@ -55,25 +57,20 @@ const BillingList = () => {
     doc.text(`Customer Name: ${billing.customerName}`, 14, 85);
     doc.text(`Customer Address: ${billing.customerAddress}`, 14, 95);
 
-    // Start table for products
     doc.autoTable({
       head: [['Item ID', 'Name', 'Quantity', 'Price', 'Total']],
-      body: billing.products.map(product => [
+      body: billing.products.map((product) => [
         product.item_id || 'N/A',
         product.name || 'N/A',
         product.quantity ? product.quantity.toString() : '0',
         product.price ? product.price.toFixed(2) : '0.00',
-        (product.price * product.quantity).toFixed(2) // Total price
+        (product.price * product.quantity).toFixed(2),
       ]),
-      startY: 105, // Position the table after invoice details
-      theme: 'striped', // Optional: adds a striped theme to the table
-      styles: {
-        overflow: 'linebreak', // Allow line breaks
-        cellWidth: 'auto', // Automatically adjust cell width
-        fontSize: 10, // Adjust font size as needed
-      },
+      startY: 105,
+      theme: 'striped',
+      styles: { overflow: 'linebreak', cellWidth: 'auto', fontSize: 10 },
       columnStyles: {
-        0: { cellWidth: 30 }, // Set specific widths for columns if needed
+        0: { cellWidth: 30 },
         1: { cellWidth: 70 },
         2: { cellWidth: 30 },
         3: { cellWidth: 30 },
@@ -81,29 +78,22 @@ const BillingList = () => {
       },
     });
 
-    // Calculate total
-    const total = billing.products.reduce((sum, product) => {
-      return sum + (product.price * product.quantity || 0);
-    }, 0);
-
-    // Add Total Section
-    const finalY = doc.autoTable.previous.finalY + 10; // Positioning based on previous table
+    const total = billing.products.reduce((sum, product) => sum + (product.price * product.quantity || 0), 0);
+    const finalY = doc.autoTable.previous.finalY + 10;
     doc.setFontSize(12);
-    doc.text(`Total: $${total.toFixed(2)}`, 14, finalY); // Add total amount
+    doc.text(`Total: $${total.toFixed(2)}`, 14, finalY);
 
-    // Finalize the PDF and download
-    doc.save('invoice.pdf'); // Download the PDF
+    doc.save('invoice.pdf');
   };
-
 
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this purchase?')) {
-      try{
-         await Axios.delete(`/api/billing/billings/delete/${id}`)
-      }catch(error){
-        setError('Error Occured')
+      try {
+        await Axios.delete(`/api/billing/billings/delete/${id}`);
+      } catch (error) {
+        setError('Error Occurred');
       }
-      setBillings(billings.filter(billing => billing._id !== id));
+      setBillings(billings.filter((billing) => billing._id !== id));
     }
   };
 
@@ -123,131 +113,118 @@ const BillingList = () => {
     return <p className="text-red-500 text-center">{error}</p>;
   }
 
+
+  const renderCard = (billing) => (
+    <div key={billing.invoiceNo} className="bg-white rounded-lg shadow-md p-6 mb-4 transition-transform transform hover:scale-102 duration-200">
+      <div className="flex justify-between items-center">
+        <p onClick={()=> navigate(`/bills/edit/${billing._id}`)} className="text-md cursor-pointer font-bold text-gray-700">{billing.invoiceNo}</p>
+        <div className="flex items-center">
+          {/* Status Indicator */}
+          {billing.deliveryStatus === 'Delivered' && billing.paymentStatus === 'Paid' && (
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </div>
+          )}
+          {billing.deliveryStatus === 'Delivered' && billing.paymentStatus !== 'Paid' && (
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+            </div>
+          )}
+          {billing.deliveryStatus !== 'Delivered' && billing.paymentStatus === 'Paid' && (
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+            </div>
+          )}
+          {billing.deliveryStatus !== 'Delivered' && billing.paymentStatus !== 'Paid' && (
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </div>
+          )}
+        </div>
+      </div>
+      <p className="text-gray-500 font-bold  text-xs mt-2">Customer: {billing.customerName}</p>
+      <p className="text-gray-500 font-bold text-xs mt-1">Salesman: {billing.salesmanName}</p>
+      <p className="text-gray-500 font-bold text-xs mt-1">Expected Delivery: {new Date(billing.expectedDeliveryDate).toLocaleDateString()}</p>
+      <div className='flex justify-between'>
+      <p className="text-gray-500 text-xs font-bold mt-1">Total Products: {billing.products.length}</p>
+      <p className="text-gray-400 italic text-xs mt-1">Last Editted: {new Date(billing.updatedAt ? billing.updatedAt : billing.createdAt).toLocaleDateString()}</p>
+      </div>
+      <div className="flex mt-4 text-xs space-x-2">
+                
+      <button onClick={()=> navigate(`/bills/edit/${billing._id}`)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+          <i className="fa fa-pen mr-2"></i> Edit
+        </button>
+        <button onClick={() => generatePDF(billing)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+          <i className="fa fa-file-pdf-o mr-2"></i> PDF
+        </button>
+        <button onClick={() => setSelectedBillings(billing)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+          <i className="fa fa-eye mr-2"></i> View
+        </button>
+        <button onClick={() => handleRemove(billing._id)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+          <i className="fa fa-trash mr-2"></i> Delete
+        </button>
+      </div>
+    </div>
+  );
+  
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
   return (
     <>
-      <div className="container mx-auto p-6">
-      <div className='flex justify-between'>
-      <a href='/' className='font-bold left-4 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
-      <h2 className='text-2xl font-bold text-red-600 '>KK TRADING</h2>
-      </div>
-        <p className='font-bold text-lg lg:text-center mb-5'>All Billings</p>
-        {billings.length === 0 ? (
-          <p className="text-center text-gray-600">No billing records found.</p>
-        ) : (
-          <>
-            {/* Table layout for larger screens */}
-            <div className="hidden md:block">
-              <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
-                <thead className="bg-gray-200">
-                  <tr>
-                  <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">Invoice No</th>
-                    <th className="px-4 py-2 text-left">Exp. Delivery</th>
-                    <th className="px-4 py-2 text-left">Salesman Name</th>
-                    <th className="px-4 py-2 text-left">Customer Name</th>
-                    <th className="px-4 py-2 text-left">Total Products</th>
-                    <th className="px-4 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {billings.map((billing) => (
-                    <tr key={billing.invoiceNo} className="hover:bg-gray-100">
-                      <td className="border text-center mx-auto px-4 py-2">
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+  <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
+    <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+    <p className="text-gray-400 text-xs font-bold">All Billings Information And Updation</p>
+  </div>
+  <i className="fa fa-list text-gray-500" />
+</div>
 
+      {loading ? (
+        <p className="text-center">Loading...</p>
+      ) : error ? (
+        <p className="text-red-500 text-center">{error}</p>
+      ) : (
+        <>
+          <div className="hidden md:block">
+            <table className="w-full text-sm text-gray-500 bg-white shadow-md rounded-lg overflow-hidden">
+              <thead className="bg-gray-200">
+                <tr className='divide-y'>
+                  <th className="px-4 py-2 text-left">Status</th>
+                  <th className="px-2 py-2">Invoice No</th>
+                  <th className="px-2 py-2">Invoice Date</th>
+                  <th className="px-2 py-2">Exp. Delivery</th>
+                  <th className="px-2 py-2">Salesman Name</th>
+                  <th className="px-2 py-2">Customer Name</th>
+                  <th className="px-2 py-2">Products</th>
+                  <th className="px-2 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginateBillings().map((billing) => (
+                  <tr key={billing.invoiceNo} className="hover:bg-gray-100 divide-y divide-x">
+                    <td className="px-4 py-2 text-center">
  {/* Indicator Dot */}
  {billing.deliveryStatus === 'Delivered' && billing.paymentStatus === 'Paid' && (
-    <div className="ml-5">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-      </span>
-    </div>
-  )}
-
-  {billing.deliveryStatus === 'Delivered' && billing.paymentStatus !== 'Paid' && (
-    <div className="ml-5">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-      </span>
-    </div>
-  )}
-
-  {billing.deliveryStatus !== 'Delivered' && billing.paymentStatus === 'Paid' && (
-    <div className="ml-5">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-      </span>
-    </div>
-  )}
-
-{billing.deliveryStatus !== 'Delivered' && billing.paymentStatus !== 'Paid' && (
-    <div className="ml-5">
-      <span className="relative flex h-3 w-3">
+    <div className="">
+      <span className="relative flex h-3 w-3 mx-auto">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
       </span>
     </div>
   )}
 
-
-                      </td>
-                      <td className="border px-4 py-2">{billing.invoiceNo}</td>
-                      <td className="border px-4 py-2">{new Date(billing.expectedDeliveryDate).toLocaleDateString()}</td>
-                      <td className="border px-4 py-2">{billing.salesmanName}</td>
-                      <td className="border px-4 py-2">{billing.customerName}</td>
-                      <td className="border px-4 py-2">{billing.products.length}</td>
-                      <td className="border px-4 py-2">
-                      <div className="mt-4 flex justify-between text-right">
-                    <button
-                      className="bg-red-500 mr-2 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                      onClick={() => generatePDF(billing)}
-                    >
-                      PDF
-                    </button>
-                    <button 
-                    className="bg-red-500 mr-2 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleView(billing)}
-                  >
-                    <i className="text-center fa fa-eye "></i> 
-                  </button>
-                  <button 
-                    className="bg-red-500 mr-2 text-white px-2 py-1 text-center rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleRemove(billing._id)}
-                  >
-                    <i className="text-center fa fa-trash"></i>
-                  </button>
-                  </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Card layout for mobile screens */}
-            <div className="md:hidden space-y-4">
-              {billings.map((billing) => (
-                <div key={billing.invoiceNo} className="bg-white p-4 rounded-lg shadow-md">
-                  <div className='flex justify-between'>
-                  <h3 className="text-lg font-semibold text-red-600 mb-2">
-                    Invoice No: {billing.invoiceNo}
-                  </h3>
-
-                   {/* Indicator Dot */}
-  {billing.deliveryStatus === 'Delivered' && billing.paymentStatus === 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-      </span>
-    </div>
-  )}
-
   {billing.deliveryStatus === 'Delivered' && billing.paymentStatus !== 'Paid' && (
     <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
+      <span className="relative flex h-3 w-3 mx-auto">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
       </span>
@@ -256,7 +233,7 @@ const BillingList = () => {
 
   {billing.deliveryStatus !== 'Delivered' && billing.paymentStatus === 'Paid' && (
     <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
+      <span className="relative flex h-3 w-3 mx-auto">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
       </span>
@@ -265,99 +242,140 @@ const BillingList = () => {
 
 {billing.deliveryStatus !== 'Delivered' && billing.paymentStatus !== 'Paid' && (
     <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3">
+      <span className="relative flex h-3 w-3 mx-auto">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
       </span>
     </div>
   )}
-
-                  </div>
-
-                  <p className="text-sm mb-1">Invoice Date: {new Date(billing.invoiceDate).toLocaleDateString()}</p>
-                  <p className="text-sm mb-1">Customer: {billing.customerName}</p>
-                  <p className={`text-sm mb-1 ${billing.deliveryStatus === 'Delivered' ? 'text-green-500' : 'text-yellow-600'}`}>Delivery Status: {billing.deliveryStatus}</p>
-                  <p className={`text-sm mb-1 ${billing.paymentStatus === 'Paid' ? 'text-green-500' : 'text-yellow-600'}`}>Payment: {billing.paymentStatus}</p>
-                  <p className="text-sm font-semibold mb-2">Products:</p>
-                  <ul className="pl-4 list-disc text-sm text-gray-600">
-                    {billing.products.map((product) => (
-                      <li key={product.item_id}>
-                        {product.name} (Qty: {product.quantity})
-                      </li>
-                    )).slice(0,1)}
-                    <p className='font-bold'>...</p>
-                  </ul>
-                  <div className="mt-4 text-right">
-                  <div className="mt-4 flex justify-between text-right">
-                    <button
-                      className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                      onClick={() => generatePDF(billing)}
-                    >
-                      View PDF
-                    </button>
-                    <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleView(billing)}
-                  >
+                    </td>
+                    <td className="px-2 text-xs font-bold py-2">{billing.invoiceNo}</td>
+                    <td className="px-2 text-xs py-2">{new Date(billing.invoiceDate).toLocaleDateString()}</td>
+                    <td className="px-4 text-xs py-2">
+                      {new Date(billing.expectedDeliveryDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-2 text-xs py-2">{billing.salesmanName}</td>
+                    <td className="px-2  text-xs py-2">{billing.customerName}</td>
+                    <td className="px-2 text-xs py-2">{billing.products.length}</td>
+                    <td className="px-2 text-xs  py-2">
+                    <div className="flex mt-4 text-xs space-x-2">
+                
+                <button onClick={()=> navigate(`/bills/edit/${billing._id}`)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+                    <i className="fa fa-pen mr-2"></i> Edit
+                  </button>
+                  <button onClick={() => generatePDF(billing)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+                    <i className="fa fa-file-pdf-o mr-2"></i> PDF
+                  </button>
+                  <button onClick={() => setSelectedBillings(billing)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
                     <i className="fa fa-eye mr-2"></i> View
                   </button>
-                  <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleRemove(billing._id)}
-                  >
-                    <i className="fa fa-trash mr-2"></i> Remove
+                  <button onClick={() => handleRemove(billing._id)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+                    <i className="fa fa-trash mr-2"></i> Delete
                   </button>
-                  </div>
-                  </div>
                 </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
+          <div className="md:hidden">
+            {paginateBillings().map(renderCard)}
+          </div>
 
-        {/* Modal for Viewing Details */}
-        {selectedBillings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-lg w-full shadow-lg relative">
-            <button 
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+          <div className="flex justify-between items-center mt-4">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 text-xs font-bold py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-500"
+            >
+              Previous
+            </button>
+            <span className="text-xs text-gray-500">Page {currentPage} of {totalPages}</span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 text-xs font-bold py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-500"
+            >
+              Next
+            </button>
+          </div>
+        </>
+      )}
+        
+
+      {selectedBillings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white rounded-lg p-5 w-full max-w-md relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={closeModal}
             >
               <i className="fa fa-times"></i>
             </button>
+            <p className="text-md text-gray-700 font-bold mb-2">
+              Details for Invoice No. {selectedBillings.invoiceNo}
+            </p>
+            <p className="text-sm mb-1">
+              Salesman Name: <span className="text-gray-700">{selectedBillings.salesmanName}</span>
+            </p>
+            <p className="text-sm mb-1">
+              Customer Name: <span className="text-gray-700">{selectedBillings.customerName}</span>
+            </p>
+            <p className="text-sm mb-1">
+              Invoice Date: <span className="text-gray-700">{new Date(selectedBillings.invoiceDate).toLocaleDateString()}</span>
+            </p>
+            <p className="text-sm mb-1">
+              Delivery Status: <span className="text-gray-700">{selectedBillings.deliveryStatus}</span>
+            </p>
+            <p className="text-sm mb-1">
+              Payment Status: <span className="text-gray-700">{selectedBillings.paymentStatus}</span>
+            </p>
+            <p className="text-sm mb-1">
+              Bill Amount: <span className="text-gray-700">{selectedBillings.billingAmount}</span>
+            </p>
+            
+            <h3 className="text-md font-bold text-red-600 mt-5 ">Products</h3>
+            <div className="mx-auto my-8">
 
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Billing Details</h2>
-            <p className="text-sm font-bold mb-1">Invoice no: {selectedBillings.invoiceNo}</p>
-            <p className="text-sm mb-1">salesman name: {selectedBillings.salesmanName}</p>
-            <p className="text-sm mb-1">Customer: {selectedBillings.customerName}</p>
-            <p className="text-sm mb-1">Address: {selectedBillings.customerAddress}</p>
-            <p className="text-sm mb-1">Expected Delivery Date: {new Date(selectedBillings.expectedDeliveryDate).toLocaleDateString()}</p>
-            <p className="text-sm mb-1">Invoice Date: {new Date(selectedBillings.invoiceDate).toLocaleDateString()}</p>
-            <p className={`text-sm mb-1 ${selectedBillings.deliveryStatus === 'Delivered' ? 'text-green-500' : 'text-yellow-600'}`}>Delivery Status: {selectedBillings.deliveryStatus}</p>
-            <p className={`text-sm mb-1 ${selectedBillings.paymentStatus === 'Paid' ? 'text-green-500' : 'text-yellow-600'}`}>Payment: {selectedBillings.paymentStatus}</p>
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Items:</h3>
-              <ul className="list-inside list-[square] ml-5">
-                {selectedBillings.products.map((item, index) => (
-                  <>
-                  <li key={index} className='flex'>
-                  <p className='text-sm'>{item.name} </p> 
-                  <p className='text-sm font-bold'> - {item.item_id} - </p>
-                  <p className='text-sm'>{item.quantity} Nos</p>
-                  </li>
-                  </>
-                ))}
-              </ul>
-            </div>
 
-            <button 
-              className="mt-6 w-full bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition duration-150"
-              onClick={closeModal}
-            >
-              Close
-            </button>
+<div className="relative overflow-hidden">
+    <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+                <th scope="col" className="px-4 text-xs py-3">
+                    Product
+                </th>
+                <th scope="col" className="px-2 text-center text-xs py-3">
+                  ID
+                </th>
+                <th scope="col" className="px-2 text-xs py-3">
+                  Qty.
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+          {selectedBillings?.products.map((product,index)=>(
+            <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <th scope="row" className="px-2 py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    {product.name}
+               </th>
+                <td className="px-6 text-center text-xs py-4">
+                    {product.item_id}
+                </td>
+                <td className="px-6 text-xs py-4">
+                    {product.quantity}
+                </td>
+            </tr> 
+          ))
+}
+
+        </tbody>
+    </table>
+</div>
+
+  </div>
           </div>
         </div>
       )}
@@ -366,3 +384,7 @@ const BillingList = () => {
 };
 
 export default BillingList;
+
+
+
+

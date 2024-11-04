@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { deleteProduct } from '../actions/productActions';
 import { useDispatch } from 'react-redux';
+import { useParams, Link } from 'react-router-dom';
 
 const ProductListPage = () => {
   const navigate = useNavigate();
@@ -12,7 +13,21 @@ const ProductListPage = () => {
   const [editingProductId, setEditingProductId] = useState(null);
   const [editableProduct, setEditableProduct] = useState({});
   const [isProductSelected, setIsProductSelected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [soldOut,setSoldOut] = useState(null);
+
   const dispatch = useDispatch();
+  const { id } = useParams();
+
+  useEffect(() => {
+    if (id) {
+      loadItem(id);
+      setSuggestions([]);
+    }
+  }, []);
 
   const handleSearchChange = async (e) => {
     const query = e.target.value;
@@ -21,37 +36,41 @@ const ProductListPage = () => {
     if (query.length > 0) {
       try {
         const { data } = await axios.get(`/api/products/searchform/search?q=${query}`);
-        setSuggestions(data);
+        setSuggestions(data.length > 0 ? data : []);
+        setError(data.length === 0 ? 'No products found' : null);
       } catch (error) {
-        console.error('Error fetching suggestions', error);
+        setError('Error fetching suggestions');
       }
     } else {
       setSuggestions([]);
+      setError(null);
     }
   };
-
 
   const deleteHandler = (product) => {
     if (window.confirm('Are you sure to delete?')) {
       dispatch(deleteProduct(product._id));
-      navigate('/')
+      navigate('/');
     }
   };
 
   const loadItem = async (itemId) => {
+    setLoading(true);
     try {
       const { data: product } = await axios.get(`/api/products/itemId/${itemId}`);
-      if (product) {
-        setProducts([product]); // Set selected product in the array
-        setIsProductSelected(true); // Show the second section
-      }
+      const { data } = await axios.get(`api/billing/product/get-sold-out/${itemId}`);
+      setProducts([product]);
+      setSoldOut(data)
+      setIsProductSelected(true);
     } catch (error) {
-      console.error('Error loading product', error);
+      setError('Error loading product');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEditClick = (product) => {
-    navigate(`/product/${product._id}/edit`)
+    navigate(`/product/${product._id}/edit`);
     setEditingProductId(product._id);
     setEditableProduct(product);
   };
@@ -73,156 +92,158 @@ const ProductListPage = () => {
       setProducts(updatedProducts);
       setEditingProductId(null);
     } catch (error) {
-      console.error('Error updating product', error);
+      setError('Error updating product');
     }
   };
 
   return (
     <div>
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+  <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
+    <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+    <p className="text-gray-400 text-xs font-bold">Product Informations</p>
+  </div>
+  <i className="fa fa-box text-gray-500" />
+</div>
 
-<div className="flex justify-between mt-5 mx-4">
-        <div>
-        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+      <div className="container mx-auto px-8 py-4">
+        <div className="flex justify-between">
+          <p onClick={() => navigate('/productlist/seller')} className="text-sm font-bold mb-6 text-gray-600 cursor-pointer">
+            <i className="fa fa-angle-left" /> All Products
+          </p>
+          {products.length !== 0 && <p className="text-sm font-bold mb-6 text-gray-400">Showing Product Id: {products[0]?.item_id}</p>}
         </div>
-        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
-      </div>
 
-    
-    <div className="container mx-auto p-8">
-      <h1 className="text-xl font-bold mb-12 text-center text-red-600">Product Management</h1>
+        {!isProductSelected && (
+          <div className="bg-white text-center p-6 rounded-lg shadow-lg border w-full lg:w-1/2 mx-auto">
+            <h2 className="text-md font-semibold mb-4 text-red-600">Search or Edit Product</h2>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by item ID or name..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
 
-      {/* First Section: Search */}
-      {!isProductSelected && (
-        <div className="bg-white text-center p-6 rounded-lg shadow-lg border w-full lg:w-1/2 mx-auto">
-          <h2 className="text-2xl font-semibold mb-4 text-red-600">Search Products</h2>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search by item ID or name..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-
-            {suggestions.length > 0 && (
-              <ul className="absolute z-10 w-full bg-white border mt-2 rounded-lg shadow-md max-h-56 overflow-y-auto">
-                {suggestions.map((suggestion) => (
-                  <li
-                    key={suggestion._id}
-                    className="p-3 hover:bg-red-50 cursor-pointer"
-                    onClick={() => {
-                      loadItem(suggestion.item_id); // Ensure to use item_id
-                      setSearchQuery(suggestion.name);
-                      setSuggestions([]);
-                    }}
-                  >
-                    {suggestion.name}
-                  </li>
-                ))}
-              </ul>
-            )}
+              {suggestions.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border mt-2 rounded-lg shadow-md max-h-56 overflow-y-auto">
+                  {suggestions.map((suggestion) => (
+                    <li
+                      key={suggestion._id}
+                      className="p-4 hover:bg-red-50 border-t-2 cursor-pointer flex items-center justify-between"
+                      onClick={() => {
+                        loadItem(suggestion.item_id);
+                        setSearchQuery(suggestion.name);
+                        setSuggestions([]);
+                      }}
+                    >
+                      <span className='text-sm truncate'><span className="text-xs font-bold text-gray-400">{suggestion.item_id} - </span> {suggestion.name}</span>
+                      <i className='fa fa-arrow-right text-gray-500 ml-2' />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Second Section: Product Details */}
-      {isProductSelected && products.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mt-12">
-          {products.map((product) =>
-            editingProductId === product._id ? (
-              <div key={product._id} className="bg-white border p-6 rounded-lg shadow-lg">
-                <input
-                  type="text"
-                  name="name"
-                  value={editableProduct.name}
-                  onChange={handleInputChange}
-                  className="w-full mb-4 p-2 border rounded-lg"
-                  placeholder="Product Name"
-                />
-                <input
-                  type="text"
-                  name="brand"
-                  value={editableProduct.brand}
-                  onChange={handleInputChange}
-                  className="w-full mb-4 p-2 border rounded-lg"
-                  placeholder="Brand"
-                />
-
-                <input
-                  type="text"
-                  name="item_id"
-                  value={editableProduct.item_id}
-                  onChange={handleInputChange}
-                  className="w-full mb-4 p-2 border rounded-lg"
-                  placeholder="Item ID"
-                />
-
-                <input
-                  type="text"
-                  name="category"
-                  value={editableProduct.category}
-                  onChange={handleInputChange}
-                  className="w-full mb-4 p-2 border rounded-lg"
-                  placeholder="Category"
-                />
-                <input
-                  type="number"
-                  name="price"
-                  value={editableProduct.price}
-                  onChange={handleInputChange}
-                  className="w-full mb-4 p-2 border rounded-lg"
-                  placeholder="Price"
-                />
-                <input
-                  type="number"
-                  name="countInStock"
-                  value={editableProduct.countInStock}
-                  onChange={handleInputChange}
-                  className="w-full mb-4 p-2 border rounded-lg"
-                  placeholder="Stock Quantity"
-                />
-                <button
-                  onClick={handleSaveChanges}
-                  className="w-full py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                >
-                  Save
-                </button>
+        {isProductSelected && products.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mt-1">
+            {loading ? (
+              <div className="flex justify-center items-center h-48">
+                <i className='fa fa-spinner fa-spin' />
               </div>
             ) : (
-              <div key={product._id} className="bg-white border p-6 rounded-lg shadow-lg">
-                <img
-                  src={`https://kktrading-backend.onrender.com${product.image}` || '/images/placeholder.png'}
-                  alt={product.image}
-                  className="w-full h-48 object-cover rounded-lg mb-4"
-                />
-                <h2 className="text-lg font-semibold text-gray-800">ID: {product.item_id}</h2>
-                <h2 className="text-2xl font-semibold text-gray-800">{product.name}</h2>
-                <p className="text-gray-500 mt-1">Brand: {product.brand}</p>
-                <p className="text-gray-500 mt-1">Category: {product.category}</p>
-                <p className="text-gray-600 mt-2 text-xl font-semibold">${product.price}</p>
-                <p className={`${product.countInStock == 0 ? 'text-red-500' : product.countInStock < 10 ? 'text-yellow-500' : 'text-gray-500'} font-bold `}>Stock: {product.countInStock}</p>
-                <div className='flex justify-between'>
-                <button
-                  onClick={() => handleEditClick(product)}
-                  className="w-2/3 mt-4 font-bold py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                >
-                  Edit
-                </button>
+              products.map((product) => (
 
-                <button
-                        type="button"
-                        className="bg-red-500 text-white py-2 px-5 rounded-lg mx-1 hover:bg-red-600 transition-all duration-200 shadow"
-                        onClick={() => deleteHandler(product)}
-                      >
-                        <i className='fa fa-trash'/>
-                      </button>
-                      </div>
-              </div>
-            )
-          )}
-        </div>
-      )}
+                <div className="w-full max-w-md mx-auto bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+    <div className="relative">
+        {/* Badge for In Stock */}
+        <span className={`absolute z-20 top-2 right-2 text-white text-xs font-semibold px-3 py-2 rounded-full animate-pulse shadow-lg ${product.countInStock > 10 ? 'bg-green-600' : product.countInStock === 0 ?  'bg-red-600' : ' bg-yellow-600'}`}>
+            {product.countInStock > 10 ? 'In Stock' : product.countInStock === 0 ? 'Out Of Stock' : 'Moving Out' }
+        </span>
+
+        <a href={`https://kktrading-backend.onrender.com${product.image}`}>
+            <div className="relative w-full h-56 bg-gray-200 rounded-t-lg flex items-center justify-center overflow-hidden">
+                {!isImageLoaded && !isError && (
+                    <div className="w-full h-full bg-gray-300 animate-pulse" />
+                )}
+                {isError ? (
+                    <span className="text-gray-500 dark:text-gray-400">No image found</span>
+                ) : (
+                    <img
+                        className={`rounded-t-lg object-cover w-full h-full transition-transform duration-300 ease-in-out transform ${isImageLoaded ? 'scale-100' : 'scale-105'}`}
+                        src={`https://kktrading-backend.onrender.com${product.image}`}
+                        alt={product.image}
+                        onLoad={() => setIsImageLoaded(true)}
+                        onError={() => {
+                            setIsImageLoaded(false);
+                            setIsError(true);
+                        }}
+                    />
+                )}
+            </div>
+        </a>
     </div>
+
+    <div className="p-6 space-y-2">
+        <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">
+            Product ID: <span className="text-gray-700 dark:text-white">{product.item_id}</span>
+        </p>
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-white tracking-tight">
+            {product.name}
+        </h2>
+        <div className="flex justify-between text-xs">
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                Brand: <span className="font-semibold text-gray-800 dark:text-white">{product.brand}</span>
+            </p>
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                Category: <span className="font-semibold text-gray-800 dark:text-white">{product.category}</span>
+            </p>
+        </div>
+
+        <div className="flex justify-between items-center border-t pt-2">
+            <div className="text-xs">
+                <p className="text-gray-400 uppercase font-medium mb-2">Stock Details</p>
+                <p className={`font-bold dark:text-white ${product.countInStock > 10 ? 'text-gray-600' : product.countInStock === 0 ? 'text-red-600' : 'text-yellow-700'}`}>
+                    In Stock: {product.countInStock}
+                </p>
+            </div>
+            <p className="text-xs mt-5 font-semibold text-gray-500 dark:text-gray-400">
+                Stock Cleared: {soldOut ? soldOut : 0}
+            </p>
+        </div>
+        <div className='flex justify-between'>
+        <p
+        onClick={()=> navigate(`/product/${product._id}/edit`)}
+            className="inline-flex cursor-pointer items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-700 dark:hover:bg-blue-800 dark:focus:ring-blue-900 transition-all"
+        >
+            Edit Product
+            <i className="fa fa-arrow-right ml-2" />
+        </p>
+
+        <p
+        onClick={()=> deleteHandler(product)}
+            className="inline-flex cursor-pointer items-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-900 transition-all">
+            <i className="fa fa-trash" />
+        </p>
+
+
+        </div>
+    </div>
+</div>
+
+
+
+                )
+              )
+            )}
+            <a href={'/get-product'} className='text-center cursor-pointer text-xs font-bold text-gray-400'>Search Another Product ? <span className='text-blue-500'>Click Here</span></a>
+          </div> 
+        )}
+      </div>
     </div>
   );
 };
