@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import LowStockPreview from '../components/lowStockPreview';
 import ApprovalModal from '../components/ApprovalModal';
 import SellerStatusModal from '../components/SellerStatusModal';
+import api from './api';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -30,7 +30,7 @@ export default function HomeScreen() {
       }
 
       try {
-        const FoundFaceData = await axios.get(`/api/users/get-face-data/${userInfo?._id}`);
+        const FoundFaceData = await api.get(`/api/users/get-face-data/${userInfo?._id}`);
 
         if (FoundFaceData) {
           if (!FoundFaceData.data.isSeller) {
@@ -91,13 +91,13 @@ export default function HomeScreen() {
             </CardSection>
 
             <CardSection title="Product Management">
-              <ActionButton href="/productlist/seller" title="All Products" />
+              <ActionButton href="/productlist" title="All Products" />
               <ActionButton href="/get-product" title="Manage Product" />
             </CardSection>
 
             <CardSection title="Damages">
               <ActionButton href="/create-damage" title="Add Damage" />
-              <ActionButton href="/damages" title="Damages" />
+              <ActionButton href="/damages" title="All Damages" />
             </CardSection>
 
             <CardSection title="Drivers Section">
@@ -107,7 +107,7 @@ export default function HomeScreen() {
 
             <CardSection title="Edit Billings">
             <ActionButton href="/bills/edit" title="Edit Bills" />
-            <ActionButton href="/returns" title="All Returns" />
+            <ActionButton href="/purchase/edit" title="Edit Purchases" />
             </CardSection>
 
             <CardSection title="Admin Panel">

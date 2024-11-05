@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import api from './api';
 
 export default function ReturnBillingScreen() {
   const navigate = useNavigate();
@@ -40,7 +40,7 @@ export default function ReturnBillingScreen() {
 
   const fetchBillingSuggestions = async (query) => {
     try {
-      const { data } = await Axios.get(`/api/billing/billing/suggestions?search=${query}`);
+      const { data } = await api.get(`/api/billing/billing/suggestions?search=${query}`);
       setSuggestions(data);
     } catch (err) {
       setError('Error fetching billing suggestions');
@@ -49,7 +49,7 @@ export default function ReturnBillingScreen() {
 
   const fetchBillingDetails = async (id) => {
     try {
-      const { data } = await Axios.get(`/api/billing/${id}`);
+      const { data } = await api.get(`/api/billing/${id}`);
       setCustomerName(data.customerName);
       setCustomerAddress(data.customerAddress);
       setProducts(data.products);
@@ -105,7 +105,7 @@ export default function ReturnBillingScreen() {
     };
 
     try {
-      await Axios.post('/api/returns/create', returnData);
+      await api.post('/api/returns/create', returnData);
       alert('Return data submitted successfully!');
       setReturnNo('');
       setSelectedBillingNo('');
@@ -114,6 +114,7 @@ export default function ReturnBillingScreen() {
       setCustomerAddress('');
       setProducts([]);
       setStep(0);
+      alert("Purchase Submitted Successfully");
     } catch (error) {
       alert('There was an error submitting the return data. Please try again.');
     }

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Axios from 'axios';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
+import api from './api';
 
 const BillingList = () => {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ const BillingList = () => {
 
   const fetchBillings = async () => {
     try {
-      const response = await Axios.get('/api/billing'); // Replace with your endpoint
+      const response = await api.get('/api/billing'); // Replace with your endpoint
       setBillings(response.data);
     } catch (err) {
       setError('Failed to fetch billings.');
@@ -89,7 +89,7 @@ const BillingList = () => {
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this purchase?')) {
       try {
-        await Axios.delete(`/api/billing/billings/delete/${id}`);
+        await api.delete(`/api/billing/billings/delete/${id}`);
       } catch (error) {
         setError('Error Occurred');
       }
@@ -216,8 +216,8 @@ const BillingList = () => {
  {billing.deliveryStatus === 'Delivered' && billing.paymentStatus === 'Paid' && (
     <div className="">
       <span className="relative flex h-3 w-3 mx-auto">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
       </span>
     </div>
   )}

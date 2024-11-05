@@ -31,12 +31,14 @@ export default function UserListScreen(props) {
     }
   };
   return (
-    <div className='container mx-auto p-6'>
-           <div className='flex justify-between mb-10'>
-      <a href='/' className='t font-bold left-4 text-blue-500'><i className='fa fa-angle-left' /> Back</a>
-      <h2 className='text-2xl font-bold text-red-600 '>KK TRADING</h2>
-      </div>
-      <p className='font-bold mb-5 text-left ml-2'>All Users</p>
+    <div className='container mx-auto p-2'>
+       <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+  <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
+    <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+    <p className="text-gray-400 text-xs font-bold">Users Management and Info</p>
+  </div>
+  <i className="fa fa-users text-gray-500" />
+</div>
       {loadingDelete && <LoadingBox></LoadingBox>}
       {errorDelete && <MessageBox variant="danger">{errorDelete}</MessageBox>}
       {successDelete && (
@@ -47,7 +49,7 @@ export default function UserListScreen(props) {
       ) : error ? (
         <MessageBox variant="danger">{error}</MessageBox>
       ) : (
-        <div className='hidden lg:block'>
+        <div className='hidden md:block'>
         <table className="w-full mx-auto bg-white shadow-md rounded-lg">
           <thead className='bg-gray-200 rounded-lg'>
             <tr>
@@ -92,16 +94,16 @@ export default function UserListScreen(props) {
 
 
             {/* Card layout for mobile screens */}
-            <div className="lg:hidden space-y-4">
+            <div className="md:hidden space-y-4">
 
               {users?.map((user,index) => (
                 <div key={index} className="bg-white p-4 rounded-lg shadow-md">
                   <div className='flex justify-between'>
-                  <h3 className="text-lg font-semibold text-red-600 mb-2">
+                  <h3 className="text-sm font-semibold text-red-600 mb-1">
                     Name: {user.name}
                   </h3>
                   </div>
-                  <p className="text-sm mb-1">Username: {user.email}</p>
+                  <p className="text-xs mb-1">Username: {user.email}</p>
                   <p className={`text-sm mb-1 ${user.isSeller ? 'text-green-600' : 'text-yellow-600'}`}>Employee: {user.isSeller ? 'Ok' : 'Not Approved'}</p>
                   <p className={`text-sm mb-1 ${user.isAdmin ? 'text-green-600' : 'text-red-600'}`}>Admin: {user.isSeller ? 'Yes' : 'No'}</p>
 

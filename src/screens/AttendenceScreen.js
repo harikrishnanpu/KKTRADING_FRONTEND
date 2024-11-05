@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import Axios from 'axios';
+import api from './api';
 
 const TodayAttendance = () => {
   const userSignin = useSelector((state) => state.userSignin);
@@ -12,7 +12,7 @@ const TodayAttendance = () => {
   useEffect(() => {
     const fetchAttendance = async () => {
       try {
-        const response = await Axios.get(`/api/users/attendance/today/${userId}`);
+        const response = await api.get(`/api/users/attendance/today/${userId}`);
         setAttendance(response.data);
       } catch (error) {
         setError(

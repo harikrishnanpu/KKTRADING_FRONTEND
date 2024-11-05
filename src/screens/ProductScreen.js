@@ -6,7 +6,7 @@ import LoadingBox from '../components/LoadingBox';
 import MessageBox from '../components/MessageBox';
 import Rating from '../components/Rating';
 import { PRODUCT_REVIEW_CREATE_RESET } from '../constants/productConstants';
-import axios from 'axios';
+import api from './api';
 
 export default function ProductScreen(props) {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export default function ProductScreen(props) {
   useEffect(()=>{
     try {
       async function fetch(){
-      const { data } = await axios.get(`api/billing/product/get-sold-out/${productId}`);
+      const { data } = await api.get(`api/billing/product/get-sold-out/${productId}`);
       setSoldOut(data)
       }
     } catch (error) {
@@ -101,7 +101,7 @@ export default function ProductScreen(props) {
             {product.countInStock > 10 ? 'In Stock' : product.countInStock === 0 ? 'Out Of Stock' : 'Moving Out' }
         </span>
 
-        <a href={`https://kktrading-backend.onrender.com${product.image}`}>
+        <a href={`${product.image}`}>
             <div className="relative w-full h-56 bg-gray-200 rounded-t-lg flex items-center justify-center overflow-hidden">
                 {!isImageLoaded && !isError && (
                     <div className="w-full h-full bg-gray-300 animate-pulse" />
@@ -111,7 +111,7 @@ export default function ProductScreen(props) {
                 ) : (
                     <img
                         className={`rounded-t-lg object-cover w-full h-full transition-transform duration-300 ease-in-out transform ${isImageLoaded ? 'scale-100' : 'scale-105'}`}
-                        src={`https://kktrading-backend.onrender.com${product.image}`}
+                        src={`${product.image}`}
                         alt={product.image}
                         onLoad={() => setIsImageLoaded(true)}
                         onError={() => {

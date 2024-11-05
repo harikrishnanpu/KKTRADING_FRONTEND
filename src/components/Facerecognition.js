@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import Webcam from 'react-webcam';
-import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import MessageBox from './MessageBox';
 import { useNavigate } from 'react-router-dom';
 import { signout } from '../actions/userActions';
+import api from '../screens/api';
 
 const FaceRecognition = ({modal,login}) => {
   const navigate = useNavigate();
@@ -105,7 +105,7 @@ const FaceRecognition = ({modal,login}) => {
   const unlockFaceIdBackend = async (descriptor) => {
     try{
 
-      await axios.post(`/api/users/recognize-face/${userInfo._id}`,{
+      await api.post(`/api/users/recognize-face/${userInfo._id}`,{
         faceDescriptor: Array.from(descriptor)
       })
 
@@ -122,7 +122,7 @@ const FaceRecognition = ({modal,login}) => {
   const sendDescriptorToBackend = async (descriptor) => {
     try {
       setLoading(true)
-       await axios.post(`/api/users/register-face/${userInfo._id}`, {
+       await api.post(`/api/users/register-face/${userInfo._id}`, {
      // Add user ID here for identification
         faceDescriptor: Array.from(descriptor),
       });

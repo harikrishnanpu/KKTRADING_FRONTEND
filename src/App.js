@@ -27,7 +27,6 @@ import MapScreen from './screens/MapScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import SupportScreen from './screens/SupportScreen';
 import ChatBox from './components/ChatBox';
-import axios from 'axios';
 import AttendenceScreen from './screens/AttendenceScreen';
 import Facerecognition from './screens/Facerecognition';
 import Navbar from './components/Navbar';
@@ -49,8 +48,8 @@ import Drivertracker from './screens/drivertracker';
 import PWAInstallPrompt from './components/pwaInstall';
 import EditBillScreen from './screens/EditBillScreen';
 import EditPurchaseScreen from './screens/EditPurchaseScreen';
+import AdminLogsPage from './screens/AlllogsScreen';
 
-axios.defaults.baseURL = 'http://localhost:4000/'; // https://kktrading-backend.onrender.com/
 
 function App() {
   const userSignin = useSelector((state) => state.userSignin);
@@ -141,6 +140,7 @@ useEffect(() => {
             <Route path="/payment" element={<PaymentMethodScreen />}></Route>
             <Route path="/placeorder" element={<PlaceOrderScreen />}></Route>
             <Route path="/order/:id" element={<OrderScreen />}></Route>
+            <Route path="/admin/alllogs" element={<AdminLogsPage />}></Route>
             <Route path="/driver-tracker/:invoiceNo" element={<Drivertracker />}></Route>
             <Route
               path="/orderhistory"
@@ -172,60 +172,46 @@ useEffect(() => {
             <Route
               path="/profile"
               element={
-                <PrivateRoute>
                   <ProfileScreen />
-                </PrivateRoute>
               }
             />
 
             <Route
               path="/map"
               element={
-                <PrivateRoute>
                   <MapScreen />
-                </PrivateRoute>
               }
             />
 
             <Route
               path="/productlist"
               element={
-                <AdminRoute>
                   <ProductListScreen />
-                </AdminRoute>
               }
             />
 
             <Route
               path="/productlist/pageNumber/:pageNumber"
               element={
-                <AdminRoute>
                   <ProductListScreen />
-                </AdminRoute>
               }
             />
             <Route
               path="/orderlist"
               element={
-                <AdminRoute>
                   <OrderListScreen />
-                </AdminRoute>
               }
             />
             <Route
               path="/userlist"
               element={
-                <AdminRoute>
                   <UserListScreen />
-                </AdminRoute>
               }
             />
             <Route
               path="/user/:id/edit"
               element={
-                <AdminRoute>
                   <UserEditScreen />
-                </AdminRoute>
               }
             />
             <Route
@@ -239,34 +225,26 @@ useEffect(() => {
             <Route
               path="/support"
               element={
-                <AdminRoute>
                   <SupportScreen />
-                </AdminRoute>
               }
             />
             <Route
               path="/productlist/seller"
               element={
-                <SellerRoute>
                   <ProductListScreen />
-                </SellerRoute>
               }
             />
             <Route
               path="/orderlist/seller"
               element={
-                <SellerRoute>
                   <OrderListScreen />
-                </SellerRoute>
               }
             />
 
             <Route
               path="/attendence"
               element={
-                <SellerRoute>
                   <AttendenceScreen />
-                </SellerRoute>
               }
             />
             

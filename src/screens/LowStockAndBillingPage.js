@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import api from './api';
 
 const LowStockAndBillingPage = () => {
   const navigate = useNavigate();
@@ -14,8 +14,8 @@ const LowStockAndBillingPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const stockres = await axios.get('/api/products/low-stock/all');
-        const deliveryres = await axios.get('/api/billing/alldelivery/all');
+        const stockres = await api.get('/api/products/low-stock/all');
+        const deliveryres = await api.get('/api/billing/alldelivery/all');
         setProducts(stockres.data);
         setBillings(deliveryres.data);
         setLoading(false);

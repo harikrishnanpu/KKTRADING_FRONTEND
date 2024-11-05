@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Axios from 'axios';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import api from './api';
 
 export default function ReturnListingScreen() {
   const [returns, setReturns] = useState([]);
@@ -11,7 +11,7 @@ export default function ReturnListingScreen() {
   // Fetch all returns from the server
   const fetchReturns = async () => {
     try {
-      const { data } = await Axios.get('/api/returns');
+      const { data } = await api.get('/api/returns');
       setReturns(data);
     } catch (err) {
       setError('Error fetching returns data');
@@ -84,7 +84,7 @@ export default function ReturnListingScreen() {
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this returnEntry?')) {
       try {
-        await Axios.delete(`/api/returns/return/delete/${id}`);
+        await api.delete(`/api/returns/return/delete/${id}`);
       } catch (error) {
         setError('Error Occurred');
       }

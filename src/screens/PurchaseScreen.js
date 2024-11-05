@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import Axios from "axios";
 import { useDispatch } from "react-redux";
 import { createPurchase } from "../actions/productActions";
 import { useNavigate } from "react-router-dom";
+import api from "./api";
 
 export default function PurchasePage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -83,7 +83,7 @@ export default function PurchasePage() {
   const handleSearchItem = async () => {
     try {
       setLoading(true);
-      const { data } = await Axios.get(`/api/products/itemId/${itemId}`);
+      const { data } = await api.get(`/api/products/itemId/${itemId}`);
       if (data) {
         setItemName(data.name);
         setItemBrand(data.brand);
@@ -93,10 +93,16 @@ export default function PurchasePage() {
         setLoading(false);
       } else {
         setError("Item not found");
+        setItemQuantity(0);
+        clearItemFields();
+        setItemId(itemId);
         setLoading(false);
       }
     } catch (err) {
       setError("Error fetching item");
+      setItemQuantity(0);
+      clearItemFields();
+      setItemId(itemId);
       setLoading(false);
     }
   };
@@ -123,7 +129,8 @@ export default function PurchasePage() {
       try {
         dispatch(createPurchase(purchaseData));
         setMessage("Purchase Submitted Successfully");
-        navigate("/allpurchases"); // Redirect to home on successful purchase
+        alert("Purchase Submitted Successfully");
+        navigate("/"); // Redirect to home on successful purchase
       } catch (error) {
         setError("Error submitting purchase");
       }

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../screens/api';
 
-const LowStockPreview = () => {
+const LowStockPreview = ({ driverPage, adminPage }) => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,8 +22,8 @@ const LowStockPreview = () => {
 
     const fetchExpectedDeliveryBillings = async () => {
       try {
-        const lowstock = await axios.get('/api/products/items/low-stock-limited');
-        const exdelivery = await axios.get('/api/billing/deliveries/expected-delivery');
+        const lowstock = await api.get('/api/products/items/low-stock-limited');
+        const exdelivery = await api.get('/api/billing/deliveries/expected-delivery');
 
         setProducts(lowstock.data);
         setBillings(exdelivery.data);
@@ -78,10 +78,10 @@ const LowStockPreview = () => {
 
   return (
     <div className="p-4 shadow-lg rounded-lg bg-white max-w-4xl mb-10 mx-auto">
-      <p className="text-sm font-bold mb-4 text-gray-600 text-center">Low Stock & Deliveries</p>
+     {!driverPage  && <p className="text-sm font-bold mb-4 text-gray-600 text-center">Low Stock & Deliveries</p> }
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="border border-gray-200 rounded-lg p-4">
+      <div className={`grid ${driverPage || adminPage ?  'md:grid-cols-1' : 'md:grid-cols-2' } gap-6`}>
+       {!driverPage && <div className="border border-gray-200 rounded-lg p-4">
           <h3 className="text-sm font-semibold mb-4 text-gray-700 flex items-center">
             <i className="fa fa-cube mr-2 text-blue-800"></i> Low Stock Products
           </h3>
@@ -106,9 +106,9 @@ const LowStockPreview = () => {
           <Link to="/low-stock" className="block text-xs mt-4 text-center text-blue-500 font-bold hover:underline">
             View More
           </Link>
-        </div>
+        </div> }
 
-        <div className="border border-gray-200 rounded-lg p-4">
+      {!adminPage && <div className="border border-gray-200 rounded-lg p-4">
           <h3 className="text-sm font-semibold mb-4 text-gray-700 flex items-center">
             <i className="fa fa-truck mr-2 text-green-500"></i> Upcoming Deliveries
           </h3>
@@ -141,7 +141,7 @@ const LowStockPreview = () => {
           <Link to="/low-stock" className="block mt-4 text-xs text-center text-blue-500 font-bold hover:underline">
             View Upcoming Deliveries
           </Link>
-        </div>
+        </div> }
       </div>
     </div>
   );

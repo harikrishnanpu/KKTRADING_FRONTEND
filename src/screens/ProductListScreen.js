@@ -12,13 +12,13 @@ import {
   PRODUCT_CREATE_RESET,
   PRODUCT_DELETE_RESET,
 } from '../constants/productConstants';
-import axios from 'axios';
+import api from './api';
 
 export default function ProductListScreen(props) {
   const navigate = useNavigate();
   const { pageNumber = 1 } = useParams();
   const { pathname } = useLocation();
-  const sellerMode = pathname.indexOf('/seller') >= 0;
+  // const sellerMode = pathname.indexOf('/seller') >= 0;
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [iserror, setError] = useState(null);
@@ -41,8 +41,7 @@ export default function ProductListScreen(props) {
     success: successDelete,
   } = productDelete;
 
-  const userSignin = useSelector((state) => state.userSignin);
-  const { userInfo } = userSignin;
+
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -54,16 +53,14 @@ export default function ProductListScreen(props) {
       dispatch({ type: PRODUCT_DELETE_RESET });
     }
     dispatch(
-      listProducts({ seller: sellerMode ? userInfo._id : '', pageNumber })
+      listProducts({ pageNumber })
     );
   }, [
     createdProduct,
     dispatch,
     navigate,
-    sellerMode,
     successCreate,
     successDelete,
-    userInfo._id,
     pageNumber,
   ]);
 
@@ -85,7 +82,7 @@ export default function ProductListScreen(props) {
 
     if (query.length > 0) {
       try {
-        const { data } = await axios.get(`/api/products/searchform/search?q=${query}`);
+        const { data } = await api.get(`/api/products/searchform/search?q=${query}`);
         setSuggestions(data.length > 0 ? data : []);
         setError(data.length === 0 ? 'No products found' : null);
       } catch (error) {

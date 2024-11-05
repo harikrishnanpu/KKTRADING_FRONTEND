@@ -6,10 +6,10 @@ import {
   Marker,
 } from '@react-google-maps/api';
 import LoadingBox from '../components/LoadingBox';
-import Axios from 'axios';
 import { USER_ADDRESS_MAP_CONFIRM } from '../constants/userConstants';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import api from './api';
 
 const libs = ['places'];
 const defaultLocation = { lat: 45.516, lng: -73.56 };
@@ -26,7 +26,7 @@ export default function MapScreen(props) {
 
   useEffect(() => {
     const fetch = async () => {
-      const { data } = await Axios('/api/config/google');
+      const { data } = await api.get('/api/config/google');
       setGoogleApiKey(data);
       getUserCurrentLocation();
     };

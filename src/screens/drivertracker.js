@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { GoogleMap, LoadScript, Marker, Polyline } from "@react-google-maps/api";
-import axios from "axios";
 import { useParams } from "react-router-dom";
+import api from "./api";
 
 const DriverTrackingPage = () => {
   const { invoiceNo } = useParams(); // Getting the invoice number from URL parameters
@@ -21,7 +21,7 @@ const DriverTrackingPage = () => {
   useEffect(() => {
     const fetchLocationData = async () => {
       try {
-        const response = await axios.get(`/api/users/locations/invoice/${invoiceNo}`); // Fetching location data from the backend
+        const response = await api.get(`/api/users/locations/invoice/${invoiceNo}`); // Fetching location data from the backend
         setLocationData(response.data);
         console.log(response.data);
       } catch (err) {

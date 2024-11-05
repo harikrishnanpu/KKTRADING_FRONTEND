@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
+import api from './api';
 
 export default function AllPurchases() {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export default function AllPurchases() {
 
   useEffect(() => {
     // Fetch all purchases from the server
-    axios.get('/api/products/purchases/all')
+    api.get('/api/products/purchases/all')
       .then(response => {
         setPurchases(response.data);
         setLoading(false);
@@ -28,7 +28,7 @@ export default function AllPurchases() {
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this purchase?')) {
       try {
-        await axios.delete(`/api/products/purchases/delete/${id}`);
+        await api.delete(`/api/products/purchases/delete/${id}`);
         setPurchases(purchases.filter(purchase => purchase._id !== id));
       } catch (error) {
         setError('Error Occurred');
@@ -91,14 +91,14 @@ export default function AllPurchases() {
 
   return (
     <div>
-      <div className="flex justify-between mt-5 mx-4">
-        <a href="/" className="font-bold text-red-600 flex items-center">
-          <i className="fa fa-angle-left mr-1" /> Back
-        </a>
-        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+        <div onClick={() => { window.history.back(); }} className="text-center cursor-pointer">
+          <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+          <p className="text-gray-400 text-xs font-bold">Purchase Listing and Management</p>
+        </div>
+        <i className="fa fa-list text-gray-500" />
       </div>
       <div className="container mx-auto p-6">
-        <p className="text-lg font-bold mb-6 text-left text-gray-600">Purchase History</p>
 
         {/* Card layout for mobile screens */}
         <div className="lg:hidden space-y-4">

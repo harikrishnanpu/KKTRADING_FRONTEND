@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { GoogleMap, LoadScript, Marker, InfoWindow, Polyline } from '@react-google-maps/api';
-import axios from 'axios';
 import io from 'socket.io-client';
 import moment from 'moment'; // Import moment.js for date formatting
+import api from './api';
 
 const socket = io('https://kktrading-backend.onrender.com/'); // Replace with your server URL
 
@@ -30,7 +30,7 @@ const useMapLocations = (setMapCenter, setZoom) => {
 
   const fetchInitialLocations = useCallback(async () => {
     try {
-      const response = await axios.get("/api/users/location/users");
+      const response = await api.get("/api/users/location/users");
       const initialLocations = response.data;
 
       const updatedLocations = initialLocations.reduce((acc, loc) => {

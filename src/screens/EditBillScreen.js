@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
+import api from './api';
 
 export default function EditBillScreen() {
     const navigate = useNavigate();
@@ -29,7 +29,7 @@ export default function EditBillScreen() {
     // Fetch billing suggestions based on input
     const fetchBillingSuggestions = async (query) => {
       try {
-        const { data } = await Axios.get(`/api/billing/billing/suggestions?search=${query}`);
+        const { data } = await api.get(`/api/billing/billing/suggestions?search=${query}`);
         setSuggestions(data);
       } catch (err) {
         setError('Error fetching billing suggestions');
@@ -45,7 +45,7 @@ export default function EditBillScreen() {
     // Fetch full billing details once the invoice number is selected or typed
     const fetchBillingDetails = async (id) => {
       try {
-        const { data } = await Axios.get(`/api/billing/${id}`);
+        const { data } = await api.get(`/api/billing/${id}`);
         setInvoiceNo(data.invoiceNo);
         setInvoiceDate(new Date(data.invoiceDate).toISOString().split('T')[0]);
         setExpectedDeliveryDate(new Date(data.expectedDeliveryDate).toISOString().split('T')[0]);
@@ -94,7 +94,7 @@ export default function EditBillScreen() {
       };
   
       try {
-        await Axios.post(`/api/billing/edit/${billId}`, billingData);
+        await api.post(`/api/billing/edit/${billId}`, billingData);
         alert('Billing data submitted successfully!');
         navigate('/bills');
   
@@ -143,7 +143,7 @@ export default function EditBillScreen() {
     const addProductByItemId = async (product) => {
       try {
         setError('');
-        const { data } = await Axios.get(`/api/products/itemId/${product.item_id}`);
+        const { data } = await api.get(`/api/products/itemId/${product.item_id}`);
   
         if (data.countInStock <= 0) {
           setError(`Item ${data.name} is out of stock.`);
@@ -176,7 +176,7 @@ export default function EditBillScreen() {
   
     const fetchSuggestions = async (query) => {
       try {
-        const { data } = await Axios.get(`/api/products/search/itemId?query=${query}`);
+        const { data } = await api.get(`/api/products/search/itemId?query=${query}`);
         setSuggestions(data);
       } catch (err) {
         setSuggestions([]);

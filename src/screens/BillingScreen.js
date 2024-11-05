@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import Axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import SuccessModal from '../components/successModal';
+import api from './api';
 
 export default function BillingScreen() {
   const navigate = useNavigate();
@@ -40,7 +40,7 @@ export default function BillingScreen() {
   // Fetch suggestions for Item ID
   const fetchSuggestions = async (query) => {
     try {
-      const { data } = await Axios.get(`/api/products/search/itemId?query=${query}`);
+      const { data } = await api.get(`/api/products/search/itemId?query=${query}`);
       setSuggestions(data);
     } catch (err) {
       setSuggestions([]);
@@ -60,7 +60,7 @@ export default function BillingScreen() {
   const addProductByItemId = async (product) => {
     try {
       setError('');
-      const { data } = await Axios.get(`/api/products/itemId/${product.item_id}`);
+      const { data } = await api.get(`/api/products/itemId/${product.item_id}`);
 
       if (data.countInStock <= 0) {
         setError(`Item ${data.name} is out of stock.`);
@@ -209,7 +209,7 @@ export default function BillingScreen() {
     };
 
     try {
-      const response = await Axios.post('/api/billing/create', billingData);
+      const response = await api.post('/api/billing/create', billingData);
       alert('Billing data submitted successfully!');
       console.log('Billing Response:', response.data);
 

@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { signin } from '../actions/userActions';
 import LoadingBox from '../components/LoadingBox';
 import MessageBox from '../components/MessageBox';
-import axios from 'axios';
+import api from './api';
 
 export default function SigninScreen(props) {
   
@@ -29,7 +29,7 @@ export default function SigninScreen(props) {
   useEffect(() => {
     if (userInfo) {
       async function fetchUser () {
-        const user = await axios.get(`/api/users/user/${userInfo._id}`)
+        const user = await api.get(`/api/users/user/${userInfo._id}`)
         if(user){
           navigate(redirect)
         }else{

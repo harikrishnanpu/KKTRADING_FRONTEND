@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react'
 import FaceRecognition from '../components/Facerecognition'
-import axios from 'axios'
 import { useSelector } from 'react-redux';
 import {useNavigate} from 'react-router-dom'
+import api from './api';
 
 function Facerecognition() {
 
@@ -31,7 +31,7 @@ useEffect(()=>{
   }
 
   try {
-  const FoundFaceData = await axios.get(`/api/users/get-face-data/${userInfo._id}`)
+  const FoundFaceData = await api.get(`/api/users/get-face-data/${userInfo._id}`)
 
   if(FoundFaceData.data.faceDescriptor.length !==0){
         modalLoginOverlay.current.classList.add("visible")

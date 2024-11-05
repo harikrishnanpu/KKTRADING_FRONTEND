@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { deleteProduct } from '../actions/productActions';
 import { useDispatch } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
+import api from './api';
 
 const ProductListPage = () => {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ const ProductListPage = () => {
 
     if (query.length > 0) {
       try {
-        const { data } = await axios.get(`/api/products/searchform/search?q=${query}`);
+        const { data } = await api.get(`/api/products/searchform/search?q=${query}`);
         setSuggestions(data.length > 0 ? data : []);
         setError(data.length === 0 ? 'No products found' : null);
       } catch (error) {
@@ -57,8 +57,8 @@ const ProductListPage = () => {
   const loadItem = async (itemId) => {
     setLoading(true);
     try {
-      const { data: product } = await axios.get(`/api/products/itemId/${itemId}`);
-      const { data } = await axios.get(`api/billing/product/get-sold-out/${itemId}`);
+      const { data: product } = await api.get(`/api/products/itemId/${itemId}`);
+      const { data } = await api.get(`api/billing/product/get-sold-out/${itemId}`);
       setProducts([product]);
       setSoldOut(data)
       setIsProductSelected(true);
@@ -85,7 +85,7 @@ const ProductListPage = () => {
 
   const handleSaveChanges = async () => {
     try {
-      await axios.put(`/api/products/get-item/${editingProductId}`, editableProduct);
+      await api.put(`/api/products/get-item/${editingProductId}`, editableProduct);
       const updatedProducts = products.map((product) =>
         product._id === editingProductId ? editableProduct : product
       );
@@ -165,7 +165,7 @@ const ProductListPage = () => {
             {product.countInStock > 10 ? 'In Stock' : product.countInStock === 0 ? 'Out Of Stock' : 'Moving Out' }
         </span>
 
-        <a href={`https://kktrading-backend.onrender.com${product.image}`}>
+        <a href={`${product.image}`}>
             <div className="relative w-full h-56 bg-gray-200 rounded-t-lg flex items-center justify-center overflow-hidden">
                 {!isImageLoaded && !isError && (
                     <div className="w-full h-full bg-gray-300 animate-pulse" />
@@ -175,7 +175,7 @@ const ProductListPage = () => {
                 ) : (
                     <img
                         className={`rounded-t-lg object-cover w-full h-full transition-transform duration-300 ease-in-out transform ${isImageLoaded ? 'scale-100' : 'scale-105'}`}
-                        src={`https://kktrading-backend.onrender.com${product.image}`}
+                        src={`${product.image}`}
                         alt={product.image}
                         onLoad={() => setIsImageLoaded(true)}
                         onError={() => {

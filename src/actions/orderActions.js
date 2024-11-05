@@ -1,4 +1,3 @@
-import Axios from 'axios';
 import { CART_EMPTY } from '../constants/cartConstants';
 import {
   ORDER_CREATE_FAIL,
@@ -25,6 +24,7 @@ import {
   ORDER_SUMMARY_REQUEST,
   ORDER_SUMMARY_SUCCESS,
 } from '../constants/orderConstants';
+import api from '../screens/api';
 
 export const createOrder = (order) => async (dispatch, getState) => {
   dispatch({ type: ORDER_CREATE_REQUEST, payload: order });
@@ -32,7 +32,7 @@ export const createOrder = (order) => async (dispatch, getState) => {
     const {
       userSignin: { userInfo },
     } = getState();
-    const { data } = await Axios.post('/api/orders', order, {
+    const { data } = await api.post('/api/orders', order, {
       headers: {
         Authorization: `Bearer ${userInfo.token}`,
       },
@@ -57,7 +57,7 @@ export const detailsOrder = (orderId) => async (dispatch, getState) => {
     userSignin: { userInfo },
   } = getState();
   try {
-    const { data } = await Axios.get(`/api/orders/${orderId}`, {
+    const { data } = await api.get(`/api/orders/${orderId}`, {
       headers: { Authorization: `Bearer ${userInfo.token}` },
     });
     dispatch({ type: ORDER_DETAILS_SUCCESS, payload: data });
@@ -79,7 +79,7 @@ export const payOrder = (order, paymentResult) => async (
     userSignin: { userInfo },
   } = getState();
   try {
-    const { data } = Axios.put(`/api/orders/${order._id}/pay`, paymentResult, {
+    const { data } = api.put(`/api/orders/${order._id}/pay`, paymentResult, {
       headers: { Authorization: `Bearer ${userInfo.token}` },
     });
     dispatch({ type: ORDER_PAY_SUCCESS, payload: data });
@@ -97,7 +97,7 @@ export const listOrderMine = () => async (dispatch, getState) => {
     userSignin: { userInfo },
   } = getState();
   try {
-    const { data } = await Axios.get('/api/orders/mine', {
+    const { data } = await api.get('/api/orders/mine', {
       headers: {
         Authorization: `Bearer ${userInfo.token}`,
       },
@@ -117,7 +117,7 @@ export const listOrders = ({ seller = '' }) => async (dispatch, getState) => {
     userSignin: { userInfo },
   } = getState();
   try {
-    const { data } = await Axios.get(`/api/orders?seller=${seller}`, {
+    const { data } = await api.get(`/api/orders?seller=${seller}`, {
       headers: { Authorization: `Bearer ${userInfo.token}` },
     });
     console.log(data);
@@ -136,7 +136,7 @@ export const deleteOrder = (orderId) => async (dispatch, getState) => {
     userSignin: { userInfo },
   } = getState();
   try {
-    const { data } = Axios.delete(`/api/orders/${orderId}`, {
+    const { data } = api.delete(`/api/orders/${orderId}`, {
       headers: { Authorization: `Bearer ${userInfo.token}` },
     });
     dispatch({ type: ORDER_DELETE_SUCCESS, payload: data });
@@ -155,7 +155,7 @@ export const deliverOrder = (orderId) => async (dispatch, getState) => {
     userSignin: { userInfo },
   } = getState();
   try {
-    const { data } = Axios.put(
+    const { data } = api.put(
       `/api/orders/${orderId}/deliver`,
       {},
       {
@@ -178,7 +178,7 @@ export const summaryOrder = () => async (dispatch, getState) => {
     userSignin: { userInfo },
   } = getState();
   try {
-    const { data } = await Axios.get('/api/orders/summary', {
+    const { data } = await api.get('/api/orders/summary', {
       headers: { Authorization: `Bearer ${userInfo.token}` },
     });
     dispatch({ type: ORDER_SUMMARY_SUCCESS, payload: data });

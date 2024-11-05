@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../screens/api';
 
 export default function SearchBox() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function SearchBox() {
     const fetchSuggestions = async () => {
       if (name.length > 0) {
         try {
-          const { data } = await axios.get(`/api/products/searchform/search?q=${name}`);
+          const { data } = await api.get(`/api/products/searchform/search?q=${name}`);
           setSuggestions(data);
           console.log(data)
         } catch (error) {

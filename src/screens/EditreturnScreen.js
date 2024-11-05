@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Axios from 'axios';
+import api from './api';
 
 export default function EditReturnScreen() {
   const [selectedBillingNo, setSelectedBillingNo] = useState('');
@@ -14,7 +14,7 @@ export default function EditReturnScreen() {
   // Fetch billing suggestions based on the input
   const fetchBillingSuggestions = async (query) => {
     try {
-      const { data } = await Axios.get(`/api/billing/billing/suggestions?search=${query}`);
+      const { data } = await api.get(`/api/billing/billing/suggestions?search=${query}`);
       setSuggestions(data);
     } catch (err) {
       setError('Error fetching billing suggestions');
@@ -30,7 +30,7 @@ export default function EditReturnScreen() {
   // Fetch full billing details once a suggestion is clicked
   const fetchBillingDetails = async (id) => {
     try {
-      const { data } = await Axios.get(`/api/billing/${id}`);
+      const { data } = await api.get(`/api/billing/${id}`);
       setCustomerName(data.customerName);
       setCustomerAddress(data.customerAddress);
       setProducts(data.products);
@@ -64,7 +64,7 @@ export default function EditReturnScreen() {
     };
 
     try {
-      await Axios.post('/api/returns/update', returnData);
+      await api.post('/api/returns/update', returnData);
       alert('Return data updated successfully!');
       // Reset all states if needed
     } catch (error) {

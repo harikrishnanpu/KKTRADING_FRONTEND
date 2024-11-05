@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import api from "./api";
 
 const DriverPage = () => {
   const navigate = useNavigate();
@@ -18,12 +18,11 @@ const DriverPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredBillings, setFilteredBillings] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
-  const limit = 6;
-  const [oneItem, setOneItem] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const limit = 8;
   const [isSingleBill, setIsSingleBill] = useState(false);
   const [isSuccessVisible, setIsSuccessVisible] = useState(false);
-  const [isfetchError, setFetchError]= useState(null);
-
+  const [isfetchError, setFetchError] = useState(null);
 
   const { id } = useParams();
 
@@ -37,11 +36,11 @@ const DriverPage = () => {
 
   const fetchBillById = async (billId) => {
     try {
-      const { data } = await axios.get(`/api/billing/${billId}`);
+      const { data } = await api.get(`/api/billing/${billId}`);
       setBillings([data]);
       setIsSingleBill(true);
-      setNewDeliveryStatus(data.billings.product.deliveryStatus)
-      setNewPaymentStatus(data.billings.product.paymentStatus)
+      setNewDeliveryStatus(data.deliveryStatus);
+      setNewPaymentStatus(data.paymentStatus);
     } catch (error) {
       console.error("Error fetching bill by ID:", error);
       setError("Error fetching the specific bill.");
@@ -50,8 +49,8 @@ const DriverPage = () => {
 
   const fetchBillings = async () => {
     try {
-      const response = await axios.get(
-        `/api/billing/driver/?page=${currentPage || 0}&limit=${limit || 3}`
+      const response = await api.get(
+        `/api/billing/driver/?page=${currentPage}&limit=${limit}`
       );
       setBillings(response.data.billings);
       setTotalPages(response.data.totalPages);
@@ -64,18 +63,18 @@ const DriverPage = () => {
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      setFetchError(null)
+      setFetchError(null);
       if (searchTerm) {
         try {
-          const response = await axios.get(
+          const response = await api.get(
             `/api/billing/billing/suggestions?search=${searchTerm}`
           );
           setSuggestions(response.data);
-          if(response.data.length === 0){
-          setFetchError("No Suggestions Found")
+          if (response.data.length === 0) {
+            setFetchError("No Suggestions Found");
           }
         } catch (error) {
-          setFetchError("Error Occured")
+          setFetchError("Error Occured");
         }
       } else {
         setSuggestions([]);
@@ -87,10 +86,9 @@ const DriverPage = () => {
 
   const getBillInfo = async (id) => {
     try {
-      const { data } = await axios.get(`/api/billing/${id}`);
-      setBillings(data);
+      const { data } = await api.get(`/api/billing/${id}`);
+      setBillings([data]);
       setSuggestions([]);
-      setOneItem(true);
     } catch (error) {
       console.error("Error occurred while fetching bill info");
       setSuggestions([]);
@@ -115,7 +113,7 @@ const DriverPage = () => {
     }
 
     try {
-      await axios.put(`/api/billing/driver/billings/${selectedBilling._id}`, {
+      await api.put(`/api/billing/driver/billings/${selectedBilling._id}`, {
         deliveryStatus: newDeliveryStatus,
         paymentStatus: newPaymentStatus,
       });
@@ -138,13 +136,13 @@ const DriverPage = () => {
       setError("Error updating status");
     }
   };
-  
+
   const handleNextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
   };
-  
+
   const handlePreviousPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
@@ -152,7 +150,6 @@ const DriverPage = () => {
   };
 
   const handleSeeAllBills = () => {
-    setOneItem(false);
     setIsSingleBill(false);
     setSelectedBilling(null);
     fetchBillings();
@@ -165,11 +162,11 @@ const DriverPage = () => {
       const timer = setTimeout(() => {
         setSuccess("");
         setIsSuccessVisible(false);
-      }, 1000);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [success]);
-  
+
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => setError(""), 3000);
@@ -177,18 +174,33 @@ const DriverPage = () => {
     }
   }, [error]);
 
+  const handleSuggestionKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+      e.preventDefault();
+      navigate(`/driver/${suggestions[selectedSuggestionIndex]._id}`);
+      setSearchTerm('');
+      setSuggestions([]);
+      setSelectedSuggestionIndex(-1);
+    }
+  };
 
   const generatePDF = (billing) => {
     const doc = new jsPDF();
 
     // Set title with color and bold font
     doc.setFontSize(18);
-    doc.setTextColor(0, 102, 204); // Set color to a shade of red
-    doc.setFont("Helvetica", "bold"); // Set font to bold
+    doc.setTextColor(0, 102, 204);
+    doc.setFont("Helvetica", "bold");
     doc.text('Invoice', 14, 22);
 
     // Reset font style for other texts
-    doc.setFont("Helvetica", "normal"); // Reset to normal
+    doc.setFont("Helvetica", "normal");
 
     // Convert invoiceDate to Date object if it's a string
     const invoiceDate = new Date(billing.invoiceDate);
@@ -215,17 +227,17 @@ const DriverPage = () => {
         product.name || 'N/A',
         product.quantity ? product.quantity.toString() : '0',
         product.price ? product.price.toFixed(2) : '0.00',
-        (product.price * product.quantity).toFixed(2) // Total price
+        (product.price * product.quantity).toFixed(2)
       ]),
-      startY: 105, // Position the table after invoice details
-      theme: 'striped', // Optional: adds a striped theme to the table
+      startY: 105,
+      theme: 'striped',
       styles: {
-        overflow: 'linebreak', // Allow line breaks
-        cellWidth: 'auto', // Automatically adjust cell width
-        fontSize: 10, // Adjust font size as needed
+        overflow: 'linebreak',
+        cellWidth: 'auto',
+        fontSize: 10,
       },
       columnStyles: {
-        0: { cellWidth: 30 }, // Set specific widths for columns if needed
+        0: { cellWidth: 30 },
         1: { cellWidth: 70 },
         2: { cellWidth: 30 },
         3: { cellWidth: 30 },
@@ -239,148 +251,136 @@ const DriverPage = () => {
     }, 0);
 
     // Add Total Section
-    const finalY = doc.autoTable.previous.finalY + 10; // Positioning based on previous table
+    const finalY = doc.autoTable.previous.finalY + 10;
     doc.setFontSize(12);
-    doc.text(`Total: $${total.toFixed(2)}`, 14, finalY); // Add total amount
+    doc.text(`Total: $${total.toFixed(2)}`, 14, finalY);
 
     // Finalize the PDF and download
-    doc.save('invoice.pdf'); // Download the PDF
+    doc.save('invoice.pdf');
   };
 
-
   return (
-    <div>
+    <div className="container mx-auto p-4">
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-4 rounded-lg mb-4">
+        <div onClick={() => navigate('/')} className="text-center cursor-pointer">
+          <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+          <p className="text-gray-400 text-xs font-bold">Bill Informations For Drivers</p>
+        </div>
+        <i className="fa fa-list text-gray-500" />
+      </div>
 
-     <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
-  <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
-    <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
-    <p className="text-gray-400 text-xs font-bold">Bill Informations For Drivers</p>
-  </div>
-  <i className="fa fa-list text-gray-500" />
-</div> 
-
-
-
-
-
-<div className="mb-5 flex justify-center">
-        {/* Search Bar with Suggestions */}
+      <div className="mb-5 flex justify-center relative">
         <input
           type="text"
           value={searchTerm}
-          onChange={(e)=> setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleSuggestionKeyDown}
           placeholder="Search for a bill..."
           className="p-3 border-gray-200 text-sm focus:ring-red-500 focus:border-red-500 rounded-md shadow-sm w-full max-w-md"
         />
-                <button onClick={(e)=>{ if(e.target.value.length === 0) setSearchTerm(' '); else setSearchTerm(e.target.value)}} class="text-white ml-2  end-2.5 bottom-2.5 bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"><i className="fa fa-search" /></button>
+        <button
+          onClick={() => {
+            if (searchTerm.length === 0) setSearchTerm(' ');
+          }}
+          className="text-white ml-2 bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-4 py-2"
+        >
+          <i className="fa fa-search" />
+        </button>
 
         {suggestions.length > 0 && (
-          <ul className="bg-white mt-16 absolute divide-y w-full max-w-md mx-auto left-0 right-0 bg-white border border-gray-300 rounded-md  z-10 overflow-y-auto">
-            {suggestions.map(suggestion => (
-              <li key={suggestion._id} onClick={() =>{ navigate(`/driver/${suggestion._id}`); setSearchTerm('') }} className="p-3 flex text-sm justify-between cursor-pointer hover:bg-gray-100">
+          <ul className="bg-white mt-16 absolute divide-y w-full max-w-md mx-auto left-0 right-0 bg-white border border-gray-300 rounded-md z-10 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <li
+                key={suggestion._id}
+                onClick={() => {
+                  navigate(`/driver/${suggestion._id}`);
+                  setSearchTerm('');
+                  setSuggestions([]);
+                }}
+                className={`p-3 flex text-sm justify-between cursor-pointer hover:bg-gray-100 ${index === selectedSuggestionIndex ? 'bg-gray-200' : ''}`}
+              >
                 <span><span className="font-bold text-gray-500">{suggestion.invoiceNo}</span> - {suggestion.customerName}</span>
                 <i className="fa fa-arrow-right text-gray-300" />
               </li>
             ))}
           </ul>
         )}
-        </div>
-        {isfetchError && <p className="text-xs text-red-500 text-center">{isfetchError}.</p>}
-
+      </div>
+      {isfetchError && <p className="text-xs text-red-500 text-center">{isfetchError}.</p>}
 
       <div className="p-3">
         <div className="flex justify-between">
           {!isSingleBill && <h1 className="text-sm font-bold mb-6 truncate text-left text-gray-500">Billing Informations</h1>}
           {isSingleBill && <h1 onClick={() => handleSeeAllBills()} className="text-sm cursor-pointer truncate font-bold mb-6 text-left text-gray-500"><i className="fa fa-angle-left" /> See All Bills</h1>}
           <p className="text-gray-400 truncate font-bold text-sm text-left mb-4">
-            {!oneItem && !isSingleBill ? `Total Bills: ${count}` : oneItem ? `Showing Bill Id: ${billings?.invoiceNo}` : `Showing Bill Id: ${isSingleBill ? billings[0]?.invoiceNo : ''}`}
+            {!isSingleBill ? `Total Bills: ${count}` : `Showing Bill Id: ${billings[0]?.invoiceNo}`}
           </p>
         </div>
 
-       
 
-<div className="relative overflow-x-auto shadow-md sm:rounded-lg">
-   {billings.length > 1 && <table className="w-full text-sm divide-y text-left rtl:text-right text-gray-500 dark:text-gray-400">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-            <tr>
-                <th scope="col" className="px-2 py-3 w-2">
-                    Bill Id
-                </th>
-                <th scope="col" className="px-2 py-3 w-2">
-                    Sts
-                </th>
-                <th scope="col" className="px-2 md:block hidden py-3 max-w-xs w-2">
-                    Customer
-                </th>
-                <th scope="col" className="px-2 py-3 w-2">
-                    Exp.Date
-                </th>
-                <th scope="col" className="px-2 py-3 w-2">
-                  View                </th>
-            </tr>
-        </thead>
-        <tbody>
-          {billings.length > 1 ? (
-            billings.map((bill)=>(
-            <tr className="bg-white divide-x border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                <th scope="row" className="px-2 py-2 text-xs font-bold text-gray-900 whitespace-nowrap dark:text-white">
-                    {bill.invoiceNo}
-                    </th>
-                {/* <div className="absolute"> */}
-                 <td className="px-2 py-2 text-red-500 cursor-pointer"> 
-                     {/* Indicator Dot */}
-  {bill.deliveryStatus === 'Delivered' && bill.paymentStatus === 'Paid' && (
-    <div className="">
-      <span className="relative flex h-3 w-3 mx-auto">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-      </span>
-    </div>
-  )}
+        <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
+          {billings.length > 1 && (
+            <table className="min-w-full text-sm text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Bill ID</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Status</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold md:block hidden">Customer</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Exp. Date</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">View</th>
+                </tr>
+              </thead>
+              <tbody>
+                {billings.map((bill) => (
+                  <tr key={bill._id} className="bg-white border-b hover:bg-gray-100">
+                    <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{bill.invoiceNo}</td>
+                    <td className="px-4 py-3">
+                      {/* Indicator Dot */}
+                      {bill.deliveryStatus === 'Delivered' && bill.paymentStatus === 'Paid' && (
+                        <div className="flex items-center justify-center">
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                          </span>
+                        </div>
+                      )}
+                      {bill.deliveryStatus === 'Delivered' && bill.paymentStatus !== 'Paid' && (
+                        <div className="flex items-center justify-center">
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                          </span>
+                        </div>
+                      )}
+                      {bill.deliveryStatus !== 'Delivered' && bill.paymentStatus === 'Paid' && (
+                        <div className="flex items-center justify-center">
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                          </span>
+                        </div>
+                      )}
+                      {bill.deliveryStatus !== 'Delivered' && bill.paymentStatus !== 'Paid' && (
+                        <div className="flex items-center justify-center">
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden md:block text-xs text-gray-700">{bill.customerName}</td>
+                    <td className={`px-4 py-3 text-xs ${bill.deliveryStatus !== 'Delivered' ? 'text-yellow-600' : 'text-green-600'}`}>{bill.deliveryStatus === 'Delivered' ? 'Delivered' : new Date(bill.expectedDeliveryDate).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-left">
+                      <button onClick={() => navigate(`/driver/${bill._id}`)} className="font-medium text-red-600 hover:underline">View</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
-  {bill.deliveryStatus === 'Delivered' && bill.paymentStatus !== 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3 mx-auto">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-      </span>
-    </div>
-  )}
-
-  {bill.deliveryStatus !== 'Delivered' && bill.paymentStatus === 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3 mx-auto">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-      </span>
-    </div>
-  )}
-
-{bill.deliveryStatus !== 'Delivered' && bill.paymentStatus !== 'Paid' && (
-    <div className="top-2 right-2">
-      <span className="relative flex h-3 w-3 mx-auto">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-      </span>
-    </div>
-  )}
-                </td>
-                <td className="px-2 py-4 hidden md:block text-xs">
-                    {bill.customerName}
-                </td>
-                <td className={`px-2 py-4 text-xs ${bill.deliveryStatus !== 'Delivered' ? 'text-yellow-600' : 'text-green-600'}`}>
-                    {bill.deliveryStatus === 'Delivered' ? 'Delivered'  : new Date(bill.expectedDeliveryDate).toLocaleDateString()}
-                </td>
-                
-                <td className="px-2 py-4 text-left">
-                    <p onClick={()=> navigate(`/driver/${bill._id}`)} className="font-medium cursor-pointer text-red-600 dark:text-red-500 hover:underline">View</p>
-                </td>
-            </tr>
-            ))
-          )  :( " " )}
-        </tbody>
-    </table> }
-    </div>
 
     <>
 

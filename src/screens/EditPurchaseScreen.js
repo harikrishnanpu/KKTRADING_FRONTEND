@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import Axios from "axios";
 import { useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import api from "./api";
 
 export default function EditPurchasePage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -30,7 +29,7 @@ export default function EditPurchasePage() {
       // Fetch billing suggestions based on input
       const fetchPurchaseSujjettion = async (query) => {
         try {
-          const { data } = await Axios.get(`/api/orders/purchase/suggestions?search=${query}`);
+          const { data } = await api.get(`/api/orders/suggestions/purchase/suggestions?search=${query}`);
           setSuggestions(data);
         } catch (err) {
           setError('Error fetching billing suggestions');
@@ -57,7 +56,7 @@ export default function EditPurchasePage() {
 
   const fetchBillingDetails = async (id) => {
     try {
-      const { data } = await Axios.get(`/api/orders/${id}`);
+      const { data } = await api.get(`/api/orders/purchase/${id}`);
       setInvoiceNo(data.invoiceNo);
       setSellerName(data.sellerName);
       setSellerId(data.sellerId);
@@ -107,6 +106,7 @@ export default function EditPurchasePage() {
   clearItemFields();
   setError("");
   setMessage("Item added successfully!");
+
 };
 
 
@@ -122,7 +122,7 @@ export default function EditPurchasePage() {
   const handleSearchItem = async () => {
     try {
       setLoading(true);
-      const { data } = await Axios.get(`/api/products/itemId/${itemId}`);
+      const { data } = await api.get(`/api/products/itemId/${itemId}`);
       if (data) {
         setItemName(data.name);
         setItemBrand(data.brand);
@@ -131,10 +131,16 @@ export default function EditPurchasePage() {
         setLoading(false);
       } else {
         setError("Item not found");
+        setItemQuantity(0);
+        clearItemFields();
+        setItemId(itemId);
         setLoading(false);
       }
     } catch (err) {
       setError("Error fetching item");
+      setItemQuantity(0);
+      clearItemFields();
+      setItemId(itemId);
       setLoading(false);
     }
   };
@@ -173,7 +179,7 @@ export default function EditPurchasePage() {
     };
   
     try {
-      const response = await axios.put(`/api/orders/purchase/${purchaseId}`, purchaseData);
+      const response = await api.put(`/api/orders/purchase/${purchaseId}`, purchaseData);
       if (response.status === 200) {
         alert("Purchase successfully Updated");
         setMessage("Purchase Submitted Successfully");
@@ -210,8 +216,8 @@ export default function EditPurchasePage() {
 {modal && (
   <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"> 
     {/* Background overlay with a semi-transparent black color */}
-    
     <div className="bg-white rounded-md p-6 shadow-lg w-full max-w-md">
+    <p className="text-xs italic mb-2 text-gray-500">Enter The Purchase Bill No. And Select A Bill</p>
       <input
         type="text"
         value={selectedPurchase}

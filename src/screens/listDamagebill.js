@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import Axios from 'axios';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import api from './api';
 
 export default function DamagedDataScreen() {
   const [damagedData, setDamagedData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [error, setError] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     const fetchDamagedData = async () => {
       try {
-        const { data } = await Axios.get('/api/returns/damage/getDamagedData');
+        const { data } = await api.get('/api/returns/damage/getDamagedData');
         setDamagedData(data);
         setLoading(false);
       } catch (err) {
@@ -28,9 +29,22 @@ export default function DamagedDataScreen() {
   const handleRemove = async (damageId, itemId) => {
     if (window.confirm('Are you sure you want to remove this item?')) {
       try {
-        await Axios.delete(`/api/returns/damage/delete/${damageId}`);
+        await api.delete(`/api/returns/damage/delete/${damageId}/${itemId}`);
         // Update the state after removing
-        setDamagedData(damagedData.filter(damage => damage._id !== damageId));
+        setDamagedData(damagedData.map(damage => {
+          if (damage._id === damageId) {
+            return {
+              ...damage,
+              damagedItems: damage.damagedItems.filter(item => item.item_id !== itemId),
+            };
+          }
+          return damage;
+        }));
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
+        // Refresh the data to reflect the changes
+        const { data } = await api.get('/api/returns/damage/getDamagedData');
+        setDamagedData(data);
       } catch (err) {
         setError('Error removing the damaged item');
         console.error(err);
@@ -43,7 +57,7 @@ export default function DamagedDataScreen() {
 
     // Title
     doc.setFontSize(18);
-    doc.setTextColor(0, 102, 204); // blue color
+    doc.setTextColor(0, 102, 204); // red color
     doc.setFont('Helvetica', 'bold');
     doc.text('Damaged Items Report', 14, 22);
 
@@ -103,120 +117,137 @@ export default function DamagedDataScreen() {
 
   return (
     <div>
-      <div className="flex justify-between mt-5 mx-4">
-        <div>
-        <a href="/" className="font-bold text-blue-500"><i className="fa fa-angle-left" />Back</a>
+      {/* Top Banner */}
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+        <div onClick={() => { window.history.back(); }} className="text-center cursor-pointer">
+          <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+          <p className="text-gray-400 text-xs font-bold">Damaged Items Overview</p>
         </div>
-        <h1 className="text-2xl text-red-600 font-semibold">KK Trading</h1>
+        <i className="fa fa-undo text-gray-500" />
       </div>
     
-    <div className="container mx-auto p-6">
-
-      <h2 className="text-lg font-extrabold text-left text-gray-800 mb-8">
-        Damaged Items Overview
-      </h2>
-
-      {/* Table layout for larger screens */}
-      <div className="hidden lg:block">
-        <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="px-4 py-2 text-left">Item ID</th>
-              <th className="px-4 py-2 text-left">Item Name</th>
-              <th className="px-4 py-2 text-left">Quantity</th>
-              <th className="px-4 py-2 text-left">Price</th>
-              <th className="px-4 py-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {damagedData.map(damage => (
-              damage.damagedItems.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-100">
-                  <td className="border px-4 py-2">{item.item_id}</td>
-                  <td className="border px-4 py-2">{item.name}</td>
-                  <td className="border px-4 py-2">{item.quantity}</td>
-                  <td className="border px-4 py-2">{item.price ? `$${item.price.toFixed(2)}` : 'N/A'}</td>
-                  <td className="border px-4 py-2 flex space-x-2">
-                    <button
-                      className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition duration-300"
-                      onClick={() => handleViewDetails(item)}
-                    >
-                      View
-                    </button>
-                    <button
-                      className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                      onClick={() => generatePDF(damage)}
-                    >
-                      PDF
-                    </button>
-                    <button
-                      className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                      onClick={() => handleRemove(damage._id)}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Layout */}
-      <div className="lg:hidden space-y-4">
-        {damagedData.map((damage) => (
-          damage.damagedItems.map((item, index) => (
-            <div key={index} className="bg-white p-4 rounded-lg shadow-md">
-              <h3 className="text-md font-semibold text-gray-800 mb-2">{item.name}</h3>
-              <p className='text-sm'><strong>Item ID:</strong> {item.item_id}</p>
-              <p className='text-sm'><strong>Quantity:</strong> {item.quantity}</p>
-              <p className='text-sm'><strong>Biller Name:</strong> {damage.userName}</p>
-              <p className='text-sm'><strong>Price:</strong> {item.price ? `$${item.price.toFixed(2)}` : 'N/A'}</p>
-              <div className="mt-4 flex justify-between text-right">
-                    <button
-                      className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                      onClick={() => generatePDF(damage)}
-                    >
-                      View PDF
-                    </button>
-                    <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleViewDetails(damage)}
-                  >
-                    <i className="fa fa-eye mr-2"></i> View
-                  </button>
-                  <button 
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
-                    onClick={() => handleRemove(damage._id)}
-                  >
-                    <i className="fa fa-trash mr-2"></i> Remove
-                  </button>
-                  </div>
+      <div className="container mx-auto mt-10">
+        <div className="max-w-full mx-auto bg-white rounded-lg p-4">
+          {error && <p className="text-red-500 text-center">{error}</p>}
+          {showSuccessMessage && (
+            <div className="fixed top-0 left-1/2 transform -translate-x-1/2 mt-4 bg-green-500 text-white px-4 py-2 rounded shadow-md">
+              Damaged item successfully removed
             </div>
-          ))
-        ))}
-      </div>
+          )}
 
-      {/* View Modal */}
-      {selectedItem && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-lg mx-auto">
-            <h3 className="text-2xl font-bold mb-4">Item Details</h3>
-            <p><strong>Item ID:</strong> {selectedItem.item_id}</p>
-            <p><strong>Name:</strong> {selectedItem.name}</p>
-            <p><strong>Quantity:</strong> {selectedItem.quantity}</p>
-            <p><strong>Price:</strong> {selectedItem.price ? `$${selectedItem.price.toFixed(2)}` : 'N/A'}</p>
-            <button
-              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg"
-              onClick={() => setSelectedItem(null)}
-            >
-              Close
-            </button>
-          </div>
+          {damagedData.length === 0 ? (
+            <p className="text-gray-600 text-center">No damaged items found.</p>
+          ) : (
+            <>
+              {/* Table layout for larger screens */}
+              <div className="hidden md:block">
+                <table className="w-full bg-white shadow-md rounded-lg overflow-hidden">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Item ID</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Item Name</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Quantity</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Price</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {damagedData.map((damage) =>
+                      damage.damagedItems.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50 transition">
+                          <td className="border-t font-bold text-xs px-4 py-2 text-gray-600">{item.item_id}</td>
+                          <td className="border-t text-xs px-4 py-2 text-gray-600">{item.name}</td>
+                          <td className="border-t text-xs px-4 py-2 text-gray-600">{item.quantity}</td>
+                          <td className="border-t text-xs px-4 py-2 text-gray-600">{item.price ? `$${item.price.toFixed(2)}` : 'N/A'}</td>
+                          <td className="border-t px-4 py-2">
+                            <div className="flex text-xs space-x-2">
+                              <button
+                                className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                                onClick={() => generatePDF(damage)}
+                              >
+                                <i className="fa fa-file-pdf-o mr-1"></i> PDF
+                              </button>
+                              <button
+                                className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                                onClick={() => handleViewDetails(item)}
+                              >
+                                <i className="fa fa-eye mr-1"></i> View
+                              </button>
+                              <button
+                                className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                                onClick={() => handleRemove(damage._id, item.item_id)}
+                              >
+                                <i className="fa fa-trash mr-1"></i> Remove
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Card layout for mobile screens */}
+              <div className="md:hidden space-y-4">
+                {damagedData.map((damage) =>
+                  damage.damagedItems.map((item, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg shadow-md">
+                      <h3 className="text-sm font-bold text-red-600 mb-2">{item.name}</h3>
+                      <p className='text-xs font-bold mb-1 text-gray-500'><strong>Item ID:</strong> {item.item_id}</p>
+                      <p className='text-xs font-bold mb-1 text-gray-500'><strong>Quantity:</strong> {item.quantity}</p>
+                      <p className='text-xs font-bold mb-1 text-gray-500'><strong>Biller Name:</strong> {damage.userName}</p>
+                      <p className='text-xs font-bold mb-1 text-gray-500'><strong>Price:</strong> {item.price ? `$${item.price.toFixed(2)}` : 'N/A'}</p>
+                      <div className="mt-4 text-xs font-bold flex space-x-2">
+                        <button
+                          className="flex-grow font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                          onClick={() => generatePDF(damage)}
+                        >
+                          <i className="fa fa-file-pdf-o mr-1"></i> PDF
+                        </button>
+                        <button
+                          className="flex-grow font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                          onClick={() => handleViewDetails(item)}
+                        >
+                          <i className="fa fa-eye mr-1"></i> View
+                        </button>
+                        <button
+                          className="flex-grow bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                          onClick={() => handleRemove(damage._id, item.item_id)}
+                        >
+                          <i className="fa fa-trash mr-1"></i> Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </div>
-      )}
-    </div>
+
+        {/* View Modal */}
+        {selectedItem && (
+          <div className="fixed p-4 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-lg w-full shadow-lg relative">
+              <button
+                className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+                onClick={() => setSelectedItem(null)}
+              >
+                <i className="fa fa-times"></i>
+              </button>
+
+              <h2 className="text-sm font-bold mb-4">Item Details</h2>
+              <p className='text-xs mt-1'><strong>Item ID:</strong> {selectedItem.item_id}</p>
+              <p className='text-xs mt-1'><strong>Name:</strong> {selectedItem.name}</p>
+              <p className='text-xs mt-1'><strong>Quantity:</strong> {selectedItem.quantity}</p>
+              <p className='text-xs mt-1'><strong>Count In Stock:</strong> {selectedItem.count}</p>
+              <p className='text-xs mt-1'><strong>Price:</strong> {selectedItem.price ? `$${selectedItem.price.toFixed(2)}` : 'N/A'}</p>
+            
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
