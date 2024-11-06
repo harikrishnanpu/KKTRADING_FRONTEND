@@ -33,9 +33,24 @@ export default function BillingScreen() {
   // Image state
   const [loadingImage, setLoadingImage] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [lastBillId,setLastBillId] = useState(null); //
 
   // Stepper Control
   const [step, setStep] = useState(1);
+
+
+  useEffect(()=>{
+    async function fetchLastBill() {
+      try {
+        const { data} = await api.get('/api/billing/lastOrder/id');
+        setLastBillId(data);
+      }catch (error){
+        console.error('Error fetching last bill:', error);
+      } 
+    }
+
+    fetchLastBill();
+  },[]);
 
   // Fetch suggestions for Item ID
   const fetchSuggestions = async (query) => {
@@ -288,7 +303,10 @@ export default function BillingScreen() {
         {/* Step 1: Customer Information */}
         {step === 1 && (
           <div className="mb-6">
-            <h2 className="text-lg text-gray-600 font-bold mb-4">Customer Information</h2>
+            <div className='flex justify-between'>
+            <h2 className="text-md text-gray-500 font-bold mb-4">Customer Information</h2>
+            <p className='italic text-xs text-gray-500'>Last Billed: {lastBillId ? lastBillId : 'No Billings'}</p>
+            </div>
             <div className="mb-4">
               <label className="block text-xs text-gray-700">Invoice No</label>
               <input
@@ -330,7 +348,7 @@ export default function BillingScreen() {
         {/* Step 2: Salesman Information */}
         {step === 2 && (
           <div className="mb-6">
-            <h2 className="text-lg font-bold mb-4">Salesman Information and Bill</h2>
+            <h2 className="text-md text-gray-500 font-bold mb-4">Salesman and Bill</h2>
             <div className="mb-4">
               <label className="block text-gray-700">Salesman Name</label>
               <input
@@ -372,7 +390,7 @@ export default function BillingScreen() {
         {/* Step 3: Payment and Delivery Information */}
         {step === 3 && (
           <div className="mb-6">
-            <h2 className="text-lg font-bold mb-4">Payment & Delivery Information</h2>
+            <h2 className="text-md text-gray-500 font-bold mb-4">Payment & Delivery Information</h2>
             <div className="mb-4">
               <label className="block text-gray-700">Expected Delivery Date</label>
               <input

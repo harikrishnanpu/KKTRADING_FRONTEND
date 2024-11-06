@@ -2,13 +2,18 @@ import axios from 'axios';
 
 // Initialize axios instance
 const api = axios.create({
-  baseURL: 'https://kktrading-backend.vercel.app/', // replace with your API URL
+  baseURL: 'http://localhost:4000/', // replace with your API URL
 });
 
 const userData = JSON.parse(localStorage.getItem('userInfo'));
 
 api.interceptors.request.use(
   (config) => {
+    // Exclude Cloudinary upload URL from adding headers
+    if (config.url === 'https://api.cloudinary.com/v1_1/dqniuczkg/image/upload') {
+      return config;
+    }
+
     // Attach user information to the request if userData exists
     if (userData) {
       config.headers['user'] = JSON.stringify({

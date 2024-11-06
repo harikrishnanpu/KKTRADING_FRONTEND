@@ -2,8 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import api from './api';
+import { useNavigate } from 'react-router-dom';
 
 export default function ReturnListingScreen() {
+  const navigate = useNavigate();
   const [returns, setReturns] = useState([]);
   const [error, setError] = useState('');
   const [selectedReturn, setSelectedReturn] = useState(null);
@@ -154,6 +156,14 @@ export default function ReturnListingScreen() {
                             >
                               <i className="fa fa-eye mr-1"></i> View
                             </button>
+
+                            <button
+                              className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                              onClick={() => navigate(`/return/edit/${returnEntry.returnNo}`)}
+                            >
+                              <i className="fa fa-edit mr-1"></i> Edit
+                            </button>
+
                             <button
                               className="bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
                               onClick={() => handleRemove(returnEntry._id)}
@@ -184,6 +194,12 @@ export default function ReturnListingScreen() {
                       >
                         <i className="fa fa-file-pdf-o mr-1"></i> PDF
                       </button>
+                      <button
+                              className="flex-grow bg-red-500 font-bold text-white px-2 py-1 rounded hover:bg-red-600 transition"
+                              onClick={() => navigate(`/return/edit/${returnEntry.returnNo}`)}
+                            >
+                              <i className="fa fa-edit mr-1"></i> Edit
+                            </button>
                       <button
                         className="flex-grow font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition"
                         onClick={() => handleView(returnEntry)}

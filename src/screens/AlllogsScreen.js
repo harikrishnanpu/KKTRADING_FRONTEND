@@ -61,7 +61,13 @@ export default function AdminLogsPage() {
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
           <p className="text-gray-400 text-xs font-bold">All Logs and Users Tracking</p>
         </div>
-        <i className="fa fa-list text-gray-500" />
+        <i onClick={()=> {
+           api.post('/api/users/alllogs/all')
+           .then(() => {
+            alert('All Logs Deleted')
+              navigate(0)
+            });
+            }} className="fa fa-trash cursor-pointer text-red-500" />
       </div>
 
       {/* Logs Section */}

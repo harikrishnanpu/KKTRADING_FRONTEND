@@ -22,6 +22,21 @@ export default function ReturnBillingScreen() {
   const customerNameRef = useRef();
   const customerAddressRef = useRef();
 
+  const [lastBillId,setLastBillId] = useState(null);
+
+  useEffect(()=>{
+    async function fetchLastBill() {
+      try {
+        const { data} = await api.get('/api/returns/lastreturn/id');
+        setLastBillId(data);
+      }catch (error){
+        console.error('Error fetching last bill:', error);
+      } 
+    }
+
+    fetchLastBill();
+  },[]);
+
   useEffect(() => {
     if (selectedBillingNo) {
       fetchBillingSuggestions(selectedBillingNo);
@@ -47,17 +62,27 @@ export default function ReturnBillingScreen() {
     }
   };
 
-  const fetchBillingDetails = async (id) => {
-    try {
-      const { data } = await api.get(`/api/billing/${id}`);
-      setCustomerName(data.customerName);
-      setCustomerAddress(data.customerAddress);
-      setProducts(data.products);
-      setStep(1);
-    } catch (err) {
-      setError('Error fetching billing details');
-    }
-  };
+const [productsWithInitialQuantity,setProductsWithInitialQuantity] = useState([]);
+
+const fetchBillingDetails = async (id) => {
+  try {
+    const { data } = await api.get(`/api/billing/${id}`);
+    setCustomerName(data.customerName);
+    setCustomerAddress(data.customerAddress);
+
+    // Add initialQuantity property to each product
+    const productsWithInitialQuantity = data.products.map((product) => ({
+      ...product,
+      initialQuantity: product.quantity,
+    }));
+    setProducts(productsWithInitialQuantity);
+    setStep(1);
+  } catch (err) {
+    setError('Error fetching billing details');
+  }
+};
+
+  
 
   const handleSuggestionKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
@@ -85,7 +110,7 @@ export default function ReturnBillingScreen() {
 
   const handleReturnSubmit = async (e) => {
 
-    if (!customerName || !customerAddress || products.length === 0) {
+    if (!customerName || !customerAddress || products.length === 0 || !returnNo || !selectedBillingNo) {
       alert('Please fill all required fields and add at least one product.');
       return;
     }
@@ -106,7 +131,6 @@ export default function ReturnBillingScreen() {
 
     try {
       await api.post('/api/returns/create', returnData);
-      alert('Return data submitted successfully!');
       setReturnNo('');
       setSelectedBillingNo('');
       setReturnDate('');
@@ -114,7 +138,7 @@ export default function ReturnBillingScreen() {
       setCustomerAddress('');
       setProducts([]);
       setStep(0);
-      alert("Purchase Submitted Successfully");
+      alert('Return data submitted successfully!');
     } catch (error) {
       alert('There was an error submitting the return data. Please try again.');
     }
@@ -192,7 +216,10 @@ export default function ReturnBillingScreen() {
 
             {step === 1 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800">Step 2: Enter Return Information</h3>
+                <div className='flex justify-between'>
+                <h3 className="text-sm font-bold text-gray-500">Return Information</h3>
+                <p className='italic text-xs text-gray-500'>last return No: {lastBillId ? lastBillId : 'No Returns'}</p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-700">Return No</label>
@@ -312,18 +339,21 @@ export default function ReturnBillingScreen() {
                                          <td className="py-3 text-xs px-2">{product.price}</td>
                                          <td className="py-3 text-xs px-2">
                                          <input
-                                type="number"
-                                max={product.quantity}
-                                value={product.quantity}
-                                onChange={(e) => {
-                                  const newQuantity = Math.min(e.target.value, product.quantity);
-                                  const newProducts = [...products];
-                                  newProducts[index].quantity = newQuantity;
-                                  setProducts(newProducts);
-                                }}
-                                className="w-20 px-2 py-1 border rounded-md focus:outline-none focus:border-red-200 focus:ring-red-500"
-                                min="0"
-                              />
+  type="number"
+  max={product.initialQuantity}  // Reference the initial max quantity
+  value={product.quantity}
+  onChange={(e) => {
+    const newQuantity = e.target.value === '' ? '' : Math.min(Number(e.target.value), product.initialQuantity);
+    const newProducts = [...products];
+    newProducts[index].quantity = newQuantity;
+    setProducts(newProducts);
+  }}
+  className="w-20 px-2 py-1 border rounded-md focus:outline-none focus:border-red-200 focus:ring-red-500"
+  min="0"
+/>
+
+
+
                                          </td>
                                        </tr>
                                      ))}

@@ -49,6 +49,7 @@ import PWAInstallPrompt from './components/pwaInstall';
 import EditBillScreen from './screens/EditBillScreen';
 import EditPurchaseScreen from './screens/EditPurchaseScreen';
 import AdminLogsPage from './screens/AlllogsScreen';
+import ReturnEditScreen from './screens/EditreturnScreen';
 
 
 function App() {
@@ -128,6 +129,8 @@ useEffect(() => {
             <Route path="/purchase/edit" element={<EditPurchaseScreen />}></Route>
             <Route path="/allpurchases" element={<AllPurchases />}></Route>
             <Route path="/returns" element={<ReturnsPage />}></Route>
+            <Route path="/return/edit/:id" element={<ReturnEditScreen />}></Route>
+            <Route path="/return/edit" element={<ReturnEditScreen />}></Route>
             <Route path="/create-damage" element={<DamageBillPage />}></Route>
             <Route path="/damages" element={<DamagedDataScreen />}></Route>
             <Route path="/create-return" element={<ReturnBillingScreen />}></Route>
