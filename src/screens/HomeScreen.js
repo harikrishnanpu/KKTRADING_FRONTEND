@@ -105,15 +105,28 @@ export default function HomeScreen() {
               <ActionButton href="/driver-invoice" title="Delivery" />
             </CardSection>
 
-            <CardSection title="Edit Billings">
-            <ActionButton href="/bills/edit" title="Edit Bills" />
-            <ActionButton href="/purchase/edit" title="Edit Purchases" />
+            <CardSection title="Payments">
+            <ActionButton href="/bills/payment" title="Billing Transactions" />
+            <ActionButton href="#" title="All Transactions" />
+            </CardSection>
+
+            <CardSection title="Locations">
+            <ActionButton href="/driver-tracker" title="Delivery Tracking" />
+            <ActionButton href="#" title="All Trackings" />
             </CardSection>
 
             <CardSection title="Admin Panel">
               <ActionButton href={userInfo?.isAdmin ? '/support' : '/chat'} title="Inbox" />
               <ActionButton href="/dashboard" title="Dashboard" />
+              <ActionButton href="https://kktrading-backend.vercel.app/export" title="Export All" />
             </CardSection>
+
+            <CardSection title="Edit Billings">
+            <ActionButton href="/bills/edit" title="Edit Bills" />
+            <ActionButton href="/purchase/edit" title="Edit Purchases" />
+            <ActionButton href="/return/edit" title="Edit Returns" />
+            </CardSection>
+
           </div>
         </div>
       )}

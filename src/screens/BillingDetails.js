@@ -353,6 +353,9 @@ const BillingList = () => {
                 <th scope="col" className="px-2 text-xs py-3">
                   Qty.
                 </th>
+                <th scope="col" className="px-2 text-xs py-3">
+                  Delivered
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -367,6 +370,13 @@ const BillingList = () => {
                 <td className="px-6 text-xs py-4">
                     {product.quantity}
                 </td>
+                <td className="px-6 text-xs py-4">
+                            <input
+                              type="checkbox"
+                              className="text-green-500 focus:ring-0 focus:outline-0 focus:border-0"
+                              checked={product.deliveryStatus === "Delivered"}
+                            />
+                          </td>
             </tr> 
           ))
 }

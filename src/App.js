@@ -50,6 +50,7 @@ import EditBillScreen from './screens/EditBillScreen';
 import EditPurchaseScreen from './screens/EditPurchaseScreen';
 import AdminLogsPage from './screens/AlllogsScreen';
 import ReturnEditScreen from './screens/EditreturnScreen';
+import PaymentUpdatePage from './screens/paymentUpdateScreen';
 
 
 function App() {
@@ -123,7 +124,8 @@ useEffect(() => {
             <Route path="/create-bill" element={<BillingScreen/>}></Route>
             <Route path="/bills" element={<BillingList/>}></Route>
             <Route path="/bills/edit/:id" element={<EditBillScreen/>}></Route>
-            <Route path="/bills/edit/" element={<EditBillScreen/>}></Route>
+            <Route path="/bills/edit" element={<EditBillScreen/>}></Route>
+            <Route path="/bills/payment" element={<PaymentUpdatePage/>}></Route>
             <Route path="/purchase" element={<PurchasePage />}></Route>
             <Route path="/purchase/edit/:id" element={<EditPurchaseScreen />}></Route>
             <Route path="/purchase/edit" element={<EditPurchaseScreen />}></Route>
@@ -145,6 +147,7 @@ useEffect(() => {
             <Route path="/order/:id" element={<OrderScreen />}></Route>
             <Route path="/admin/alllogs" element={<AdminLogsPage />}></Route>
             <Route path="/driver-tracker/:invoiceNo" element={<Drivertracker />}></Route>
+            <Route path="/driver-tracker" element={<Drivertracker />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import LowStockPreview from "../components/lowStockPreview";
 import api from "./api";
+import Loading from "../components/loading";
 
 const DriverBillingPage = () => {
   const [invoiceNo, setInvoiceNo] = useState(""); // Invoice input
@@ -24,6 +25,9 @@ const DriverBillingPage = () => {
 
   const [deliveryStep, setDeliveryStep] = useState(1); // Step 1: Initial, Step 2: Summary, Step 3: Additional Inputs
   const [kmTravelled, setKmTravelled] = useState("");
+  const [startingKm, setStartingKm] = useState("");
+  const [endKm, setEndKm] = useState("");
+
   const [fuelCharge, setFuelCharge] = useState("");
   const [otherExpenses, setOtherExpenses] = useState("");
 
@@ -107,9 +111,9 @@ const DriverBillingPage = () => {
     }
     try {
       setIsLoading(true);
-      await getCurrentLocation((startLocation) => {
+      getCurrentLocation(async (startLocation) => {
         if (startLocation) {
-          api.post("/api/users/billing/start-delivery", {
+          await api.post("/api/users/billing/start-delivery", {
             userId: userInfo._id,
             driverName: driverName,
             invoiceNo,
@@ -156,10 +160,12 @@ const DriverBillingPage = () => {
             deliveryStatus:
               deliveredProducts.length === billingDetails.products.length
                 ? "Delivered"
-                : "Pending",
+                : deliveredProducts.length > 0 ? "Partially Delivered" : "Pending",
             deliveredProducts,
             paymentStatus: newPaymentStatus,
             kmTravelled,
+            startingKm,
+            endKm,
             fuelCharge,
             otherExpenses
           });
@@ -179,24 +185,13 @@ const DriverBillingPage = () => {
   };
 
   const handleCancel = () => {
-    try {
-      getCurrentLocation((endLocation) => {
-        if (endLocation) {
-          api.post("/api/users/billing/end-delivery", {
-            userId: userInfo._id,
-            invoiceNo: billingDetails.invoiceNo,
-            endLocation: [endLocation.longitude, endLocation.latitude],
-            deliveryStatus: "Pending",
-            paymentStatus: newPaymentStatus,
-          });
 
+    try {
           localStorage.removeItem("billing");
           localStorage.removeItem("products");
           localStorage.removeItem("billingProducts");
           navigate(0);
-        }
-      });
-    } catch (err) {
+      } catch (err) {
       console.error("Error canceling delivery:", err);
     }
   };
@@ -287,6 +282,9 @@ const DriverBillingPage = () => {
 
   return (
     <div>
+
+      {isLoading && <Loading /> }
+
       {/* Header */}
       <div className="flex max-w-4xl mx-auto items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
         <div onClick={() => navigate('/')} className="text-center cursor-pointer">
@@ -454,21 +452,36 @@ const DriverBillingPage = () => {
                 </p>
               </div>
 
+              <div className="flex justify-between border-b pb-3">
+
               <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                Customer Address: {billingDetails.customerAddress}, Kerala, India
+                Customer Address: {billingDetails.customerAddress}
               </p>
-              <div className="flex justify-between">
-                <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Products Qty: {billingDetails.products.length}
-                </p>
-                <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Bill Amount: <span className="font-bold text-gray-500">{billingDetails.billingAmount}</span>
+
+                <p className="mt-1 text-xs font-bold text-gray-600 dark:text-gray-400">
+                  Products: {billingDetails.products.length}
                 </p>
               </div>
-              <div className="flex justify-between">
-                <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Remaining Amount: <span className="font-bold text-gray-500">{remainingAmount}</span>
+              
+              <div className="flex justify-between pt-2">
+                <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">
+                  Bill Amount: ₹ <span className="font-bold text-gray-500">{billingDetails.billingAmount}</span>
                 </p>
+                <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Remaining Amount: ₹ <span className="font-bold text-red-500">{remainingAmount}</span>
+                </p>
+              </div>
+
+              <div className="flex justify-between">
+
+                <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+              < i className="fa fa-leaf text-green-600" />    Fuel Charge: ₹ <span className="font-bold text-gray-500">{billingDetails.fuelCharge}</span>
+                </p>
+
+                <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Other Expenses: ₹ <span className="font-bold text-gray-500">{billingDetails.otherExpenses}</span>
+                </p>
+
               </div>
 
               <div className="mx-auto my-8">
@@ -537,9 +550,8 @@ const DriverBillingPage = () => {
               {activeSection === "Payment Section" && (
         <div className="mt-6 pt-4">
           <div className="flex justify-between mb-6 border-b pb-5">
-            <p className={`${billingDetails.paymentStatus === "Delivered" ? 'bg-green-200' : billingDetails.paymentStatus === "Partial" ? 'bg-yellow-200' : 'bg-red-200'} text-center flex-col mt-auto py-4 font-bold text-xs rounded-lg px-6`}>
-              <span className="truncate text-gray-500">Payment Status: </span> <br/>
-              <span className={`${billingDetails.paymentStatus === "Delivered" ? 'text-green-500' : billingDetails.paymentStatus === "Partial" ? 'text-yellow-500' : 'text-red-500'}`}>{billingDetails.paymentStatus}</span>
+            <p className={`${billingDetails.paymentStatus === "Paid" ? 'bg-green-200' : billingDetails.paymentStatus === "Partial" ? 'bg-yellow-200' : 'bg-red-200'} text-center flex-col mt-auto py-4 font-bold text-xs rounded-lg px-10`}>
+              <span className={`${billingDetails.paymentStatus === "Paid" ? 'text-green-500' : billingDetails.paymentStatus === "Partial" ? 'text-yellow-500' : 'text-red-800'} animate-pulse font-bold text-sm`}>{billingDetails.paymentStatus}</span>
               </p>
             <div className="text-right">
                       <button
@@ -704,34 +716,62 @@ const DriverBillingPage = () => {
           {/* Additional Inputs Section */}
           <h5 className="mb-4 text-sm font-bold text-red-500 dark:text-white">Additional Details</h5>
           <div className="flex flex-col gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Distance Travelled (km)</label>
-              <input
-                type="number"
-                value={kmTravelled}
-                onChange={(e) => setKmTravelled(e.target.value)}
-                className="w-full border-gray-300 focus:outlone-none focus:ring-red-300 focus:border-red-300  px-3 py-2 mt-1  rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Fuel Charge</label>
-              <input
-                type="number"
-                value={fuelCharge}
-                onChange={(e) => setFuelCharge(e.target.value)}
-                className="w-full border-gray-300 focus:outlone-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 border rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Other Expenses</label>
-              <input
-                type="number"
-                value={otherExpenses}
-                onChange={(e) => setOtherExpenses(e.target.value)}
-                className="w-full border-gray-300 focus:outlone-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 border rounded-md"
-              />
-            </div>
-          </div>
+  <div>
+    <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Starting KM</label>
+    <input
+      type="number"
+      value={startingKm}
+      onChange={(e) => {
+        const startValue = e.target.value;
+        setStartingKm(startValue);
+        setKmTravelled(endKm - startValue); // Auto-calculate distance
+      }}
+      className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Ending KM</label>
+    <input
+      type="number"
+      value={endKm}
+      onChange={(e) => {
+        const endValue = e.target.value;
+        setEndKm(endValue);
+        setKmTravelled(endValue - startingKm); // Auto-calculate distance
+      }}
+      className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Distance Travelled (km)</label>
+    <input
+      type="number"
+      value={kmTravelled}
+      onChange={(e) => setKmTravelled(e.target.value)}
+      className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+      readOnly
+    />
+  </div>
+  <div>
+    <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Fuel Charge</label>
+    <input
+      type="number"
+      value={fuelCharge}
+      onChange={(e) => setFuelCharge(e.target.value)}
+      className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+    />
+  </div>
+  <div>
+    <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Other Expenses</label>
+    <input
+      type="number"
+      value={otherExpenses}
+      onChange={(e) => setOtherExpenses(e.target.value)}
+      className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+    />
+  </div>
+</div>
+
           <div className="flex justify-between mt-6 gap-4">
             <button
               className="bg-gray-400 text-white font-bold text-xs px-4 py-2 rounded-lg"
