@@ -3,7 +3,7 @@ import React from 'react';
 export default function Rating(props) {
   const { rating, numReviews, caption } = props;
   return (
-    <div className="rating">
+    <div className="rating ml-2">
       <span>
         <i
           className={

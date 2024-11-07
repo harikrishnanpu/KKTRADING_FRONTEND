@@ -73,7 +73,7 @@ export default function ProductScreen(props) {
 
   return (
     <div className="container mx-auto p-4">
-             <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 mb-4 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg  relative">
+             <div className="flex max-w-lg mx-auto items-center justify-between bg-gradient-to-l from-gray-200 mb-4 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg  relative">
   <div onClick={()=> { navigate('/'); }} className="text-center cursor-pointer">
     <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
     <p className="text-gray-400 text-xs font-bold">Product Informations</p>
@@ -140,10 +140,28 @@ export default function ProductScreen(props) {
             </p>
         </div>
 
+        <div className="flex justify-between text-xs">
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                P Unit: <span className="font-semibold text-gray-800 dark:text-white">{product.pUnit}</span>
+            </p>
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                S Unit: <span className="font-semibold text-gray-800 dark:text-white">{product.sUnit}</span>
+            </p>
+        </div>
+
+        <div className="flex justify-between text-xs">
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                P S Ratio: <span className="font-semibold text-gray-800 dark:text-white">{product.psRatio}</span>
+            </p>
+            <p className="text-gray-600 text-xs truncate dark:text-gray-300 font-medium">
+                Size: <span className="font-semibold text-gray-800 dark:text-white">{product.size}</span>
+            </p>
+        </div>
+
         <div className="flex justify-between items-center border-t pt-2">
             <div className="text-xs">
-                <p className="text-gray-400 uppercase font-medium mb-2">Stock Details</p>
-                <p className={`font-bold dark:text-white ${product.countInStock > 10 ? 'text-gray-600' : product.countInStock === 0 ? 'text-red-600' : 'text-yellow-700'}`}>
+                <p className="text-gray-400 uppercase font-bold mb-2">Stock Details</p>
+                <p className={`font-bold dark:text-white ${product.countInStock > 10 ? 'text-green-600' : product.countInStock === 0 ? 'text-red-600' : 'text-yellow-700'}`}>
                     In Stock: {product.countInStock}
                 </p>
             </div>
@@ -151,7 +169,7 @@ export default function ProductScreen(props) {
                 Stock Cleared: {soldOut ? soldOut : 0}
             </p>
         </div>
-        <div className='flex justify-between'>
+        <div className='flex justify-between pt-5'>
         <p
         onClick={()=> navigate(`/product/${product._id}/edit`)}
             className="inline-flex cursor-pointer items-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-900 transition-all"
@@ -181,14 +199,14 @@ export default function ProductScreen(props) {
           <div className="max-w-md shadow-xl p-6 mx-auto space-y-4">
             <h3 className="text-sm font-bold">Remarks</h3>
             {product.reviews.length === 0 ? (
-              <MessageBox>No reviews yet</MessageBox>
+              <MessageBox>No Remarks yet</MessageBox>
             ) : (
               product.reviews.map((review) => (
-                <div key={review._id} className="border-b py-4">
-                  <strong>{review.name}</strong>
+                <div key={review._id} className="border-b py-4 text-xs flex">
+                  <strong className='text-gray-500'><i className='fa fa-user' /> {" "}{review.name}</strong>
                   <Rating rating={review.rating} caption=" " />
-                  <p className="text-sm text-gray-500">{review.createdAt.substring(0, 10)}</p>
-                  <p>{review.comment}</p>
+                  <p className='text-xs font-bold text-gray-600'>{review.comment}</p>
+                  <p className="text-xs text-gray-500 ml-auto">{new Date(review.createdAt).toLocaleDateString()}</p>
                 </div>
               ))
             )}
@@ -199,9 +217,9 @@ export default function ProductScreen(props) {
 
                 <button
                   onClick={() => setShowModal(true)}
-                  className="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition"
+                  className="w-1/2 font-bold mx-auto bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition"
                   >
-                  Write a Review
+                  add remark
                 </button>
 
                   </div>
@@ -210,7 +228,7 @@ export default function ProductScreen(props) {
                 {/* Review Modal */}
                 {showModal && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 space-y-4 w-full max-w-lg">
+                    <div className="bg-white m-10 rounded-lg p-6 space-y-4 w-full max-w-lg">
                       <div className='flex justify-between'>
 
                       <h2 className="text-sm text-gray-500 font-bold">Write a Review</h2>
@@ -245,7 +263,7 @@ export default function ProductScreen(props) {
                         </div>
 
                         <div>
-                          <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
+                          <label htmlFor="comment" className="block text-sm font-bold text-gray-700">
                             Comment
                           </label>
                           <textarea
