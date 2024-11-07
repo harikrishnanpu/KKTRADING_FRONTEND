@@ -29,10 +29,10 @@ const DriverBillingPage = () => {
   const [endKm, setEndKm] = useState("");
 
   const [fuelCharge, setFuelCharge] = useState("");
-  const [otherExpenses, setOtherExpenses] = useState("");
+  const [otherExpenses, setOtherExpenses] = useState([{ amount: 0, remark: "" }]); // Allow multiple expenses
 
   const [activeSection, setActiveSection] = useState("Billing Details");
-
+ const [totalOtherExpenses,setTotalotherExpenses] = useState(null);
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
@@ -43,10 +43,19 @@ const DriverBillingPage = () => {
       const parsedBilling = JSON.parse(storedBilling);
       setBillingDetails(parsedBilling);
       setNewPaymentStatus(parsedBilling.paymentStatus);
+      
       setRemainingAmount(
         parsedBilling.billingAmount -
         (parsedBilling.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0)
       );
+  
+      // Calculate total other expenses from parsedBilling.otherExpenses
+      const totalOtherExp = Array.isArray(parsedBilling.otherExpenses)
+        ? parsedBilling.otherExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+        : 0;
+  
+      setTotalotherExpenses(totalOtherExp);
+  
       setShowDetails(true);
       setSelectedProducts(
         parsedBilling.products
@@ -55,6 +64,7 @@ const DriverBillingPage = () => {
       );
     }
   }, []);
+  
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -121,14 +131,23 @@ const DriverBillingPage = () => {
           });
         }
       });
-
+  
       const response = await api.get(`/api/billing/${id}`);
       setBillingDetails(response.data);
       setNewPaymentStatus(response.data.paymentStatus);
+  
       setRemainingAmount(
         response.data.billingAmount -
         (response.data.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0)
       );
+  
+      // Calculate total other expenses from response.data.otherExpenses
+      const totalOtherExp = Array.isArray(response.data.otherExpenses)
+        ? response.data.otherExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+        : 0;
+  
+      setTotalotherExpenses(totalOtherExp);
+  
       setError("");
       setShowDetails(true);
       setSelectedProducts(
@@ -136,7 +155,7 @@ const DriverBillingPage = () => {
           .filter((product) => product.deliveryStatus === "Delivered")
           .map((product) => product.item_id)
       );
-
+  
       localStorage.setItem("billing", JSON.stringify(response.data));
       localStorage.setItem("billingProducts", JSON.stringify(response.data.products));
     } catch (error) {
@@ -145,6 +164,7 @@ const DriverBillingPage = () => {
       setIsLoading(false);
     }
   };
+  
 
   const handleSubmit = async () => {
     setShowModal(false);
@@ -166,23 +186,37 @@ const DriverBillingPage = () => {
             kmTravelled,
             startingKm,
             endKm,
-            fuelCharge,
-            otherExpenses
+            fuelCharge: parseFloat(fuelCharge) || 0,
+            otherExpenses: otherExpenses.map(expense => ({
+              amount: parseFloat(expense.amount) || 0,
+              remark: expense.remark,
+            })),
           });
 
           localStorage.removeItem("billing");
           localStorage.removeItem("products");
           localStorage.removeItem("billingProducts");
           setShowSuccessModal(true);
-          setTimeout(()=>{
-            navigate(0);
-          }, 3000)
+          setTimeout(() => navigate(0), 3000);
         }
       });
     } catch (error) {
       setError("Error updating delivery status.");
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handleOtherExpensesChange = (index, field, value) => {
+    const updatedExpenses = [...otherExpenses];
+    updatedExpenses[index][field] = field === 'amount' ? parseFloat(value) || 0 : value;
+    setOtherExpenses(updatedExpenses);
+  };
+
+  const handleAddExpense = () => {
+    setOtherExpenses([...otherExpenses, { amount: 0, remark: "" }]);
+  };
+
 
   const handleCancel = () => {
 
@@ -479,7 +513,7 @@ const DriverBillingPage = () => {
                 </p>
 
                 <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Other Expenses: ₹ <span className="font-bold text-gray-500">{billingDetails.otherExpenses}</span>
+                  Other Expenses: ₹ <span className="font-bold text-gray-500">{totalOtherExpenses}</span>
                 </p>
 
               </div>
@@ -761,15 +795,33 @@ const DriverBillingPage = () => {
       className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
     />
   </div>
-  <div>
-    <label className="block text-xs font-bold text-gray-400 dark:text-gray-400">Other Expenses</label>
-    <input
-      type="number"
-      value={otherExpenses}
-      onChange={(e) => setOtherExpenses(e.target.value)}
-      className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
-    />
-  </div>
+  <div className="mt-4">
+                <h3 className="text-xs font-bold text-gray-500 mb-1">Add Other Expenses</h3>
+                {otherExpenses.map((expense, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <input
+                      type="number"
+                      value={expense.amount}
+                      onChange={(e) => handleOtherExpensesChange(index, "amount", e.target.value)}
+                      placeholder="Amount"
+                      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                    />
+                    <input
+                      type="text"
+                      value={expense.remark}
+                      onChange={(e) => handleOtherExpensesChange(index, "remark", e.target.value)}
+                      placeholder="Remark"
+                      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                    />
+                  </div>
+                ))}
+                <button
+                  onClick={handleAddExpense}
+                  className="text-xs font-bold text-blue-500 hover:text-blue-700 mt-2"
+                >
+                  + Add Expense
+                </button>
+              </div>
 </div>
 
           <div className="flex justify-between mt-6 gap-4">

@@ -574,3 +574,18 @@
   z-index: 50;
 }
 
+/* Add this CSS to your global styles or Tailwind configuration */
+@keyframes ping-small {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  75%, 100% {
+    transform: scale(1); /* Slightly larger scale for subtle pulse */
+    opacity: 0;
+  }
+}
+
+.animate-ping-small {
+  animation: ping-small 1s ease-out infinite;
+}
