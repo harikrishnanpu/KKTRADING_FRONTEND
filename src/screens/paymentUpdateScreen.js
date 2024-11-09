@@ -313,7 +313,7 @@ const EmployeePaymentExpensePage = () => {
        Customer Address: <span className="font-bold text-gray-500">{billingDetails.customerAddress}</span>
       </p>
       <p className="mt-1 text-xs font-medium text-gray-600">
-        Received Amount: <span className="font-bold text-green-500">{billingDetails.billingAmountReceived.toFixed(2)}</span>
+        Received Amount: <span className="font-bold text-green-500">{billingDetails.billingAmountReceived}</span>
       </p>
     </div>
 

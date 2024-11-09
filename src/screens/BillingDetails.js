@@ -351,7 +351,10 @@ const BillingList = () => {
                   ID
                 </th>
                 <th scope="col" className="px-2 text-xs py-3">
-                  Qty.
+                  Qty
+                </th>
+                <th scope="col" className="px-2 text-xs py-3">
+                 deliv. Qty
                 </th>
                 <th scope="col" className="px-2 text-xs py-3">
                   Delivered
@@ -362,13 +365,16 @@ const BillingList = () => {
           {selectedBillings?.products.map((product,index)=>(
             <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                 <th scope="row" className="px-2 py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    {product.name}
+                    {product.name.slice(0,7)}...
                </th>
                 <td className="px-6 text-center text-xs py-4">
                     {product.item_id}
                 </td>
                 <td className="px-6 text-xs py-4">
                     {product.quantity}
+                </td>
+                <td className="px-6 text-center text-xs py-4">
+                    {product.deliveredQuantity}
                 </td>
                 <td className="px-6 text-xs py-4">
                             <input

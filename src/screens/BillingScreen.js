@@ -19,6 +19,13 @@ export default function BillingScreen() {
   const [searchProduct, setSearchProduct] = useState(null);
   const [billingAmount, setBillingAmount] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [paymentReceivedDate,setpaymentReceivedDate] = useState(null);
+
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [remainingAmount, setRemainingAmount] = useState(0);
+  const [customerContactNumber, setCustomerContactNumber] = useState(null);
+  const [marketedBy, setMarketedBy] = useState(null);
 
 
   // Product Information
@@ -159,19 +166,22 @@ export default function BillingScreen() {
   const paymentStatusRef = useRef();
   const itemIdRef = useRef();
   const itemQuantityRef = useRef();
+  const paymentMethodRef = useRef();
+  const paymentAmountRef = useRef();
+  const PaymnetReceivedDateRef = useRef();
+  const customerContactNumberRef = useRef(); // this
+  const marketedByRef = useRef(); // this
+
 
   function changeRef(e, nextRef) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter') { 
       e.preventDefault();
-
-      if (nextRef === invoiceDateRef) {
-        invoiceDateRef.current?.focus();
-      } else if (nextRef === paymentStatusRef) {
+     if (nextRef === paymentStatusRef) {
         paymentStatusRef.current?.focus();
       } else if (nextRef === itemIdRef) {
         itemIdRef.current?.focus();
         setStep((prevStep) => prevStep + 1);
-      } else if (nextRef === salesmanNameRef || nextRef === expectedDeliveryDateRef) {
+      } else if (nextRef === salesmanNameRef || nextRef === invoiceDateRef) {
         setStep((prevStep) => prevStep + 1);
       } else {
         nextRef?.current?.focus();
@@ -183,7 +193,7 @@ export default function BillingScreen() {
     if (step === 2) {
       salesmanNameRef.current?.focus();
     } else if (step === 3) {
-      expectedDeliveryDateRef.current?.focus();
+      invoiceDateRef.current?.focus();
     } else if (step === 4) {
       itemIdRef.current?.focus();
     }
@@ -198,7 +208,7 @@ export default function BillingScreen() {
   const handleBillingSubmit = async (e) => {
     e.preventDefault();
 
-    if (!customerName || !customerAddress || !billingAmount || !invoiceNo || !expectedDeliveryDate || !salesmanName || products.length === 0) {
+    if (!customerName || !customerAddress || !billingAmount || !invoiceNo || !expectedDeliveryDate || !salesmanName || products.length === 0  ) {
       alert('Please fill all required fields and add at least one product.');
       return;
     }
@@ -211,8 +221,13 @@ export default function BillingScreen() {
       deliveryStatus,
       paymentStatus,
       billingAmount,
+      paymentAmount,
+      paymentMethod,
+      paymentReceivedDate,
       customerName,
       customerAddress,
+      customerContactNumber,
+      marketedBy,
       products: products.map((product) => ({
         item_id: product.item_id,
         name: product.name,
@@ -273,6 +288,9 @@ export default function BillingScreen() {
     product.name.toLowerCase().includes(filterText.toLowerCase())
   );
 
+
+
+
   return (
    
 <div className="container mx-auto p-6">
@@ -326,9 +344,21 @@ export default function BillingScreen() {
                 ref={customerNameRef}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                onKeyDown={(e)=> changeRef(e, customerAddressRef)}
+                onKeyDown={(e)=> changeRef(e, customerContactNumberRef)}
                 className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
                 placeholder="Enter Customer Name"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-xs text-gray-700">Customer Contact Number</label>
+              <input
+                type="number"
+                placeholder="Enter Customer Number"
+                ref={customerContactNumberRef}
+                value={customerContactNumber}
+                onKeyDown={(e)=> changeRef(e,customerAddressRef)}
+                onChange={(e) => setCustomerContactNumber(e.target.value)}
+                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
               />
             </div>
             <div className="mb-4">
@@ -348,9 +378,9 @@ export default function BillingScreen() {
         {/* Step 2: Salesman Information */}
         {step === 2 && (
           <div className="mb-6">
-            <h2 className="text-md text-gray-500 font-bold mb-4">Salesman and Bill</h2>
+            <h2 className="text-md text-gray-500 font-bold mb-6">Salesman and Bill Amount</h2>
             <div className="mb-4">
-              <label className="block text-gray-700">Salesman Name</label>
+              <label className="block text-gray-700 text-xs">Salesman Name</label>
               <input
                 type="text"
                 value={salesmanName}
@@ -362,25 +392,55 @@ export default function BillingScreen() {
               />
             </div>
             <div className="mb-4">
-              <label className="block text-gray-700">Bill Amount</label>
+              <label className="block text-xs text-gray-700">Bill Amount</label>
               <input
                 type="number"
                 value={billingAmount}
                 ref={billingAmountRef}
                 onChange={(e) => setBillingAmount(e.target.value)}
-                onKeyDown={(e)=> changeRef(e,invoiceDateRef)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-                placeholder="Enter Salesman Name"
+                onKeyDown={(e)=> changeRef(e,paymentAmountRef)}
+                className="w-full  border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                placeholder="Enter Bill Amount"
               />
             </div>
-            <div className="mb-4">
-              <label className="block text-gray-700">Invoice Date</label>
+
+            <div>
+                      <label className="block text-xs">Received Amount</label>
+                      <input
+                        type="number"
+                placeholder="Enter Received Amount"
+                min={0}
+                        ref={paymentAmountRef}
+                        value={paymentAmount}
+                onKeyDown={(e)=> changeRef(e,paymentMethodRef)}
+                        onChange={(e) => setPaymentAmount(Math.min(Number(e.target.value), billingAmount))}
+                        className="w-full mb-4 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs">Payment Method</label>
+                      <select
+                      ref={paymentMethodRef}
+                        value={paymentMethod}
+                onKeyDown={(e)=> changeRef(e,PaymnetReceivedDateRef)}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="Card">Card</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Online">Online</option>
+                      </select>
+                    </div>
+
+                    <div className="mb-8">
+              <label className="block text-xs">Received Date</label>
               <input
                 type="date"
-                ref={invoiceDateRef}
-                value={invoiceDate}
-                onKeyDown={(e)=> changeRef(e, expectedDeliveryDateRef)}
-                onChange={(e) => setInvoiceDate(e.target.value)}
+                ref={PaymnetReceivedDateRef}
+                value={paymentReceivedDate}
+                onKeyDown={(e)=> changeRef(e, invoiceDateRef)}
+                onChange={(e) => setpaymentReceivedDate(e.target.value)}
                 className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
               />
             </div>
@@ -391,19 +451,44 @@ export default function BillingScreen() {
         {step === 3 && (
           <div className="mb-6">
             <h2 className="text-md text-gray-500 font-bold mb-4">Payment & Delivery Information</h2>
+                        
             <div className="mb-4">
-              <label className="block text-gray-700">Expected Delivery Date</label>
+              <label className="block text-xs text-gray-700">Invoice Date</label>
+              <input
+                type="date"
+                ref={invoiceDateRef}
+                value={invoiceDate}
+                onKeyDown={(e)=> changeRef(e, expectedDeliveryDateRef)}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs text-gray-700">Expected Delivery Date</label>
               <input
                 type="date"
                 ref={expectedDeliveryDateRef}
                 value={expectedDeliveryDate}
-                onKeyDown={(e)=> changeRef(e,deliveryStatusRef)}
+                onKeyDown={(e)=> changeRef(e,marketedByRef)}
                 onChange={(e) => setExpectedDeliveryDate(e.target.value)}
                 className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
               />
             </div>
+
             <div className="mb-4">
-              <label className="block text-gray-700">Delivery Status</label>
+              <label className="block text-xs text-gray-700">Marketed By:</label>
+              <input
+                ref={marketedByRef}
+                value={marketedBy}
+                placeholder='Marketed by'
+                onKeyDown={(e)=> changeRef(e,deliveryStatusRef)}
+                onChange={(e) => setMarketedBy(e.target.value)}
+                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block  text-xs text-gray-700">Delivery Status</label>
               <select
                 value={deliveryStatus}
                 ref={deliveryStatusRef}
@@ -411,26 +496,34 @@ export default function BillingScreen() {
                 onChange={(e) => setDeliveryStatus(e.target.value)}
                 className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
               >
-                <option value="">Select Status</option>
                 <option value="Pending">Pending</option>
                 <option value="Delivered">Delivered</option>
               </select>
             </div>
             <div className="mb-4">
-              <label className="block text-gray-700">Payment Status</label>
-              <select
-                value={paymentStatus}
-                ref={paymentStatusRef}
-                onChange={(e) => setPaymentStatus(e.target.value)}
-                onKeyDown={(e)=> changeRef(e,itemIdRef)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-              >
-                <option value="">Select Status</option>
-                <option value="Paid">Paid</option>
-                <option value="Unpaid">Unpaid</option>
-                <option value="Partial">Partial</option>
-              </select>
-            </div>
+  <label className="block text-xs text-gray-700">Payment Status</label>
+  <select
+    value={
+      !paymentAmount || paymentAmount === 0
+        ? paymentStatus // Allow any value if paymentAmount is null, undefined, or 0
+        : paymentAmount >= billingAmount
+        ? "Paid"
+        : paymentAmount > 0 && paymentAmount < billingAmount
+        ? "Partial"
+        : "Unpaid"
+    }
+    ref={paymentStatusRef}
+    onChange={(e) => setPaymentStatus(e.target.value)}
+    onKeyDown={(e) => changeRef(e, itemIdRef)}
+    className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+  >
+    <option value="Unpaid">Unpaid</option>
+    <option value="Paid">Paid</option>
+    <option value="Partial">Partial</option>
+  </select>
+</div>
+
+
           </div>
         )}
 
