@@ -23,6 +23,7 @@ const DriverPage = () => {
   const [isSingleBill, setIsSingleBill] = useState(false);
   const [isSuccessVisible, setIsSuccessVisible] = useState(false);
   const [isfetchError, setFetchError] = useState(null);
+  const [activeSection, setActiveSection] = useState("Billing Details");
 
   const { id } = useParams();
 
@@ -259,6 +260,7 @@ const DriverPage = () => {
     doc.save('invoice.pdf');
   };
 
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-4 rounded-lg mb-4">
@@ -269,7 +271,7 @@ const DriverPage = () => {
         <i className="fa fa-list text-gray-500" />
       </div>
 
-      <div className="mb-5 flex justify-center relative">
+   {billings.length > 1 &&  <div className="mb-5 flex justify-center relative">
         <input
           type="text"
           value={searchTerm}
@@ -305,7 +307,7 @@ const DriverPage = () => {
             ))}
           </ul>
         )}
-      </div>
+      </div> }
       {isfetchError && <p className="text-xs text-red-500 text-center">{isfetchError}.</p>}
 
       <div className="p-3">
@@ -388,12 +390,55 @@ const DriverPage = () => {
   
   billings.map((bill)=>(
     
-    <div className="md:w-3/6 mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+    <div className="max-w-lg mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+
+<div className="flex justify-center gap-8">
+        <button
+          className={`font-bold text-xs focus:outline-none relative pb-2 transition-all duration-300 ${
+            activeSection === "Billing Details" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600"
+          }`}
+          onClick={() => setActiveSection("Billing Details")}
+        >
+          Billing Details
+          {activeSection === "Billing Details" && (
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 transition-all duration-300"></span>
+          )}
+        </button>
+        <button
+          className={`font-bold text-xs focus:outline-none relative pb-2 transition-all duration-300 ${
+            activeSection === "allpayments" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600"
+          }`}
+          onClick={() => setActiveSection("allpayments")}
+        >
+          All Payments 
+          {activeSection === "allpayments" && (
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 transition-all duration-300"></span>
+          )}
+        </button>
+
+        <button
+          className={`font-bold text-xs focus:outline-none relative pb-2 transition-all duration-300 ${
+            activeSection === "delivery" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600"
+          }`}
+          onClick={() => setActiveSection("delivery")}
+        >
+           Delivery
+          {activeSection === "delivery" && (
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 transition-all duration-300"></span>
+          )}
+        </button>
+      </div>
+
+
+      {activeSection === "Billing Details" && (
+        <div className="pt-8">
  <div className="flex justify-between">
 
   <a href="#">
-      <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{bill.invoiceNo}</h5>
+      <h5 className="mb-3 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{bill.invoiceNo}</h5>
   </a>
+
+
 
           {/* Indicator Dot */}
           {bill.deliveryStatus === 'Delivered' && bill.paymentStatus === 'Paid' && (
@@ -438,14 +483,14 @@ const DriverPage = () => {
   <p className="mt-1 text-xs truncate font-normal text-gray-700 dark:text-gray-400">Exp. DeliveryDate: {new Date(bill.expectedDeliveryDate).toLocaleDateString()}</p>
   </div>
   <div className="flex justify-between">
-  <p className={`mt-1 text-xs font-medium ${bill.deliveryStatus !== 'Delivered' ? 'text-red-400' : 'text-green-500'} `}>Delivery Sts: {bill.deliveryStatus}</p>
-  <p className={`mt-1 text-xs font-medium ${bill.paymentStatus !== 'Paid' ? 'text-red-400' : 'text-green-500'} `}>Payment Sts: {bill.paymentStatus}</p>
+  <p className={`mt-1 text-xs font-bold ${bill.deliveryStatus !== 'Delivered' ? 'text-red-400' : 'text-green-500'} `}>Delivery Sts: {bill.deliveryStatus}</p>
+  <p className={`mt-1 text-xs font-bold ${bill.paymentStatus !== 'Paid' ? 'text-red-400' : 'text-green-500'} `}>Payment Sts: {bill.paymentStatus}</p>
   </div>
 
-  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Customer Addrs: {bill.customerAddress} , Kerala,India</p>
+  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Customer Address: {bill.customerAddress}, Kerala,India</p>
   <div className="flex justify-between">
   <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Products Qty: {bill.products.length}</p>
-  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500"> {bill.billingAmount} </span></p>
+  <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500"> {bill.billingAmount} </span></p>
   </div>
 
   <div className="mx-auto my-8">
@@ -464,19 +509,35 @@ const DriverPage = () => {
                 <th scope="col" className="px-2 text-xs py-3">
                   Qty.
                 </th>
+                <th scope="col" className="px-2 text-xs py-3">
+                  Deliv. Qty
+                </th>
+                <th scope="col" className="px-2 text-xs py-3">
+                Sts
+                </th>
             </tr>
         </thead>
         <tbody>
           {bill?.products.map((product,index)=>(
             <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                 <th scope="row" className="px-2 py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    {product.name}
+                    {product.name.slice(0,14)}...
                </th>
                 <td className="px-6 text-center text-xs py-4">
                     {product.item_id}
                 </td>
-                <td className="px-6 text-xs py-4">
+                <td className="px-2 text-xs py-4">
                     {product.quantity}
+                </td>
+                <td className="px-2 text-xs py-4">
+                    {product.deliveredQuantity}
+                </td>
+                <td className="px-2 text-xs py-4">
+                            <input
+                              type="checkbox"
+                              className="text-green-500 focus:ring-0 focus:outline-0 focus:border-0"
+                              checked={product.deliveryStatus === "Delivered"}
+                            />
                 </td>
             </tr> 
           ))
@@ -501,6 +562,157 @@ const DriverPage = () => {
       View Pdf
   </p>
 </div>
+</div>
+      )}
+
+
+{activeSection === "allpayments" && (
+<div>
+
+<div className="mt-6">
+    <h3 className="text-md font-bold text-gray-600 mb-2">All Payment Transactions</h3>
+
+
+    <div className="mt-4 border-t border-gray-200 pt-4">
+      <p className="text-xs text-gray-500 font-semibold">
+        Total Fuel Expenses: Rs. {bill.fuelCharge.toFixed(2)}
+      </p>
+      <p className="text-xs mt-1 text-gray-500 font-semibold">
+        Total Other Expenses: Rs. {bill.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
+      </p>
+      <p className="text-xs mt-1 text-gray-500 font-semibold">
+        Grand Total (Fuel + Other Expenses): Rs.
+        {(
+          bill.fuelCharge +
+          (bill.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0)
+        ).toFixed(2)}
+      </p>
+    </div>
+
+    {/* Payment Summary Section */}
+    <div className="mt-4 border-t border-b pb-8 border-gray-200 pt-4">
+      <h4 className="text-md font-bold text-gray-700">Payment Summary</h4>
+
+      {/* Total Payments In */}
+      <p className="text-xs mt-2 text-gray-500 font-semibold">
+        Total Payments In: Rs.
+        {bill.payments?.reduce((sum, payment) => sum + payment.amount, 0).toFixed(2)}
+      </p>
+
+      {/* Net Balance (Total In - Total Out) */}
+      <p className="text-xs mt-1 text-gray-500 font-semibold">
+        Net Balance (In - Expenses): Rs.
+        {(
+          bill.payments?.reduce((sum, payment) => sum + payment.amount, 0) -
+          (bill.fuelCharge +
+            (bill.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0))
+        ).toFixed(2)}
+      </p>
+    </div>
+    
+    <p className="text-sm font-bold text-gray-600 mt-4 mb-2">Transactions</p>
+    {/* List of payments */}
+    <ul className="divide-y divide-gray-200 mb-4">
+      {bill.payments?.map((payment, index) => (
+        <li key={index} className="py-2">
+          <p className="text-sm text-gray-700 font-semibold">
+            {payment.method}: Rs. {payment.amount.toFixed(2)}
+          </p>
+          <p className="text-xs text-gray-500">
+            {new Date(payment.date).toLocaleDateString()}
+          </p>
+        </li>
+      ))}
+    </ul>
+
+    {/* Fuel Charge */}
+    <div className="py-2 border-t border-gray-200">
+      <p className="text-sm text-gray-700 font-semibold">
+        Fuel Charge: Rs. {bill.fuelCharge.toFixed(2)}
+      </p>
+    </div>
+
+    {/* Other Expenses */}
+    <div className="mt-4">
+      <h4 className="text-sm font-bold text-gray-600 mb-2">Other Expenses</h4>
+      <ul className="divide-y divide-gray-200">
+        {bill?.otherExpenses?.map((expense, index) => (
+          <li key={index} className="py-2">
+            <p className="text-sm text-gray-700 font-semibold">
+              Rs. {expense.amount.toFixed(2)} - {expense.remark}
+            </p>
+            <p className="text-xs text-gray-500">
+              {new Date(expense.date).toLocaleDateString()}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    {/* Total for Fuel and Other Expenses */}
+    <div className="mt-4 border-t border-gray-200 pt-4">
+      <p className="text-sm text-gray-800 font-semibold">
+        Total Other Expenses: Rs.
+        {bill?.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
+      </p>
+      <p className="text-sm text-gray-800 font-semibold">
+        Grand Total (Fuel + Other Expenses): Rs.
+        {(
+          bill?.fuelCharge +
+          (bill.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0)
+        ).toFixed(2)}
+      </p>
+    </div>
+  </div>
+
+  </div> )}
+
+{activeSection === "delivery" && (
+  <div className="p-3 bg-gray-50 mt-2 mb-2 rounded-lg">
+{bill?.deliveries?.map((delivery) => (
+      <div key={delivery.deliveryId} className="mt-2">
+      <p className="text-xs font-medium text-gray-700">
+        <strong>Driver Name:</strong> {delivery.driverName}
+      </p>
+      <p className="text-xs font-medium text-gray-700">
+        <strong>Delivery Id: </strong> {delivery.deliveryId}
+      </p>
+    
+      <div className='flex justify-between'>
+      <p className="text-xs font-medium text-gray-700">
+        <strong>Fuel Charge:</strong> ₹{delivery.fuelCharge || 0}
+      </p>
+      <p className="text-xs font-medium text-gray-700">
+        <strong>Starting Km: </strong> {delivery.startingKm || 0}
+      </p>
+      </div>
+      <div className='flex justify-between'>
+      <p className="text-xs font-medium text-gray-700">
+        <strong>Ending Km:</strong> {delivery.endKm || 0}
+      </p>
+      <p className="text-xs font-bold text-gray-700">
+        <strong>Total Distance Km:</strong> {delivery.kmTravelled || 0}
+      </p>
+      </div>
+      {delivery.otherExpenses?.length > 0 && (
+        <p className="text-xs font-medium text-gray-700 mt-2">
+          <strong>Other Expenses:</strong>{" "}
+          {delivery.otherExpenses.map((expense, index) => (
+            <span key={index}>
+              ₹{expense.amount} ({expense.remark})
+              {index < delivery.otherExpenses.length - 1 ? ", " : ""}
+            </span>
+          ))}
+        </p>
+      )}
+    </div>
+                ))}
+
+  </div>
+)}
+
+
+
 
 </div>
 

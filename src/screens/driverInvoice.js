@@ -146,16 +146,16 @@ const DriverBillingPage = () => {
     );
   };
 
-  const handleStartDelivery = () => {
+  const handleStartDelivery = async () => {
     if (assignedBills.length === 0) {
       setError("No bills assigned to start delivery.");
       return;
     }
-
+  
     setError("");
     setDeliveryStarted(true);
-
-    // Start delivery for all assigned bills
+  
+    // Get the current location
     getCurrentLocation(async (startLocation) => {
       if (startLocation) {
         for (let i = 0; i < assignedBills.length; i++) {
@@ -163,28 +163,31 @@ const DriverBillingPage = () => {
           try {
             // Generate and set deliveryId
             const deliveryId = `${userInfo._id}-${bill.invoiceNo}-${Date.now()}`;
-
+  
+            // Send the request to start delivery
             await api.post("/api/users/billing/start-delivery", {
               userId: userInfo._id,
-              driverName: driverName,
+              driverName,
               invoiceNo: bill.invoiceNo,
               startLocation: [startLocation.longitude, startLocation.latitude],
               deliveryId,
             });
-
+  
             setAssignedBills((prevBills) => {
               const updatedBills = [...prevBills];
               updatedBills[i].deliveryId = deliveryId;
               return updatedBills;
             });
+
           } catch (error) {
             console.error(`Error starting delivery for invoice ${bill.invoiceNo}:`, error);
-            setError(`Error starting delivery for invoice ${bill.invoiceNo}.`);
+            alert(`Error starting delivery for invoice ${bill.invoiceNo}.`);
           }
         }
       }
     });
   };
+  
 
   const handleSuggestionClick = (suggestion) => {
     setInvoiceNo(suggestion.invoiceNo);
@@ -554,125 +557,182 @@ const DriverBillingPage = () => {
                       <div>
                         {/* Billing Details Content */}
                         <div className="mt-4">
-                          <h5 className="mb-2 text-sm font-bold tracking-tight text-gray-900">
+                          <h5 className="mb-2 text-sm font-bold tracking-tight text-gray-600">
                             Invoice No: {bill.invoiceNo}
                           </h5>
+                          <div className="flex justify-between">
                           <p className="mt-1 text-xs font-bold text-gray-600">
                             Customer: {bill.customerName}
                           </p>
                           <p className="mt-1 text-xs text-gray-600">
                             Address: {bill.customerAddress}
                           </p>
+                          </div>
+                          <div className="flex justify-between">
                           <p className="mt-1 text-xs text-gray-600">
                             Salesman: {bill.salesmanName}
                           </p>
                           <p className="mt-1 text-xs text-gray-600">
                             Invoice Date: {new Date(bill.invoiceDate).toLocaleDateString()}
                           </p>
+                          </div>
+                          <div className="flex justify-between">
                           <p className="mt-1 text-xs text-gray-600">
                             Expected Delivery Date:{" "}
                             {new Date(bill.expectedDeliveryDate).toLocaleDateString()}
                           </p>
-                          <p className="mt-1 text-xs font-bold text-gray-600">
+                          </div>
+                          <div className="flex justify-between">
+                          <p className="mt-1 text-sm font-bold text-gray-600">
                             Billing Amount: ₹ {bill.billingAmount}
                           </p>
-                          <p className="mt-1 text-xs font-bold text-gray-600">
+                          <p className="mt-1 text-xs font-bold text-green-600">
                             Received Amount: ₹ {bill.receivedAmount}
                           </p>
-                          <p className="mt-1 text-xs font-bold text-gray-600">
+                          </div>
+                          <div className="flex justify-between">
+                          <p className="mt-1 text-xs font-bold text-red-600">
                             Remaining Amount: ₹ {bill.remainingAmount}
                           </p>
-                          <p className="mt-1 text-xs text-gray-600">
+                          <p className="mt-1 font-bold text-xs text-gray-600">
                             Payment Status: {bill.paymentStatus}
                           </p>
-                          <p className="mt-1 text-xs text-gray-600">
-                            Delivery Status: {bill.deliveryStatus}
+                          </div>
+
+                          <div className="flex justify-between">
+                          <p className="mt-1 font-bold text-xs text-gray-600">
+                            Delivery Status: Transit-In
                           </p>
+                          <p className="mt-1 font-bold text-xs text-gray-600">
+                            Delivered Products:
+                          </p>
+                        </div>
                         </div>
 
                         {/* Product List with Delivered Quantity */}
-                        <div className="mt-6 overflow-x-auto">
-                          <table className="w-full text-xs text-left text-gray-700">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                              <tr>
-                                <th scope="col" className="px-4 py-3">
-                                  Product
-                                </th>
-                                <th scope="col" className="px-4 py-3">
-                                  ID
-                                </th>
-                                <th scope="col" className="px-4 py-3">
-                                  Qty. Ordered
-                                </th>
-                                <th scope="col" className="px-4 py-3">
-                                  Qty. Pending
-                                </th>
-                                <th scope="col" className="px-4 py-3">
-                                  Qty. Delivered
-                                </th>
-                                <th scope="col" className="px-4 py-3">
-                                  Delivered
-                                </th>
-                                <th scope="col" className="px-4 py-3">
-                                  Partially Delivered
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {bill.deliveredProducts.map((dp, index) => {
-                                const shortName =
-                                  dp.name.length > 20 ? dp.name.slice(0, 20) + "..." : dp.name;
-                                return (
-                                  <tr key={index} className="bg-white border-b">
-                                    <th
-                                      scope="row"
-                                      className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap"
-                                    >
-                                      {shortName}
-                                    </th>
-                                    <td className="px-4 py-4">{dp.item_id}</td>
-                                    <td className="px-4 py-4">{dp.quantity}</td>
-                                    <td className="px-4 py-4">{dp.pendingQuantity}</td>
-                                    <td className="px-4 py-4">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max={dp.pendingQuantity}
-                                        value={dp.deliveredQuantity}
-                                        onChange={(e) =>
-                                          handleDeliveredQuantityChange(
-                                            billIndex,
-                                            dp.item_id,
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-16 p-1 border border-gray-300 rounded"
-                                      />
-                                    </td>
-                                    <td className="px-4 py-4 text-center">
-                                      <i
-                                        className={`fa ${
-                                          dp.isDelivered
-                                            ? "fa-check text-green-500"
-                                            : "fa-times text-red-500"
-                                        }`}
-                                      ></i>
-                                    </td>
-                                    <td className="px-4 py-4 text-center">
-                                      <i
-                                        className={`fa ${
-                                          dp.isPartiallyDelivered
-                                            ? "fa-check text-yellow-500"
-                                            : "fa-times text-red-500"
-                                        }`}
-                                      ></i>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                        <div className="mt-6">
+  {/* For larger screens, keep the table layout */}
+  <div className="hidden md:block overflow-x-auto">
+    <table className="w-full text-xs text-left text-gray-700">
+      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+        <tr>
+          <th scope="col" className="px-4 py-3">Product</th>
+          <th scope="col" className="px-4 py-3">ID</th>
+          <th scope="col" className="px-4 py-3">Qty. Ordered</th>
+          <th scope="col" className="px-4 py-3">Qty. Pending</th>
+          <th scope="col" className="px-4 py-3">Qty. Delivered</th>
+          <th scope="col" className="px-4 py-3">Delivered</th>
+          <th scope="col" className="px-4 py-3">Partially Delivered</th>
+        </tr>
+      </thead>
+      <tbody>
+        {bill.deliveredProducts.map((dp, index) => {
+          const shortName =
+            dp.name.length > 20 ? dp.name.slice(0, 15) + "..." : dp.name;
+          return (
+            <tr key={index} className="bg-white border-b">
+              <th
+                scope="row"
+                className="px-4 py-4 font-bold text-sm text-gray-600 whitespace-nowrap"
+              >
+                {shortName}
+              </th>
+              <td className="px-4 py-4">{dp.item_id}</td>
+              <td className="px-4 py-4">{dp.quantity}</td>
+              <td className="px-4 py-4">{dp.pendingQuantity}</td>
+              <td className="px-4 py-4">
+                <input
+                  type="number"
+                  min="0"
+                  max={dp.pendingQuantity}
+                  value={dp.deliveredQuantity}
+                  onChange={(e) =>
+                    handleDeliveredQuantityChange(
+                      billIndex,
+                      dp.item_id,
+                      e.target.value
+                    )
+                  }
+                  className="w-16 p-1 border border-gray-300 rounded"
+                />
+              </td>
+              <td className="px-4 py-4 text-center">
+                <i
+                  className={`fa ${
+                    dp.isDelivered
+                      ? "fa-check text-green-500"
+                      : "fa-times text-red-500"
+                  }`}
+                ></i>
+              </td>
+              <td className="px-4 py-4 text-center">
+                <i
+                  className={`fa ${
+                    dp.isPartiallyDelivered
+                      ? "fa-check text-yellow-500"
+                      : "fa-times text-red-500"
+                  }`}
+                ></i>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  {/* For smaller screens, use a card-based layout */}
+  <div className="md:hidden space-y-4">
+    {bill.deliveredProducts.map((dp, index) => {
+      return (
+        <div key={index} className="bg-white p-4 border rounded-lg shadow-sm">
+          <div className="flex justify-between mb-2">
+            <span className="font-bold text-sm text-gray-600">Product:</span>
+            <span className="text-xs">{dp.name}</span>
+          </div>
+          <div className="flex justify-between mb-2">
+            <span className="font-bold text-xs text-gray-600">ID: {dp.item_id}</span>
+            <span className="font-bold text-xs text-gray-600">Qty. Ordered: {dp.quantity}</span>
+            <span className="font-bold text-xs text-gray-600">Qty. Pending: {dp.pendingQuantity}</span>
+          </div>
+          <div className="flex justify-between mb-2">
+          </div>
+          <div className="flex justify-between mb-4">
+            <span className="font-bold text-xs text-gray-600">Qty. Delivered:</span>
+            <input
+              type="number"
+              min="0"
+              max={dp.pendingQuantity}
+              value={dp.deliveredQuantity}
+              onChange={(e) =>
+                handleDeliveredQuantityChange(billIndex, dp.item_id, e.target.value)
+              }
+              className="px-2 py-2 text-xs border border-gray-300 rounded"
+            />
+          </div>
+          <div className="flex justify-between mb-2 ">
+            <span className="font-bold text-sm text-gray-600">Delivered:</span>
+            <i
+              className={`fa ${
+                dp.isDelivered ? "fa-check text-green-500" : "fa-times text-red-500"
+              }`}
+            ></i>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-bold text-sm text-gray-600">Partially Delivered:</span>
+            <i
+              className={`fa ${
+                dp.isPartiallyDelivered
+                  ? "fa-check text-yellow-500"
+                  : "fa-times text-red-500"
+              }`}
+            ></i>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</div>
 
                         {/* Continue and Cancel Buttons */}
                         <div className="flex justify-between mt-6">
@@ -696,7 +756,7 @@ const DriverBillingPage = () => {
                             <div className="bg-white rounded-lg w-full max-w-lg shadow-lg p-6 relative">
                               {/* Close Button */}
                               <button
-                                className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+                                className="absolute top-4 right-4 text-gray-600 hover:text-gray-600"
                                 onClick={() =>
                                   setAssignedBills((prevBills) => {
                                     const updatedBills = [...prevBills];
@@ -711,7 +771,7 @@ const DriverBillingPage = () => {
                               {bill.modalStep === 1 && (
                                 <>
                                   {/* Delivery Summary Section */}
-                                  <h5 className="mb-4 text-sm font-bold text-gray-900">
+                                  <h5 className="mb-4 text-sm font-bold text-gray-600">
                                     Delivery Summary
                                   </h5>
                                   <div className="text-xs text-gray-600 space-y-2">

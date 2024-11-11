@@ -60,7 +60,7 @@ const ProductListPage = () => {
       const { data: product } = await api.get(`/api/products/itemId/${itemId}`);
       const { data } = await api.get(`api/billing/product/get-sold-out/${itemId}`);
       setProducts([product]);
-      setSoldOut(data)
+      setSoldOut(data.totalQuantity);
       setIsProductSelected(true);
     } catch (error) {
       setError('Error loading product');

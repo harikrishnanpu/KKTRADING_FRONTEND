@@ -119,7 +119,13 @@ export default function UserListScreen(props) {
 
                     <button
                       className="bg-red-500 font-bold text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300" 
-                      onClick={() => deleteHandler(user)}
+                      onClick={() => {
+                        if(user.isSuper){
+                          alert("Cannot Delete Super Admin")
+                        }else{
+                          deleteHandler(user) 
+                        }
+                      }}
                    >
                       <i className='fa fa-trash' />
                     </button>

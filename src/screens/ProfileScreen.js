@@ -56,6 +56,7 @@ export default function ProfileScreen() {
     } else {
       dispatch(
         updateUserProfile({
+          _id: user._id,
           userId: user._id,
           name,
           email,

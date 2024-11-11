@@ -117,7 +117,7 @@ const BillingList = () => {
   const renderCard = (billing) => (
     <div key={billing.invoiceNo} className="bg-white rounded-lg shadow-md p-6 mb-4 transition-transform transform hover:scale-102 duration-200">
       <div className="flex justify-between items-center">
-        <p onClick={()=> navigate(`/bills/edit/${billing._id}`)} className="text-md cursor-pointer font-bold text-gray-700">{billing.invoiceNo}</p>
+        <p onClick={()=> navigate(`/driver/${billing._id}`)} className="text-md cursor-pointer font-bold text-gray-600">{billing.invoiceNo}</p>
         <div className="flex items-center">
           {/* Status Indicator */}
           {billing.deliveryStatus === 'Delivered' && billing.paymentStatus === 'Paid' && (
@@ -146,14 +146,14 @@ const BillingList = () => {
           )}
         </div>
       </div>
-      <p className="text-gray-500 font-bold  text-xs mt-2">Customer: {billing.customerName}</p>
-      <p className="text-gray-500 font-bold text-xs mt-1">Salesman: {billing.salesmanName}</p>
-      <p className="text-gray-500 font-bold text-xs mt-1">Expected Delivery: {new Date(billing.expectedDeliveryDate).toLocaleDateString()}</p>
+      <p className="text-gray-500 text-xs mt-2">Customer: {billing.customerName}</p>
+      <p className="text-gray-500 text-xs mt-1">Salesman: {billing.salesmanName}</p>
+      <p className="text-gray-500 text-xs mt-1">Expected Delivery: {new Date(billing.expectedDeliveryDate).toLocaleDateString()}</p>
       <div className='flex justify-between'>
       <p className="text-gray-500 text-xs font-bold mt-1">Total Products: {billing.products.length}</p>
       <p className="text-gray-400 italic text-xs mt-1">Last Editted: {new Date(billing.updatedAt ? billing.updatedAt : billing.createdAt).toLocaleDateString()}</p>
       </div>
-      <div className="flex mt-4 text-xs space-x-2">
+      <div className="flex mt-4 text-xs space-x-2" >
                 
       <button onClick={()=> navigate(`/bills/edit/${billing._id}`)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
           <i className="fa fa-pen mr-2"></i> Edit
@@ -201,7 +201,6 @@ const BillingList = () => {
                   <th className="px-4 py-2 text-left">Status</th>
                   <th className="px-2 py-2">Invoice No</th>
                   <th className="px-2 py-2">Invoice Date</th>
-                  <th className="px-2 py-2">Exp. Delivery</th>
                   <th className="px-2 py-2">Salesman Name</th>
                   <th className="px-2 py-2">Customer Name</th>
                   <th className="px-2 py-2">Products</th>
@@ -249,11 +248,11 @@ const BillingList = () => {
     </div>
   )}
                     </td>
-                    <td className="px-2 text-xs font-bold py-2">{billing.invoiceNo}</td>
+                    <td onClick={()=> navigate(`/driver/${billing._id}`)} className="px-2 cursor-pointer text-xs font-bold py-2">{billing.invoiceNo}</td>
                     <td className="px-2 text-xs py-2">{new Date(billing.invoiceDate).toLocaleDateString()}</td>
-                    <td className="px-4 text-xs py-2">
+                    {/* <td className="px-4 text-xs py-2">
                       {new Date(billing.expectedDeliveryDate).toLocaleDateString()}
-                    </td>
+                    </td> */}
                     <td className="px-2 text-xs py-2">{billing.salesmanName}</td>
                     <td className="px-2  text-xs py-2">{billing.customerName}</td>
                     <td className="px-2 text-xs py-2">{billing.products.length}</td>
@@ -317,24 +316,46 @@ const BillingList = () => {
             <p className="text-md text-gray-700 font-bold mb-2">
               Details for Invoice No. {selectedBillings.invoiceNo}
             </p>
-            <p className="text-sm mb-1">
+
+            <div className='flex justify-between'>
+            <p className="text-xs mb-1">
               Salesman Name: <span className="text-gray-700">{selectedBillings.salesmanName}</span>
             </p>
-            <p className="text-sm mb-1">
+
+            <p className="text-xs mb-1">
+              Marketed By: <span className="text-gray-700">{selectedBillings.marketedBy}</span>
+            </p>
+
+            </div>
+
+            <div className='flex justify-between'>
+            <p className="text-xs mb-1">
               Customer Name: <span className="text-gray-700">{selectedBillings.customerName}</span>
             </p>
-            <p className="text-sm mb-1">
+            <p className="text-xs mb-1">
               Invoice Date: <span className="text-gray-700">{new Date(selectedBillings.invoiceDate).toLocaleDateString()}</span>
             </p>
-            <p className="text-sm mb-1">
-              Delivery Status: <span className="text-gray-700">{selectedBillings.deliveryStatus}</span>
+            </div>
+            <div className='flex justify-between'>
+            <p className="text-xs mb-1">
+              Delivery Status: <span className={`${selectedBillings.deliveryStatus === 'Delivered' ? 'text-green-500' : 'text-red-500'} font-bold`}>{selectedBillings.deliveryStatus}</span>
             </p>
-            <p className="text-sm mb-1">
+            <p className="text-xs mb-1">
               Payment Status: <span className="text-gray-700">{selectedBillings.paymentStatus}</span>
             </p>
-            <p className="text-sm mb-1">
-              Bill Amount: <span className="text-gray-700">{selectedBillings.billingAmount}</span>
+            </div>
+
+            <div className='flex justify-between'>
+            
+            <p className="text-xs mb-1">
+              Bill Amount: <span className="text-gray-600">{selectedBillings.billingAmount}</span>
             </p>
+
+            <p className="text-xs mb-1">
+              Amount Received: <span className="text-green-500 font-bold">{selectedBillings.billingAmountReceived}</span>
+            </p>
+
+            </div>
             
             <h3 className="text-md font-bold text-red-600 mt-5 ">Products</h3>
             <div className="mx-auto my-8">

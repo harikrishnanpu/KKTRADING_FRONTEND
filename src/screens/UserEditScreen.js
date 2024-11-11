@@ -19,6 +19,9 @@ export default function UserEditScreen() {
   const userDetails = useSelector((state) => state.userDetails);
   const { loading, error, user } = userDetails;
 
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
+
   const userUpdate = useSelector((state) => state.userUpdate);
   const {
     loading: loadingUpdate,
