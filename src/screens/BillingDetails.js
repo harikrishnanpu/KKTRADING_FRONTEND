@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
 import api from './api';
+import { useSelector } from 'react-redux';
 
 const BillingList = () => {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ const BillingList = () => {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
 
   const paginateBillings = () => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -36,54 +39,51 @@ const BillingList = () => {
     fetchBillings();
   }, []);
 
-  const generatePDF = (billing) => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.setTextColor(0, 102, 204);
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Invoice', 14, 22);
-    doc.setFont('Helvetica', 'normal');
+  const generatePDF = async (bill) => {
+    setLoading(true);
 
-    const invoiceDate = new Date(billing.invoiceDate);
-    doc.setFontSize(12);
-    doc.text(`Invoice No: ${billing.invoiceNo}`, 14, 40);
-    doc.text(`Invoice Date: ${invoiceDate.toLocaleDateString()}`, 14, 50);
-    doc.text(`Salesman Name: ${billing.salesmanName}`, 14, 60);
+    const cgst = (((parseFloat(bill.billingAmount) - parseFloat(bill.billingAmount / 1.18 ))) / 2 ).toFixed(2);
+    const sgst = (((parseFloat(bill.billingAmount) - parseFloat(bill.billingAmount / 1.18 ))) / 2 ).toFixed(2);
+    const discount = bill.discount || 0;
+    const subTotal = (parseFloat(bill.billingAmount) - parseFloat(cgst + sgst)).toFixed(2);
 
-    doc.setFontSize(14);
-    doc.text('Bill To:', 14, 75);
+    const formData = {
+      invoiceNo: bill.invoiceNo,
+      customerName: bill.customerName,
+      customerAddress: bill.customerAddress,
+      customerContactNumber: bill.customerContactNumber,
+      marketedBy: bill.marketedBy,
+      salesmanName: bill.salesmanName,
+      invoiceDate: bill.invoiceDate,
+      expectedDeliveryDate: bill.expectedDeliveryDate,
+      deliveryStatus: bill.deliveryStatus,
+      paymentStatus: bill.paymentStatus,
+      paymentAmount: bill.billingAmountReceived,
+      subTotal,
+      cgst,
+      sgst,
+      discount,
+      products: bill.products,
+      billingAmount: bill.billingAmount
+    }
 
-    doc.setFontSize(12);
-    doc.text(`Customer Name: ${billing.customerName}`, 14, 85);
-    doc.text(`Customer Address: ${billing.customerAddress}`, 14, 95);
 
-    doc.autoTable({
-      head: [['Item ID', 'Name', 'Quantity', 'Price', 'Total']],
-      body: billing.products.map((product) => [
-        product.item_id || 'N/A',
-        product.name || 'N/A',
-        product.quantity ? product.quantity.toString() : '0',
-        product.price ? product.price.toFixed(2) : '0.00',
-        (product.price * product.quantity).toFixed(2),
-      ]),
-      startY: 105,
-      theme: 'striped',
-      styles: { overflow: 'linebreak', cellWidth: 'auto', fontSize: 10 },
-      columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 70 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 30 },
-      },
-    });
 
-    const total = billing.products.reduce((sum, product) => sum + (product.price * product.quantity || 0), 0);
-    const finalY = doc.autoTable.previous.finalY + 10;
-    doc.setFontSize(12);
-    doc.text(`Total: $${total.toFixed(2)}`, 14, finalY);
-
-    doc.save('invoice.pdf');
+    try {
+      const response = await api.post('https://kktrading-backend.vercel.app/generate-pdf',formData , {
+        responseType: 'blob'
+      });
+  
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Invoice_${bill.invoiceNo}.pdf`;
+      link.click();
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+    }finally {
+      setLoading(false);
+    }
   };
 
   const handleRemove = async (id) => {
@@ -158,7 +158,12 @@ const BillingList = () => {
       <button onClick={()=> navigate(`/bills/edit/${billing._id}`)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
           <i className="fa fa-pen mr-2"></i> Edit
         </button>
-        <button onClick={() => generatePDF(billing)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
+        <button onClick={() => {if(userInfo.isAdmin){
+           generatePDF(billing)
+           }else{
+             alert('You are not authorized to generate PDF')
+           } }}
+        className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
           <i className="fa fa-file-pdf-o mr-2"></i> PDF
         </button>
         <button onClick={() => setSelectedBillings(billing)} className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center">
@@ -306,14 +311,15 @@ const BillingList = () => {
 
       {selectedBillings && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white rounded-lg p-5 w-full max-w-md relative">
+          <div className="bg-white h-screen rounded-lg p-5 w-full max-w-md relative">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={closeModal}
             >
               <i className="fa fa-times"></i>
             </button>
-            <p className="text-md text-gray-700 font-bold mb-2">
+            <div className="h-screen mt-2 p-2  overflow-y-auto">
+            <p className="text-sm text-gray-600 font-bold mb-2">
               Details for Invoice No. {selectedBillings.invoiceNo}
             </p>
 
@@ -332,39 +338,30 @@ const BillingList = () => {
             <p className="text-xs mb-1">
               Customer Name: <span className="text-gray-700">{selectedBillings.customerName}</span>
             </p>
-            <p className="text-xs mb-1">
+            <p className="text-xs  mb-1">
               Invoice Date: <span className="text-gray-700">{new Date(selectedBillings.invoiceDate).toLocaleDateString()}</span>
             </p>
             </div>
             <div className='flex justify-between'>
-            <p className="text-xs mb-1">
+            <p className="text-xs  mb-1">
               Delivery Status: <span className={`${selectedBillings.deliveryStatus === 'Delivered' ? 'text-green-500' : 'text-red-500'} font-bold`}>{selectedBillings.deliveryStatus}</span>
             </p>
-            <p className="text-xs mb-1">
-              Payment Status: <span className="text-gray-700">{selectedBillings.paymentStatus}</span>
+            <p className="text-xs  mb-1">
+              Payment Status: <span className={`${selectedBillings.paymentStatus === 'Paid' ? 'text-green-500' : 'text-red-500'} font-bold`}>{selectedBillings.paymentStatus}</span>
             </p>
             </div>
-
-            <div className='flex justify-between'>
             
-            <p className="text-xs mb-1">
-              Bill Amount: <span className="text-gray-600">{selectedBillings.billingAmount}</span>
-            </p>
-
-            <p className="text-xs mb-1">
-              Amount Received: <span className="text-green-500 font-bold">{selectedBillings.billingAmountReceived}</span>
-            </p>
-
-            </div>
-            
-            <h3 className="text-md font-bold text-red-600 mt-5 ">Products</h3>
+            <h3 className="text-sm font-bold text-red-600 mt-5 ">Products: {selectedBillings.products?.length}</h3>
             <div className="mx-auto my-8">
 
 
-<div className="relative overflow-hidden">
+<div className="relative">
     <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
             <tr>
+            <th scope="col" className="px-4 text-xs py-3">
+                    Sl
+                </th>
                 <th scope="col" className="px-4 text-xs py-3">
                     Product
                 </th>
@@ -375,7 +372,7 @@ const BillingList = () => {
                   Qty
                 </th>
                 <th scope="col" className="px-2 text-xs py-3">
-                 deliv. Qty
+                 D.Qty
                 </th>
                 <th scope="col" className="px-2 text-xs py-3">
                   Delivered
@@ -385,6 +382,9 @@ const BillingList = () => {
         <tbody>
           {selectedBillings?.products.map((product,index)=>(
             <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <th scope="row" className="px-2 text-center py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    {index + 1}
+               </th>
                 <th scope="row" className="px-2 py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
                     {product.name.slice(0,7)}...
                </th>
@@ -400,7 +400,7 @@ const BillingList = () => {
                 <td className="px-6 text-xs py-4">
                             <input
                               type="checkbox"
-                              className="text-green-500 focus:ring-0 focus:outline-0 focus:border-0"
+                              className={`text-green-500 ${product.deliveryStatus === "Delivered" ? 'bg-green-500' : 'bg-red-500 border-white'} focus:ring-0 focus:outline-0 focus:border-0`}
                               checked={product.deliveryStatus === "Delivered"}
                             />
                           </td>
@@ -410,6 +410,36 @@ const BillingList = () => {
 
         </tbody>
     </table>
+
+    <div className='mt-10 text-right mr-2'>
+
+    <p className="text-xs mb-1">
+              Sub Total: <span className="text-gray-600">{((parseFloat(selectedBillings.billingAmount) / parseFloat(1.18))).toFixed(2)}</span>
+      </p>
+      <p className="text-xs  mb-1">
+              Gst (18%): <span className="text-gray-600">{(parseFloat(selectedBillings.billingAmount) - (parseFloat(selectedBillings.billingAmount) / parseFloat(1.18))).toFixed(2)}</span>
+      </p>
+
+            
+            <p className="text-xs  mb-1">
+              Bill Amount: <span className="text-gray-600">Rs. {selectedBillings.billingAmount.toFixed(2)}</span>
+            </p>
+
+            <p className="text-xs mb-1">
+              Disscount: <span className="text-gray-600">Rs. {selectedBillings.discount.toFixed(2)}</span>
+            </p>
+
+            <p className="text-sm font-bold mb-1">
+              Total Amount: <span className="text-gray-600">Rs. {(selectedBillings.billingAmount - selectedBillings.discount).toFixed(2)}</span>
+            </p>
+
+
+            <p className="text-xs mb-1">
+              Amount Received: <span className="text-green-500 font-bold">{selectedBillings.billingAmountReceived}</span>
+            </p>
+            </div>
+
+      </div>
 </div>
 
   </div>

@@ -1,0 +1,46 @@
+/* BillingSuccess.css */
+
+/* Container for the checkmark */
+.checkmark-container {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #bd3737; /* Tailwind's green-400 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: scaleIn 1.5s ease-out forwards;
+  }
+  
+  /* Checkmark icon */
+  .checkmark {
+    color: white;
+    font-size: 48px;
+    opacity: 0;
+    transform: scale(0.5);
+    animation: fadeInScale 0.5s 0.3s forwards;
+  }
+  
+  /* Keyframes for container scaling */
+  @keyframes scaleIn {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    80% {
+      transform: scale(1.1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  /* Keyframes for checkmark fade-in and scale */
+  @keyframes fadeInScale {
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  

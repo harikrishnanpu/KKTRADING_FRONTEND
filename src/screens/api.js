@@ -14,6 +14,10 @@ api.interceptors.request.use(
       return config;
     }
 
+   else if (config.url === 'https://script.google.com/macros/s/AKfycbzroBYkyoKev_IxlEum8cRIt4UTNkE2A9hyLCtzlcRjLNpxI57oHogqa0FB-gcD8ra43A/exec') {
+      return config;
+    }
+
     // Attach user information to the request if userData exists
     if (userData) {
       config.headers['user'] = JSON.stringify({

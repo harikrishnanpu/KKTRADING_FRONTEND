@@ -70,7 +70,6 @@ export default function ProductEditScreen(props) {
   }, [product, dispatch, productId, successUpdate, navigate]);
 
   const submitHandler = (e) => {
-    e.preventDefault();
     dispatch(
       updateProduct({
         _id: productId,
@@ -131,14 +130,14 @@ export default function ProductEditScreen(props) {
 
 <div className="text-right mt-4 mb-10">
               <button
-                type="submit"
+                onClick={()=> submitHandler()}
                 className="bg-red-500 text-sm hover:bg-red-700 text-white font-bold py-2 px-8 rounded"
               >
                 Update
               </button>
             </div>
 
-      <form className="form" onSubmit={submitHandler}>
+      <div className="form">
         {loadingUpdate && <LoadingBox />}
         {errorUpdate && <MessageBox variant="danger">{errorUpdate}</MessageBox>}
         {loading ? (
@@ -148,7 +147,7 @@ export default function ProductEditScreen(props) {
         ) : (
           <>
             <div className="relative mb-4">
-              <div className="w-3/4 mx-auto h-44 bg-gray-100 rounded-lg flex items-center justify-center relative">
+              <div className="mx-auto h-44 bg-gray-100 rounded-lg flex items-center justify-center relative">
                 {loadingUpload ? (
                   <LoadingBox />
                 ) : image ? (
@@ -326,7 +325,7 @@ export default function ProductEditScreen(props) {
             </div>
           </>
         )}
-      </form>
+      </div>
     </div>
   );
 }
