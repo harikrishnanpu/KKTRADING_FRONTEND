@@ -164,8 +164,7 @@ export default function EditBillScreen() {
         setCustomerContactNumber(data.customerContactNumber);
         setMarketedBy(data.marketedBy);
         setDiscount(data.discount);
-        setReceivedAmount(data.paymentAmount);
-        setPaymentMethod(data.paymentMethod);
+        setReceivedAmount(data.billingAmountReceived);
         setProducts(data.products);
         setSalesmanName(data.salesmanName);
         

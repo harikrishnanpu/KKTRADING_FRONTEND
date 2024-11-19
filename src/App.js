@@ -51,6 +51,8 @@ import EditPurchaseScreen from './screens/EditPurchaseScreen';
 import AdminLogsPage from './screens/AlllogsScreen';
 import ReturnEditScreen from './screens/EditreturnScreen';
 import PaymentUpdatePage from './screens/paymentUpdateScreen';
+import SalesReport from './screens/salesReport';
+import DailyTransactions from './screens/dailyTransactionsScreen';
 
 
 function App() {
@@ -148,6 +150,8 @@ useEffect(() => {
             <Route path="/admin/alllogs" element={<AdminLogsPage />}></Route>
             <Route path="/driver-tracker/:invoiceNo" element={<Drivertracker />}></Route>
             <Route path="/driver-tracker" element={<Drivertracker />}></Route>
+            <Route path="/sales-report" element={<SalesReport />}></Route>
+            <Route path="/daily-transactions" element={<DailyTransactions />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}

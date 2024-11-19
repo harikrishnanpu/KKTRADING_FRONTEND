@@ -734,8 +734,8 @@ export default function BillingScreen() {
 
       {/* Loading Indicator */}
       {isLoading && (
-        <div className="max-w-sm mx-auto">
-          <div className="font-bold bg-gray-300 px-4 py-2 rounded-lg text-gray-600 text-xs animate-pulse">Loading...</div>
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="font-bold bg-white px-4 py-2 rounded-lg text-gray-600 text-xs animate-pulse">Loading...</div>
         </div>
       )}
 

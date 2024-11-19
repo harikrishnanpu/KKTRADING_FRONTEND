@@ -15,15 +15,20 @@ const DriverBillingPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [deliveryStarted, setDeliveryStarted] = useState(false);
+  const [myDeliveries, setMyDeliveries] = useState([]);
+  const [searchInvoiceNo, setSearchInvoiceNo] = useState("");
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const navigate = useNavigate();
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
 
-  // Load assigned bills from local storage on component mount
+  // Load assigned bills and driverName from local storage on component mount
   useEffect(() => {
     const storedAssignedBills = localStorage.getItem("assignedBills");
     const storedDeliveryStarted = localStorage.getItem("deliveryStarted");
+    const storedDriverName = localStorage.getItem("driverName");
 
     if (storedAssignedBills) {
       setAssignedBills(JSON.parse(storedAssignedBills));
@@ -32,14 +37,20 @@ const DriverBillingPage = () => {
     if (storedDeliveryStarted === "true") {
       setDeliveryStarted(true);
     }
+
+    if (storedDriverName) {
+      setDriverName(storedDriverName);
+    }
   }, []);
 
-  // Update local storage whenever assigned bills or deliveryStarted change
+  // Update local storage whenever assigned bills, deliveryStarted, or driverName change
   useEffect(() => {
     localStorage.setItem("assignedBills", JSON.stringify(assignedBills));
     localStorage.setItem("deliveryStarted", deliveryStarted.toString());
-  }, [assignedBills, deliveryStarted]);
+    localStorage.setItem("driverName", driverName);
+  }, [assignedBills, deliveryStarted, driverName]);
 
+  // Fetch suggestions based on invoiceNo input
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (invoiceNo) {
@@ -58,6 +69,45 @@ const DriverBillingPage = () => {
 
     fetchSuggestions();
   }, [invoiceNo]);
+
+
+  // Fetch deliveries for the driver
+  useEffect(() => {
+    const fetchMyDeliveries = async () => {
+      if (!driverName) return; // Avoid API calls if driverName is not provided
+  
+      try {
+        setIsLoading(true);
+  
+        // Construct the URL dynamically
+        const params = new URLSearchParams();
+        params.append("driverName", driverName);
+        if (searchInvoiceNo) {
+          params.append("invoiceNo", searchInvoiceNo);
+        }
+        if (userInfo?._id) {
+          params.append("userId", userInfo._id);
+        }
+  
+        const url = `/api/billing/deliveries/all?${params.toString()}`;
+  
+        const response = await api.get(url);
+  
+        // Update deliveries state
+        setMyDeliveries(response.data);
+      } catch (error) {
+        console.error("Error fetching deliveries:", error);
+  
+        // Optional: Show a user-friendly error message
+        setError("Failed to fetch deliveries. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    fetchMyDeliveries();
+  }, [driverName, searchInvoiceNo, userInfo?._id]); // Include userInfo._id as a dependency if used
+  
 
   const handleAssignBill = async (id) => {
     if (!invoiceNo) {
@@ -151,10 +201,10 @@ const DriverBillingPage = () => {
       setError("No bills assigned to start delivery.");
       return;
     }
-  
+
     setError("");
     setDeliveryStarted(true);
-  
+
     // Get the current location
     getCurrentLocation(async (startLocation) => {
       if (startLocation) {
@@ -163,7 +213,7 @@ const DriverBillingPage = () => {
           try {
             // Generate and set deliveryId
             const deliveryId = `${userInfo._id}-${bill.invoiceNo}-${Date.now()}`;
-  
+
             // Send the request to start delivery
             await api.post("/api/users/billing/start-delivery", {
               userId: userInfo._id,
@@ -172,13 +222,12 @@ const DriverBillingPage = () => {
               startLocation: [startLocation.longitude, startLocation.latitude],
               deliveryId,
             });
-  
+
             setAssignedBills((prevBills) => {
               const updatedBills = [...prevBills];
               updatedBills[i].deliveryId = deliveryId;
               return updatedBills;
             });
-
           } catch (error) {
             console.error(`Error starting delivery for invoice ${bill.invoiceNo}:`, error);
             alert(`Error starting delivery for invoice ${bill.invoiceNo}.`);
@@ -187,7 +236,6 @@ const DriverBillingPage = () => {
       }
     });
   };
-  
 
   const handleSuggestionClick = (suggestion) => {
     setInvoiceNo(suggestion.invoiceNo);
@@ -401,13 +449,54 @@ const DriverBillingPage = () => {
     }
   };
 
+  const handleUpdateDelivery = async () => {
+    try {
+      // Identify the new expense (assuming the last one in the array is new)
+      const newExpense = selectedDelivery.otherExpenses[selectedDelivery.otherExpenses.length - 1];
+  
+      // Prepare the request payload
+      const payload = {
+        deliveryId: selectedDelivery.deliveryId,
+        startingKm: selectedDelivery.startingKm,
+        endKm: selectedDelivery.endKm,
+        kmTravelled: selectedDelivery.kmTravelled,
+        fuelCharge: selectedDelivery.fuelCharge,
+        newOtherExpense: {
+          amount: newExpense.amount,
+          remark: newExpense.remark,
+        },
+        // Include other fields if necessary
+      };
+  
+      // Make the PUT request to the backend
+      const response = await api.put('/api/billing/update-delivery/update', payload);
+  
+      if (response.status === 200) {
+        // Handle successful update (e.g., refresh data, close modal)
+        // Refresh the billing data or update the state accordingly
+        setShowDeliveryModal(false);
+        setSelectedDelivery(null);
+        alert("successfully updated")
+        // Optionally, trigger a data refresh here
+      } else {
+        // Handle errors returned from the backend
+        alert('Update failed:', response.data.message);
+        // Optionally, display an error message to the user
+      }
+    } catch (error) {
+      alert('Error updating delivery:', error);
+      // Optionally, display an error message to the user
+    }
+  };
+  
+
   return (
     <div>
       {isLoading && <Loading />}
 
       {/* Header */}
       <div className="flex max-w-4xl mx-auto items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
-        <div onClick={() => navigate('/')} className="text-center cursor-pointer">
+        <div onClick={() => navigate("/")} className="text-center cursor-pointer">
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
           <p className="text-gray-400 text-xs font-bold">Delivery & Payment Updation</p>
         </div>
@@ -440,7 +529,7 @@ const DriverBillingPage = () => {
                     readOnly={driverName.length === 0}
                   />
                   <i
-                    onClick={() => setInvoiceNo('')}
+                    onClick={() => setInvoiceNo("")}
                     className="fa fa-times absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
                   ></i>
                 </div>
@@ -477,9 +566,7 @@ const DriverBillingPage = () => {
                         <h4 className="font-bold text-gray-800 mb-2">
                           Invoice No: {bill.invoiceNo}
                         </h4>
-                        <p className="text-xs text-gray-600">
-                          Customer: {bill.customerName}
-                        </p>
+                        <p className="text-xs text-gray-600">Customer: {bill.customerName}</p>
                         <p className="text-xs text-gray-600">
                           Bill Amount: ₹ {bill.billingAmount}
                         </p>
@@ -504,7 +591,8 @@ const DriverBillingPage = () => {
           )}
 
           {/* After Starting Delivery */}
-          {deliveryStarted && assignedBills.length > 0 && (
+          {deliveryStarted &&
+            assignedBills.length > 0 &&
             assignedBills.map((bill, billIndex) => (
               <div key={bill.invoiceNo} className="mb-8">
                 {/* Integrated Navigation with Bottom Border Animation */}
@@ -561,178 +649,214 @@ const DriverBillingPage = () => {
                             Invoice No: {bill.invoiceNo}
                           </h5>
                           <div className="flex justify-between">
-                          <p className="mt-1 text-xs font-bold text-gray-600">
-                            Customer: {bill.customerName}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-600">
-                            Address: {bill.customerAddress}
-                          </p>
+                            <p className="mt-1 text-xs font-bold text-gray-600">
+                              Customer: {bill.customerName}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-600">
+                              Address: {bill.customerAddress}
+                            </p>
                           </div>
                           <div className="flex justify-between">
-                          <p className="mt-1 text-xs text-gray-600">
-                            Salesman: {bill.salesmanName}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-600">
-                            Invoice Date: {new Date(bill.invoiceDate).toLocaleDateString()}
-                          </p>
+                            <p className="mt-1 text-xs text-gray-600">
+                              Salesman: {bill.salesmanName}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-600">
+                              Invoice Date: {new Date(bill.invoiceDate).toLocaleDateString()}
+                            </p>
                           </div>
                           <div className="flex justify-between">
-                          <p className="mt-1 text-xs text-gray-600">
-                            Expected Delivery Date:{" "}
-                            {new Date(bill.expectedDeliveryDate).toLocaleDateString()}
-                          </p>
+                            <p className="mt-1 text-xs text-gray-600">
+                              Expected Delivery Date:{" "}
+                              {new Date(bill.expectedDeliveryDate).toLocaleDateString()}
+                            </p>
                           </div>
                           <div className="flex justify-between">
-                          <p className="mt-1 text-sm font-bold text-gray-600">
-                            Billing Amount: ₹ {bill.billingAmount}
-                          </p>
-                          <p className="mt-1 text-xs font-bold text-green-600">
-                            Received Amount: ₹ {bill.receivedAmount}
-                          </p>
+                            <p className="mt-1 text-sm font-bold text-gray-600">
+                              Billing Amount: ₹ {bill.billingAmount}
+                            </p>
+                            <p className="mt-1 text-xs font-bold text-green-600">
+                              Received Amount: ₹ {bill.receivedAmount}
+                            </p>
                           </div>
                           <div className="flex justify-between">
-                          <p className="mt-1 text-xs font-bold text-red-600">
-                            Remaining Amount: ₹ {bill.remainingAmount}
-                          </p>
-                          <p className="mt-1 font-bold text-xs text-gray-600">
-                            Payment Status: {bill.paymentStatus}
-                          </p>
+                            <p className="mt-1 text-xs font-bold text-red-600">
+                              Remaining Amount: ₹ {bill.remainingAmount}
+                            </p>
+                            <p className="mt-1 font-bold text-xs text-gray-600">
+                              Payment Status: {bill.paymentStatus}
+                            </p>
                           </div>
 
                           <div className="flex justify-between">
-                          <p className="mt-1 font-bold text-xs text-gray-600">
-                            Delivery Status: Transit-In
-                          </p>
-                          <p className="mt-1 font-bold text-xs text-gray-600">
-                            Delivered Products:
-                          </p>
-                        </div>
+                            <p className="mt-1 font-bold text-xs text-gray-600">
+                              Delivery Status: Transit-In
+                            </p>
+                            <p className="mt-1 font-bold text-xs text-gray-600">
+                              Delivered Products:
+                            </p>
+                          </div>
                         </div>
 
                         {/* Product List with Delivered Quantity */}
                         <div className="mt-6">
-  {/* For larger screens, keep the table layout */}
-  <div className="hidden md:block overflow-x-auto">
-    <table className="w-full text-xs text-left text-gray-700">
-      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-        <tr>
-          <th scope="col" className="px-4 py-3">Product</th>
-          <th scope="col" className="px-4 py-3">ID</th>
-          <th scope="col" className="px-4 py-3">Qty. Ordered</th>
-          <th scope="col" className="px-4 py-3">Qty. Pending</th>
-          <th scope="col" className="px-4 py-3">Qty. Delivered</th>
-          <th scope="col" className="px-4 py-3">Delivered</th>
-          <th scope="col" className="px-4 py-3">Partially Delivered</th>
-        </tr>
-      </thead>
-      <tbody>
-        {bill.deliveredProducts.map((dp, index) => {
-          const shortName =
-            dp.name.length > 20 ? dp.name.slice(0, 15) + "..." : dp.name;
-          return (
-            <tr key={index} className="bg-white border-b">
-              <th
-                scope="row"
-                className="px-4 py-4 font-bold text-sm text-gray-600 whitespace-nowrap"
-              >
-                {shortName}
-              </th>
-              <td className="px-4 py-4">{dp.item_id}</td>
-              <td className="px-4 py-4">{dp.quantity}</td>
-              <td className="px-4 py-4">{dp.pendingQuantity}</td>
-              <td className="px-4 py-4">
-                <input
-                  type="number"
-                  min="0"
-                  max={dp.pendingQuantity}
-                  value={dp.deliveredQuantity}
-                  onChange={(e) =>
-                    handleDeliveredQuantityChange(
-                      billIndex,
-                      dp.item_id,
-                      e.target.value
-                    )
-                  }
-                  className="w-16 p-1 border border-gray-300 rounded"
-                />
-              </td>
-              <td className="px-4 py-4 text-center">
-                <i
-                  className={`fa ${
-                    dp.isDelivered
-                      ? "fa-check text-green-500"
-                      : "fa-times text-red-500"
-                  }`}
-                ></i>
-              </td>
-              <td className="px-4 py-4 text-center">
-                <i
-                  className={`fa ${
-                    dp.isPartiallyDelivered
-                      ? "fa-check text-yellow-500"
-                      : "fa-times text-red-500"
-                  }`}
-                ></i>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
+                          {/* For larger screens, keep the table layout */}
+                          <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-xs text-left text-gray-700">
+                              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                  <th scope="col" className="px-4 py-3">
+                                    Product
+                                  </th>
+                                  <th scope="col" className="px-4 py-3">
+                                    ID
+                                  </th>
+                                  <th scope="col" className="px-4 py-3">
+                                    Qty. Ordered
+                                  </th>
+                                  <th scope="col" className="px-4 py-3">
+                                    Qty. Pending
+                                  </th>
+                                  <th scope="col" className="px-4 py-3">
+                                    Qty. Delivered
+                                  </th>
+                                  <th scope="col" className="px-4 py-3">
+                                    Delivered
+                                  </th>
+                                  <th scope="col" className="px-4 py-3">
+                                    Partially Delivered
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {bill.deliveredProducts.map((dp, index) => {
+                                  const shortName =
+                                    dp.name.length > 20 ? dp.name.slice(0, 15) + "..." : dp.name;
+                                  return (
+                                    <tr key={index} className="bg-white border-b">
+                                      <th
+                                        scope="row"
+                                        className="px-4 py-4 font-bold text-sm text-gray-600 whitespace-nowrap"
+                                      >
+                                        {shortName}
+                                      </th>
+                                      <td className="px-4 py-4">{dp.item_id}</td>
+                                      <td className="px-4 py-4">{dp.quantity}</td>
+                                      <td className="px-4 py-4">{dp.pendingQuantity}</td>
+                                      <td className="px-4 py-4">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max={dp.pendingQuantity}
+                                          value={dp.deliveredQuantity}
+                                          onChange={(e) =>
+                                            handleDeliveredQuantityChange(
+                                              billIndex,
+                                              dp.item_id,
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-16 p-1 border border-gray-300 rounded"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-4 text-center">
+                                        <i
+                                          className={`fa ${
+                                            dp.isDelivered
+                                              ? "fa-check text-green-500"
+                                              : "fa-times text-red-500"
+                                          }`}
+                                        ></i>
+                                      </td>
+                                      <td className="px-4 py-4 text-center">
+                                        <i
+                                          className={`fa ${
+                                            dp.isPartiallyDelivered
+                                              ? "fa-check text-yellow-500"
+                                              : "fa-times text-red-500"
+                                          }`}
+                                        ></i>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
 
-  {/* For smaller screens, use a card-based layout */}
-  <div className="md:hidden space-y-4">
-    {bill.deliveredProducts.map((dp, index) => {
-      return (
-        <div key={index} className="bg-white p-4 border rounded-lg shadow-sm">
-          <div className="flex justify-between mb-2">
-            <span className="font-bold text-sm text-gray-600">Product:</span>
-            <span className="text-xs">{dp.name}</span>
-          </div>
-          <div className="flex justify-between mb-2">
-            <span className="font-bold text-xs text-gray-600">ID: {dp.item_id}</span>
-            <span className="font-bold text-xs text-gray-600">Qty. Ordered: {dp.quantity}</span>
-            <span className="font-bold text-xs text-gray-600">Qty. Pending: {dp.pendingQuantity}</span>
-          </div>
-          <div className="flex justify-between mb-2">
-          </div>
-          <div className="flex justify-between mb-4">
-            <span className="font-bold text-xs text-gray-600">Qty. Delivered:</span>
-            <input
-              type="number"
-              min="0"
-              max={dp.pendingQuantity}
-              value={dp.deliveredQuantity}
-              onChange={(e) =>
-                handleDeliveredQuantityChange(billIndex, dp.item_id, e.target.value)
-              }
-              className="px-2 py-2 text-xs border border-gray-300 rounded"
-            />
-          </div>
-          <div className="flex justify-between mb-2 ">
-            <span className="font-bold text-sm text-gray-600">Delivered:</span>
-            <i
-              className={`fa ${
-                dp.isDelivered ? "fa-check text-green-500" : "fa-times text-red-500"
-              }`}
-            ></i>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-bold text-sm text-gray-600">Partially Delivered:</span>
-            <i
-              className={`fa ${
-                dp.isPartiallyDelivered
-                  ? "fa-check text-yellow-500"
-                  : "fa-times text-red-500"
-              }`}
-            ></i>
-          </div>
-        </div>
-      );
-    })}
-  </div>
-</div>
+                          {/* For smaller screens, use a card-based layout */}
+                          <div className="md:hidden space-y-4">
+                            {bill.deliveredProducts.map((dp, index) => {
+                              return (
+                                <div
+                                  key={index}
+                                  className="bg-white p-4 border rounded-lg shadow-sm"
+                                >
+                                  <div className="flex justify-between mb-2">
+                                    <span className="font-bold text-sm text-gray-600">
+                                      Product:
+                                    </span>
+                                    <span className="text-xs">{dp.name}</span>
+                                  </div>
+                                  <div className="flex justify-between mb-2">
+                                    <span className="font-bold text-xs text-gray-600">
+                                      ID: {dp.item_id}
+                                    </span>
+                                    <span className="font-bold text-xs text-gray-600">
+                                      Qty. Ordered: {dp.quantity}
+                                    </span>
+                                    <span className="font-bold text-xs text-gray-600">
+                                      Qty. Pending: {dp.pendingQuantity}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between mb-2"></div>
+                                  <div className="flex justify-between mb-4">
+                                    <span className="font-bold text-xs text-gray-600">
+                                      Qty. Delivered:
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={dp.pendingQuantity}
+                                      value={dp.deliveredQuantity}
+                                      onChange={(e) =>
+                                        handleDeliveredQuantityChange(
+                                          billIndex,
+                                          dp.item_id,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="px-2 py-2 text-xs border border-gray-300 rounded"
+                                    />
+                                  </div>
+                                  <div className="flex justify-between mb-2 ">
+                                    <span className="font-bold text-sm text-gray-600">
+                                      Delivered:
+                                    </span>
+                                    <i
+                                      className={`fa ${
+                                        dp.isDelivered
+                                          ? "fa-check text-green-500"
+                                          : "fa-times text-red-500"
+                                      }`}
+                                    ></i>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="font-bold text-sm text-gray-600">
+                                      Partially Delivered:
+                                    </span>
+                                    <i
+                                      className={`fa ${
+                                        dp.isPartiallyDelivered
+                                          ? "fa-check text-yellow-500"
+                                          : "fa-times text-red-500"
+                                      }`}
+                                    ></i>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
 
                         {/* Continue and Cancel Buttons */}
                         <div className="flex justify-between mt-6">
@@ -806,7 +930,9 @@ const DriverBillingPage = () => {
                                   </div>
 
                                   <div className="mt-4">
-                                    <h6 className="font-bold text-gray-700">Delivered Products:</h6>
+                                    <h6 className="font-bold text-gray-700">
+                                      Delivered Products:
+                                    </h6>
                                     <ul className="list-disc list-inside text-xs text-gray-700 mt-2">
                                       {bill.deliveredProducts.map((dp) => {
                                         const productName =
@@ -841,7 +967,9 @@ const DriverBillingPage = () => {
                               {bill.modalStep === 2 && (
                                 <>
                                   {/* Additional Inputs Section */}
-                                  <h5 className="mb-4 text-sm font-bold text-red-500">Additional Details</h5>
+                                  <h5 className="mb-4 text-sm font-bold text-red-500">
+                                    Additional Details
+                                  </h5>
                                   <div className="flex flex-col gap-4">
                                     {/* Starting KM */}
                                     <div>
@@ -877,6 +1005,8 @@ const DriverBillingPage = () => {
                                             updatedBills[billIndex].endKm = e.target.value;
                                             updatedBills[billIndex].kmTravelled =
                                               e.target.value - updatedBills[billIndex].startingKm;
+
+                                              updatedBills[billIndex].fuelCharge = ((parseFloat(updatedBills[billIndex].kmTravelled) / 10 ) * 96).toFixed(2)
                                             return updatedBills;
                                           })
                                         }
@@ -1084,15 +1214,12 @@ const DriverBillingPage = () => {
                   </div>
                 )}
               </div>
-            ))
-          )}
+            ))}
 
           {showSuccessModal && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
               <div className="bg-white text-center p-6 rounded-lg shadow-lg">
-                <h3 className="text-md font-bold text-gray-500">
-                  Operation Successful
-                </h3>
+                <h3 className="text-md font-bold text-gray-500">Operation Successful</h3>
                 <p className="text-xs italic text-gray-400 mt-1 mb-5">
                   Successfully updated the billing information.
                 </p>
@@ -1110,6 +1237,231 @@ const DriverBillingPage = () => {
           {assignedBills.length === 0 && !deliveryStarted && (
             <LowStockPreview driverPage={true} />
           )}
+
+          {/* My Deliveries Section */}
+          <div className="my-deliveries-section mt-8">
+            <h2 className="text-xl font-bold text-gray-600 mb-4">My Deliveries</h2>
+
+            {/* Search Input */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Search by Invoice Number"
+                value={searchInvoiceNo}
+                onChange={(e) => setSearchInvoiceNo(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+              />
+            </div>
+
+            {/* Deliveries List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {myDeliveries.map((delivery, index) => (
+                <div
+                  key={index}
+                  className="bg-white shadow-md rounded-lg p-4 cursor-pointer"
+                  onClick={() => {
+                    setSelectedDelivery(delivery);
+                    setShowDeliveryModal(true);
+                  }}
+                >
+                  <h3 className="text-md font-bold text-gray-600">
+                    Invoice No: {delivery.invoiceNo}
+                  </h3>
+                  <p className="text-xs text-gray-500">Customer: {delivery.customerName}</p>
+                  <p className="text-xs text-gray-500">
+                    Billing Amount: ₹ {delivery.billingAmount}
+                  </p>
+                  <p className="text-xs text-gray-500">Payment Status: {delivery.paymentStatus}</p>
+                  <p className="text-xs text-gray-500">
+                    Delivery Status: {delivery.deliveryStatus}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Delivery Modal */}
+          {showDeliveryModal && selectedDelivery && (
+  <div className="fixed overflow-auto inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="bg-white rounded-lg w-full max-w-lg shadow-lg p-6 relative">
+      {/* Close Button */}
+      <button
+        className="absolute top-4 right-4 text-gray-600 hover:text-gray-600"
+        onClick={() => {
+          setShowDeliveryModal(false);
+          setSelectedDelivery(null);
+        }}
+      >
+        &times;
+      </button>
+
+      {/* Delivery Details and Editing Form */}
+      <h5 className="mb-4 text-sm font-bold text-gray-600">
+        Edit Delivery Details - Invoice No: {selectedDelivery.invoiceNo}
+      </h5>
+      {/* Delivery Details */}
+      <div className="text-xs text-gray-600 space-y-2">
+        <p>
+          <span className="font-bold">Customer:</span> {selectedDelivery.customerName}
+        </p>
+        <p>
+          <span className="font-bold">Address:</span> {selectedDelivery.customerAddress}
+        </p>
+        <p>
+          <span className="font-bold">Billing Amount:</span> ₹ {selectedDelivery.billingAmount}
+        </p>
+        <p>
+          <span className="font-bold">Payment Status:</span> {selectedDelivery.paymentStatus}
+        </p>
+        <p>
+          <span className="font-bold">Delivery Status:</span> {selectedDelivery.deliveryStatus}
+        </p>
+      </div>
+
+      {/* Editable Fields */}
+      <div className="flex flex-col gap-4 mt-4">
+        {/* Starting KM */}
+        <div>
+          <label className="block text-xs font-bold text-gray-400">Starting KM</label>
+          <input
+            type="number"
+            value={selectedDelivery.startingKm}
+            onChange={(e) =>
+              setSelectedDelivery((prev) => ({
+                ...prev,
+                startingKm: +e.target.value,
+                kmTravelled: prev.endKm - +e.target.value,
+              }))
+            }
+            className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+          />
+        </div>
+        {/* Ending KM */}
+        <div>
+          <label className="block text-xs font-bold text-gray-400">Ending KM</label>
+          <input
+            type="number"
+            value={selectedDelivery.endKm}
+            onChange={(e) =>
+              setSelectedDelivery((prev) => ({
+                ...prev,
+                endKm: +e.target.value,
+                kmTravelled: +e.target.value - prev.startingKm,
+              }))
+            }
+            className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+          />
+        </div>
+        {/* Distance Travelled */}
+        <div>
+          <label className="block text-xs font-bold text-gray-400">
+            Distance Travelled (km)
+          </label>
+          <input
+            type="number"
+            value={selectedDelivery.kmTravelled}
+            readOnly
+            className="w-full border-gray-300 px-3 py-2 mt-1 rounded-md bg-gray-100"
+          />
+        </div>
+        {/* Fuel Charge */}
+        <div>
+          <label className="block text-xs font-bold text-gray-400">Fuel Charge</label>
+          <input
+            type="number"
+            value={selectedDelivery.fuelCharge}
+            onChange={(e) =>
+              setSelectedDelivery((prev) => ({
+                ...prev,
+                fuelCharge: +e.target.value,
+              }))
+            }
+            className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+          />
+        </div>
+        {/* Other Expenses */}
+        <div className="mt-4">
+          <h6 className="text-xs font-bold text-gray-500 mb-1">Other Expenses</h6>
+          {selectedDelivery.otherExpenses.map((expense, index) => (
+  <div key={index} className="flex gap-2 mb-2">
+    <input
+      type="number"
+      value={expense.amount}
+      onChange={(e) => {
+        const updatedExpenses = [...selectedDelivery.otherExpenses];
+        updatedExpenses[index].amount = parseFloat(e.target.value) || 0; // Parse as a number
+        setSelectedDelivery((prev) => ({
+          ...prev,
+          otherExpenses: updatedExpenses,
+        }));
+      }}
+      placeholder="Amount"
+      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+    />
+    <input
+      type="text"
+      value={expense.remark}
+      onChange={(e) => {
+        const updatedExpenses = [...selectedDelivery.otherExpenses];
+        updatedExpenses[index].remark = e.target.value;
+        setSelectedDelivery((prev) => ({
+          ...prev,
+          otherExpenses: updatedExpenses,
+        }));
+      }}
+      placeholder="Remark"
+      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+    />
+  </div>
+))}
+          <button
+            onClick={() => {
+              setSelectedDelivery((prev) => ({
+                ...prev,
+                otherExpenses: [...prev.otherExpenses, { amount: 0, remark: "" }],
+              }));
+            }}
+            className="text-xs font-bold text-blue-500 hover:text-blue-700 mt-2"
+          >
+            + Add Expense
+          </button>
+        </div>
+      </div>
+
+      {/* Delivered Products */}
+      <div className="mt-6">
+        <h6 className="font-bold text-gray-700">Delivered Products:</h6>
+        <ul className="list-disc list-inside text-xs text-gray-700 mt-2">
+          {selectedDelivery.productsDelivered.map((dp) => (
+            <li key={dp.item_id}>
+              Item ID: {dp.item_id}, Delivered Quantity: {dp.deliveredQuantity}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Save and Close Buttons */}
+      <div className="flex justify-end mt-6 gap-4">
+        <button
+          className="bg-gray-400 hover:bg-gray-500 text-white font-bold text-xs px-4 py-2 rounded-lg"
+          onClick={() => {
+            setShowDeliveryModal(false);
+            setSelectedDelivery(null);
+          }}
+        >
+          Close
+        </button>
+        <button
+          className="bg-green-500 hover:bg-green-600 text-white font-bold text-xs px-4 py-2 rounded-lg"
+          onClick={handleUpdateDelivery}
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
         </div>
       </div>
     </div>

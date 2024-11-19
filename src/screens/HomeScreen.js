@@ -5,7 +5,6 @@ import LowStockPreview from '../components/lowStockPreview';
 import ApprovalModal from '../components/ApprovalModal';
 import SellerStatusModal from '../components/SellerStatusModal';
 import api from './api';
-import BillingSuccess from '../components/billingsuccess';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -77,7 +76,7 @@ export default function HomeScreen() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <CardSection title="Billing">
-              <ActionButton href="/create-bill" title="Create Bill" />
+              <ActionButton href="/create-bill" title={`${userInfo.isAdmin ? 'Create Bill' : 'Create Estimate'}`} />
               <ActionButton href="/bills" title="All Bills" />
             </CardSection>
 
@@ -116,11 +115,17 @@ export default function HomeScreen() {
             <ActionButton href="#" title="All Trackings" />
             </CardSection>
 
-            <CardSection title="Admin Panel">
+
+            <CardSection title="Reports">
+            <ActionButton href="/sales-report" title="Sales Report" />
+            <ActionButton href="/daily-transactions" title="Daily Transactions" />
+            </CardSection>
+
+           {userInfo.isAdmin && <CardSection title="Admin Panel">
               <ActionButton href={userInfo?.isAdmin ? '/support' : '/chat'} title="Inbox" />
               <ActionButton href="/dashboard" title="Dashboard" />
               <ActionButton href="https://kktrading-backend.vercel.app/export" title="Export All" />
-            </CardSection>
+            </CardSection> }
 
             <CardSection title="Edit Billings">
             <ActionButton href="/bills/edit" title="Edit Bills" />

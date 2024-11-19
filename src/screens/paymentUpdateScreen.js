@@ -46,7 +46,7 @@ const EmployeePaymentExpensePage = () => {
       const response = await api.get(`/api/billing/${id}`);
       setBillingDetails(response.data);
       setRemainingAmount(
-        response.data.billingAmount -
+        (response.data.billingAmount - response.data.discount) -
         (response.data.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0)
       );
       setError("");

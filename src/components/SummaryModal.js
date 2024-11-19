@@ -1,6 +1,7 @@
 // src/components/SummaryModal.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useSelector } from 'react-redux';
 
 export default function SummaryModal({
   customerName,
@@ -24,7 +25,18 @@ export default function SummaryModal({
   totalProducts,
   handleLocalSave
 }) {
-  const remainingAmount = ((totalAmount - discount) - receivedAmount).toFixed(2);
+  const remainingAmount = (parseFloat(totalAmount - discount) - parseFloat(receivedAmount)).toFixed(2);
+
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
+  const [fetchedReceivedAmount,setFetchedReceivedAmount] = useState(0);
+  const [fetchedRemainingAmount , setFetchedRemainingAmount] = useState(0);
+
+  useEffect(()=>{
+    setFetchedReceivedAmount(receivedAmount);
+    setFetchedRemainingAmount((parseFloat(totalAmount - discount) - parseFloat(receivedAmount)).toFixed(2));
+  },[discount])
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
@@ -60,16 +72,16 @@ export default function SummaryModal({
             </div>
             <div>
             <p className='text-xs mt-2 text-gray-600'>
-            <strong>Amount Paid:</strong> {receivedAmount}
+            <strong>Amount Paid:</strong> {fetchedReceivedAmount}
+          </p>
+            <p className='text-xs mt-2 font-bold text-gray-600'>
+            <strong>Remaining Amount:</strong> {fetchedRemainingAmount}
           </p>
           <p className='text-xs mt-2 text-gray-600'>
             <strong>Payment Method:</strong> {paymentMethod}
           </p>
           <p className='text-xs mt-2 text-gray-600'>
             <strong>Received Date:</strong> {new Date(receivedDate? receivedDate : new Date()).toLocaleDateString() || "N/A"}
-          </p>
-            <p className='text-xs mt-2 text-gray-600'>
-            <strong>Remaining Amount:</strong> {remainingAmount}
           </p>
           <div>
           </div>
@@ -86,11 +98,11 @@ export default function SummaryModal({
           </p>
 
           {/* Payment Details */}
-          <div className="mt-4">
+         {userInfo.isAdmin && <div className="mt-4">
             <label className="block text-xs">Discount</label>
             <input
               type="number"
-              value={discount}
+              value={discount || 0}
               onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
               className="w-full mb-2 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
               placeholder="Enter Discount"
@@ -100,10 +112,9 @@ export default function SummaryModal({
             <input
               type="number"
               placeholder="Enter Received Amount"
-              min={0}
-              value={receivedAmount}
+              value={receivedAmount || 0}
               onChange={(e) =>
-                setReceivedAmount(Math.min(parseFloat(e.target.value) || 0, totalAmount))
+                setReceivedAmount(Math.min(parseFloat(e.target.value) || 0, parseFloat(fetchedRemainingAmount)))
               }
               className="w-full mb-2 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
             />
@@ -127,10 +138,10 @@ export default function SummaryModal({
               onChange={(e) => setReceivedDate(e.target.value)}
               className="w-full border-gray-300 px-4 py-2 mb-4 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
             />
-          </div>
+          </div> }
 
           {/* Modal Actions */}
-          <div className="flex justify-end">
+          <div className="flex justify-end mt-5">
             <button
               onClick={()=> { if(handleLocalSave) handleLocalSave(); else  alert('Update the bill by clicking the submit button') }}
               className="bg-red-500 text-xs font-bold text-white px-4 py-2 rounded mr-2 hover:bg-red-600"
@@ -142,7 +153,7 @@ export default function SummaryModal({
               className="bg-red-500 text-xs font-bold text-white px-4 py-2 rounded hover:bg-red-600"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Billing'}
+              {isSubmitting ? 'Submitting...' : userInfo.isAdmin ?  'Submit Billing' : 'Submit Estimate'}
             </button>
           </div>
         </div>

@@ -23,7 +23,7 @@ const BillingSuccess = ({estimationNo}) => {
   },[]);
 
   return (
-    <div className="fixed z-20 top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-gray-100 p-6">
+    <div className="fixed z-20 w-full top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-gray-100 p-6">
       <div className="bg-white rounded-lg shadow-xl p-8 py-40 flex flex-col items-center">
         {/* Animated Checkmark */}
         <div className="checkmark-container mb-6">
