@@ -544,10 +544,10 @@ export default function BillingScreen() {
         enteredQty: product.enteredQty,
         sellingPriceinQty: product.sellingPriceinQty,
         unit: product.unit,
-        length: product.length,
-        breadth: product.breadth,
-        size: product.size,
-        psRatio: product.psRatio,
+        length: product.length || 0,
+        breadth: product.breadth || 0,
+        size: product.size || 0,
+        psRatio: product.psRatio || 0,
       })),
     };
 
