@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../screens/api';
 import Product from './Product';
@@ -9,6 +9,7 @@ export default function SearchBox() {
   const [suggestions, setSuggestions] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggesstionInputRef = useRef();
 
   useEffect(() => {
     // Load recent searches from localStorage on component mount
@@ -87,6 +88,12 @@ export default function SearchBox() {
     handleSearch(recent.name);
   };
 
+  useEffect(()=>{
+    if(showSuggestions){
+      suggesstionInputRef.current?.focus();
+    }
+  },[showSuggestions])
+
   return (
     <div className="relative w-full flex">
       {/* Search Input */}
@@ -99,7 +106,7 @@ export default function SearchBox() {
         className="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-red-500 focus:border-red-500 block w-full ps-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-red-500 dark:focus:border-red-300"
         placeholder="Search Products"
         required
-        onFocus={() => setShowSuggestions(true)}
+        onFocus={() => { setShowSuggestions(true)}}
       />
       <button
         onClick={()=> navigate('/search/name/')}
@@ -142,6 +149,7 @@ export default function SearchBox() {
               onChange={(e) => setName(e.target.value)}
               value={name}
               type="text"
+              ref={suggesstionInputRef}
               id="expanded-search" autoComplete="off"
               className="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-red-500 focus:border-red-500 block w-full max-w-md ps-10 p-2.5"
               placeholder="Search Products"

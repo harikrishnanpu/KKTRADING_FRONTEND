@@ -6,7 +6,7 @@ export default function ErrorModal({ message, onClose }) {
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
       <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
         <div className="flex items-center justify-between">
-          <h3 className="text-green-600 font-bold text-sm">Successfully Created</h3>
+          <h3 className="text-red-600 font-bold text-sm">Error</h3>
           <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
             &times;
           </button>

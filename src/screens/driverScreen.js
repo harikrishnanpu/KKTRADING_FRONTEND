@@ -262,7 +262,7 @@ const DriverPage = () => {
 
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="mx-auto">
       <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-4 rounded-lg mb-4">
         <div onClick={() => navigate('/')} className="text-center cursor-pointer">
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
@@ -284,7 +284,7 @@ const DriverPage = () => {
           onClick={() => {
             if (searchTerm.length === 0) setSearchTerm(' ');
           }}
-          className="text-white ml-2 bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-4 py-2"
+          className="text-white ml-2 bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300  rounded-lg text-sm px-4 py-2"
         >
           <i className="fa fa-search" />
         </button>
@@ -335,7 +335,7 @@ const DriverPage = () => {
               <tbody>
                 {billings.map((bill) => (
                   <tr key={bill._id} className="bg-white border-b hover:bg-gray-100">
-                    <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{bill.invoiceNo}</td>
+                    <td className="px-4 py-3 text-xs  text-gray-900 whitespace-nowrap">{bill.invoiceNo}</td>
                     <td className="px-4 py-3">
                       {/* Indicator Dot */}
                       {bill.deliveryStatus === 'Delivered' && bill.paymentStatus === 'Paid' && (
@@ -374,7 +374,7 @@ const DriverPage = () => {
                     <td className="px-4 py-3 hidden md:block text-xs text-gray-700">{bill.customerName}</td>
                     <td className={`px-4 py-3 text-xs ${bill.deliveryStatus !== 'Delivered' ? 'text-yellow-600' : 'text-green-600'}`}>{bill.deliveryStatus === 'Delivered' ? 'Delivered' : new Date(bill.expectedDeliveryDate).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-left">
-                      <button onClick={() => navigate(`/driver/${bill._id}`)} className="font-medium text-red-600 hover:underline">View</button>
+                      <button onClick={() => navigate(`/driver/${bill._id}`)} className=" text-red-600 hover:underline">View</button>
                     </td>
                   </tr>
                 ))}
@@ -390,7 +390,7 @@ const DriverPage = () => {
   
   billings.map((bill)=>(
     
-    <div className="max-w-lg mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+    <div className="max-w-2xl mx-auto  p-5 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
 
 <div className="flex justify-center gap-8">
         <button
@@ -487,18 +487,54 @@ const DriverPage = () => {
   <p className={`mt-1 text-xs font-bold ${bill.paymentStatus !== 'Paid' ? 'text-red-400' : 'text-green-500'} `}>Payment Sts: {bill.paymentStatus}</p>
   </div>
 
-  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Customer Address: {bill.customerAddress}, Kerala,India</p>
+  <p className="mt-1 text-xs  text-gray-600 dark:text-gray-400">Customer Address: {bill.customerAddress}, Kerala,India</p>
   <div className="flex justify-between">
-  <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Products Qty: {bill.products.length}</p>
-  <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500"> {bill.billingAmount} </span></p>
+  <p className="mt-1 text-xs  text-gray-600 dark:text-gray-400">Products Qty: {bill.products.length}</p>
+  </div>
+<div>
+  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Discount: <span className="font-bold text-gray-500">Rs. {bill.discount} </span></p>
+  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500">Rs. {bill.billingAmount} </span></p>
+  <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Total Net Amount: <span className="font-bold text-gray-500">Rs. {bill.billingAmount - bill.discount} </span></p>
   </div>
 
+  <div className="flex justify-between mt-4 bg-gray-50 p-3 rounded-lg">
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-gray-600">
+                   Total Amount:
+                  </span>
+                  <span className="text-sm font-bold text-gray-800">
+                    ₹{(bill.billingAmount - bill.discount).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-gray-600">
+                    Received:
+                  </span>
+                  <span className="text-sm font-bold text-green-600">
+                    ₹
+                    {bill.payments
+                      .reduce((sum, payment) => sum + payment.amount, 0)
+                      .toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-gray-600">
+                    Remaining:
+                  </span>
+                  <span className="text-sm font-bold text-red-600">
+                    ₹{bill.billingAmount -  parseFloat((bill.payments
+                      .reduce((sum, payment) => sum + payment.amount, 0)
+                      .toFixed(2)) - bill.discount).toFixed(2)}
+                  </span>
+                </div>
+              </div>
   <div className="mx-auto my-8">
 
 
 <div className="relative overflow-hidden">
+  <p className="font-bold mb-4 text-sm">Total Products: {bill.products?.length}</p>
     <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <thead className="text-xs rounded-lg text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
             <tr>
                 <th scope="col" className="px-4 text-xs py-3">
                     Product
@@ -520,7 +556,7 @@ const DriverPage = () => {
         <tbody>
           {bill?.products.map((product,index)=>(
             <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                <th scope="row" className="px-2 py-4 text-xs font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                <th scope="row" className="px-2 py-4 text-xs  text-gray-900 whitespace-nowrap dark:text-white">
                     {product.name.slice(0,14)}...
                </th>
                 <td className="px-6 text-center text-xs py-4">
@@ -668,26 +704,27 @@ const DriverPage = () => {
   </div> )}
 
 {activeSection === "delivery" && (
-  <div className="p-3 bg-gray-50 mt-2 mb-2 rounded-lg">
+  <div className="rounded-lg">
 {bill?.deliveries?.map((delivery) => (
-      <div key={delivery.deliveryId} className="mt-2">
-      <p className="text-xs font-medium text-gray-700">
+  <div className="my-5 bg-gray-50 p-3 rounded-lg">
+      <div key={delivery.deliveryId} className="mt-2 space-y-3">
+      <p className="text-sm  text-gray-700">
         <strong>Driver Name:</strong> {delivery.driverName}
       </p>
-      <p className="text-xs font-medium text-gray-700">
+      <p className="text-xs truncate  text-gray-700">
         <strong>Delivery Id: </strong> {delivery.deliveryId}
       </p>
     
       <div className='flex justify-between'>
-      <p className="text-xs font-medium text-gray-700">
+      <p className="text-xs  text-gray-700">
         <strong>Fuel Charge:</strong> ₹{delivery.fuelCharge || 0}
       </p>
-      <p className="text-xs font-medium text-gray-700">
+      <p className="text-xs  text-gray-700">
         <strong>Starting Km: </strong> {delivery.startingKm || 0}
       </p>
       </div>
       <div className='flex justify-between'>
-      <p className="text-xs font-medium text-gray-700">
+      <p className="text-xs  text-gray-700">
         <strong>Ending Km:</strong> {delivery.endKm || 0}
       </p>
       <p className="text-xs font-bold text-gray-700">
@@ -695,7 +732,7 @@ const DriverPage = () => {
       </p>
       </div>
       {delivery.otherExpenses?.length > 0 && (
-        <p className="text-xs font-medium text-gray-700 mt-2">
+        <p className="text-xs  text-gray-700 mt-2">
           <strong>Other Expenses:</strong>{" "}
           {delivery.otherExpenses.map((expense, index) => (
             <span key={index}>
@@ -704,8 +741,37 @@ const DriverPage = () => {
             </span>
           ))}
         </p>
+
       )}
     </div>
+
+
+<div>
+  </div>
+  {delivery.productsDelivered?.length > 0 && (
+          <div className="mt-4">
+            <h5 className="text-xs font-bold text-red-600 mb-2">Products Delivered:</h5>
+            <table className="w-full text-xs text-left text-red-500">
+              <thead className="text-xs text-gray-700 uppercase bg-red-100">
+                <tr>
+                  <th className="px-2 py-1">Product ID</th>
+                  <th className="px-2 py-1">Delivered Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {delivery.productsDelivered.map((prod, idx) => (
+                  <tr key={idx} className="bg-white border-b hover:bg-red-50">
+                    <td className="px-2 py-1">{prod.item_id}</td>
+                    <td className="px-2 py-1">{prod.deliveredQuantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+  </div>
+
+
                 ))}
 
   </div>

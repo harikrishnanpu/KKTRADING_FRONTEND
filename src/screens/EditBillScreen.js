@@ -526,6 +526,55 @@ export default function EditBillScreen() {
   }
 
 
+  function printInvoice() {
+
+    const formData = {
+      invoiceNo,
+      invoiceDate,
+      salesmanName,
+      expectedDeliveryDate,
+      deliveryStatus,
+      salesmanPhoneNumber,
+      paymentStatus,
+      billingAmount: totalAmount - discount,
+      paymentAmount: receivedAmount,
+      paymentMethod,
+      paymentReceivedDate: receivedDate,
+      customerName,
+      customerAddress,
+      customerContactNumber,
+      marketedBy,
+      subTotal: totalAmount - (cgst + sgst),
+      cgst,
+      sgst,
+      discount,
+      products: products.map((product) => ({
+        item_id: product.item_id,
+        name: product.name,
+        category: product.category,
+        brand: product.brand,
+        quantity: product.quantity,
+        sellingPrice: product.sellingPrice,
+        enteredQty: product.enteredQty,
+        sellingPriceinQty: product.sellingPriceinQty,
+        unit: product.unit,
+        size: product.size
+      })),
+    };
+
+    api.post('https://kktrading-backend.vercel.app/generate-invoice-html', formData)
+    .then(response => {
+      const htmlContent = response.data; // Extract the HTML content
+      const printWindow = window.open('', '', 'height=800,width=600');
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  
+  }
+
   return (
     <div className="container mx-auto p-2">
       {/* Header */}
@@ -551,6 +600,12 @@ export default function EditBillScreen() {
             <i className="fa fa-list" /> Editing Billing
           </p>
           <div className="text-right">
+          <button
+              onClick={()=> printInvoice()}
+              className="mb-2 mx-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600"
+            >
+              <i className='fa fa-print' />
+            </button>
             <button
               onClick={handleBillingSubmit}
               className="mb-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600"

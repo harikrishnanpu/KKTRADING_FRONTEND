@@ -96,7 +96,7 @@ const BillingList = () => {
 
     try {
       const response = await api.post(
-        'https://kktrading-backend.vercel.app/generate-pdf',
+        'https://kktrading-backend.vercel.app/generate-pdf', 
         formData,
         {
           responseType: 'blob',
@@ -115,6 +115,72 @@ const BillingList = () => {
       setPdfLoading(false);
     }
   };
+
+
+  function printInvoice(bill) {
+
+    const cgst = (
+      (parseFloat(bill.billingAmount) - parseFloat(bill.billingAmount / 1.18)) /
+      2
+    ).toFixed(2);
+
+    const sgst = (
+      (parseFloat(bill.billingAmount) - parseFloat(bill.billingAmount / 1.18)) /
+      2
+    ).toFixed(2);
+
+    const subTotal = (
+      parseFloat(bill.billingAmount) -
+      parseFloat(cgst) -
+      parseFloat(sgst)
+    ).toFixed(2);
+
+    const formData = {
+      invoiceNo: bill.invoiceNo,
+      invoiceDate: bill.invoiceDate,
+      salesmanName: bill.salesmanName,
+      expectedDeliveryDate: bill.expectedDeliveryDate ,
+      deliveryStatus: bill.deliveryStatus,
+      salesmanPhoneNumber: bill.salesmanPhoneNumber,
+      paymentStatus: bill.paymentStatus,
+      billingAmount: bill.billingAmount,
+      paymentAmount: bill.paymentAmount,
+      paymentMethod: bill.paymentMethod || '',
+      paymentReceivedDate: bill.updatedAt || '',
+      customerName: bill.customerName,
+      customerAddress: bill.customerAddress,
+      customerContactNumber: bill.customerContactNumber,
+      marketedBy: bill.marketedBy,
+      subTotal,
+      cgst,
+      sgst,
+      discount: bill.discount,
+      products: bill.products.map((product) => ({
+        item_id: product.item_id,
+        name: product.name,
+        category: product.category,
+        brand: product.brand,
+        quantity: product.quantity,
+        sellingPrice: product.sellingPrice,
+        enteredQty: product.enteredQty,
+        sellingPriceinQty: product.sellingPriceinQty,
+        unit: product.unit,
+        size: product.size
+      })),
+    };
+
+    api.post('https://kktrading-backend.vercel.app/generate-invoice-html', formData)
+    .then(response => {
+      const htmlContent = response.data; // Extract the HTML content
+      const printWindow = window.open('', '', 'height=800,width=600');
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  
+  }
 
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this billing?')) {
@@ -232,6 +298,14 @@ const BillingList = () => {
         >
           <i className="fa fa-trash mr-2"></i> Delete
         </button>
+
+       {userInfo.isAdmin && <button
+          onClick={() => printInvoice(billing)}
+          className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center"
+        >
+          <i className="fa fa-print mr-2"></i>
+        </button> }
+
        {userInfo.isAdmin && !billing.isApproved && <button
           onClick={() => handleApprove(billing)}
           className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center"

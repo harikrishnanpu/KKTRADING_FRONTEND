@@ -304,11 +304,14 @@ const DriverTrackingPage = () => {
          <p className={`mt-1 text-xs font-bold ${billingDetails.deliveryStatus !== 'Delivered' ? 'text-red-400' : 'text-green-500'} `}>Delivery Sts: {billingDetails.deliveryStatus}</p>
          <p className={`mt-1 text-xs font-bold ${billingDetails.paymentStatus !== 'Paid' ? 'text-red-400' : 'text-green-500'} `}>Payment Sts: {billingDetails.paymentStatus}</p>
          </div>
-       
+         <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Products Qty: {billingDetails.products.length}</p>
          <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Customer Address: {billingDetails.customerAddress}, Kerala,India</p>
          <div className="flex justify-between">
-         <p className="mt-1 text-xs font-medium text-gray-600 dark:text-gray-400">Products Qty: {billingDetails.products.length}</p>
-         <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500"> {billingDetails.billingAmount} </span></p>
+         <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Delivery Assigned: {billingDetails.deliveries?.length}</p>
+         <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500"> {(billingDetails.billingAmount - billingDetails.discount).toFixed(2)} </span></p>
+         </div>
+
+         <div className="flex justify-between">
          </div>
        
          <div className="mx-auto my-8">

@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import './BillingSuccess.css'; // Import the CSS for animations
 import {useNavigate} from 'react-router-dom'; 
 
-const BillingSuccess = ({estimationNo, isAdmin}) => {
+const DeliverySuccess = ({deliveryNo, invoiceNo, setDeliveryModal}) => {
   const navigate = useNavigate();
   const audioRef = useRef(null);
 
@@ -23,26 +23,28 @@ const BillingSuccess = ({estimationNo, isAdmin}) => {
   },[]);
 
   return (
-    <div className="fixed z-20 w-full top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-gray-100 p-6">
-      <div className="bg-white rounded-lg shadow-xl  w-full py-40 flex flex-col items-center">
+    <div className="fixed z-20  top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-gray-100 p-3">
+      <div className="bg-white rounded-lg shadow-xl w-full py-40 flex flex-col items-center">
         {/* Animated Checkmark */}
         <div className="checkmark-container mb-6">
           <i className="fa fa-check checkmark"></i>
         </div>
 
-       {isAdmin && <h1 className='text-sm font-bold mb-2'>Estimation No: {estimationNo || 'error'}</h1> }
-       {!isAdmin && <h1 className='text-sm font-bold mb-2'>Bill No: {estimationNo || 'error'}</h1> }
+     <h1 className='text-sm font-bold mb-2'>Invoice No: {invoiceNo || 'error'}</h1> 
         
         {/* Success Message */}
         <h2 className="text-sm font-bold text-red-800 mb-4">
-          Successfully Submitted Estimate
+          Successfully Updated Delivery
         </h2>
         <p className="text-gray-600 italic text-gray-300 animate-pulse mb-6 text-xs text-center">
-          Your Estimation Bill Is Successfully Submitted To The Admin Panel for Review
+          Your Delivery With Invoice No. {invoiceNo || 'error'} is Successfully Updated 
+        </p>
+        <p className="text-gray-600 italic text-gray-300 animate-pulse mb-6 text-xs text-center">
+          Delivery Id: {deliveryNo || 'error'}
         </p>
         
         {/* Optional Button */}
-        <button onClick={()=> navigate('/')} className="mt-4 px-6 text-xs font-bold py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-300">
+        <button onClick={()=> setDeliveryModal(false)} className="mt-4 px-6 text-xs font-bold py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-300">
           Continue
         </button>
 
@@ -53,4 +55,4 @@ const BillingSuccess = ({estimationNo, isAdmin}) => {
   );
 };
 
-export default BillingSuccess;
+export default DeliverySuccess;

@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import LowStockPreview from "../components/lowStockPreview";
 import api from "./api";
 import Loading from "../components/loading";
+import DeliverySuccess from "../components/deliverySuccess";
 
 const DriverBillingPage = () => {
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -19,6 +20,9 @@ const DriverBillingPage = () => {
   const [searchInvoiceNo, setSearchInvoiceNo] = useState("");
   const [selectedDelivery, setSelectedDelivery] = useState(null);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
+  const [deliveredModal,setShowDeliveredModal] = useState(false); 
+  const [currentDelivered,setCurrentDelivered] = useState({invoiceNo: '', deliveryId: ''})
   const navigate = useNavigate();
 
   const userSignin = useSelector((state) => state.userSignin);
@@ -148,7 +152,7 @@ const DriverBillingPage = () => {
             ...billingData,
             newPaymentStatus: billingData.paymentStatus,
             remainingAmount:
-              billingData.billingAmount -
+             (billingData.billingAmount - billingData.discount) -
               (billingData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0),
             receivedAmount:
               billingData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0,
@@ -394,6 +398,8 @@ const DriverBillingPage = () => {
             })),
           });
 
+          setCurrentDelivered({invoiceNo: bill.invoiceNo, deliveryId: bill.deliveryId})
+
           // Remove the bill from assignedBills after successful submission
           setAssignedBills((prevBills) => {
             const updatedBills = [...prevBills];
@@ -406,7 +412,7 @@ const DriverBillingPage = () => {
             setDeliveryStarted(false);
           }
 
-          setShowSuccessModal(true);
+          setShowDeliveredModal(true);
           setTimeout(() => setShowSuccessModal(false), 3000);
         }
       });
@@ -436,18 +442,30 @@ const DriverBillingPage = () => {
   };
 
   const handleCancel = (billIndex) => {
-    // Remove the bill from assignedBills
-    setAssignedBills((prevBills) => {
-      const updatedBills = [...prevBills];
-      updatedBills.splice(billIndex, 1);
-      return updatedBills;
-    });
-
-    // If all bills are delivered or canceled, reset deliveryStarted
-    if (assignedBills.length === 1) {
-      setDeliveryStarted(false);
+    try {
+      // Get the invoice number of the bill to be canceled
+      const invoiceNo = assignedBills[billIndex].invoiceNo;
+  
+      // Send the invoice number to the backend API
+      api.post('/api/billing/bill/cancel', { invoiceNo })
+                // Remove the bill from assignedBills
+                setAssignedBills((prevBills) => {
+                  const updatedBills = [...prevBills];
+                  updatedBills.splice(billIndex, 1); // Remove the bill at billIndex
+                  return updatedBills;
+                });
+        
+                // Check if all bills are delivered or canceled
+                if (assignedBills.length === 1) {
+                  setDeliveryStarted(false);
+                }
+              
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert("An unexpected error occurred");
     }
   };
+  
 
   const handleUpdateDelivery = async () => {
     try {
@@ -503,10 +521,64 @@ const DriverBillingPage = () => {
         <i className="fa fa-truck text-gray-500" />
       </div>
 
+     {!deliveryStarted && <div className="flex justify-center gap-8">
+        <button
+          className={`font-bold text-xs focus:outline-none relative pb-2 transition-all duration-300 ${
+            activeSection === "home" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600"
+          }`}
+          onClick={() => setActiveSection("home")}
+        >
+          Home
+          {activeSection === "home" && (
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 transition-all duration-300"></span>
+          )}
+        </button>
+        <button
+          className={`font-bold text-xs focus:outline-none relative pb-2 transition-all duration-300 ${
+            activeSection === "my" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600"
+          }`}
+          onClick={() => setActiveSection("my")}
+        >
+          My Deliveries
+          {activeSection === "my" && (
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 transition-all duration-300"></span>
+          )}
+        </button>
+        <button
+          className={`font-bold text-xs focus:outline-none relative pb-2 transition-all duration-300 ${
+            activeSection === "assign" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600"
+          }`}
+          onClick={() => setActiveSection("assign")}
+        >
+          Start Delivery
+          {activeSection === "assign" && ( 
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 transition-all duration-300"></span>
+          )}
+        </button>
+      </div> }
+
       <div className="flex flex-col justify-center items-center p-2">
-        <div className="bg-white shadow-xl rounded-lg w-full max-w-4xl p-6">
+       <div className="bg-white shadow-xl rounded-lg w-full max-w-4xl p-6">
+
+
+          {activeSection == "home" && !deliveryStarted && <div className="my-deliveries-section mt-8">
+            <p className="text-xs font-bold text-gray-600 mb-4">My Deliveries</p>
+            <button
+                className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2 mt-4 rounded w-full"
+                onClick={()=> setActiveSection("my")}
+              >
+                My Deliveries
+              </button>
+              <button
+                className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2 mt-4 rounded w-full"
+                onClick={()=> setActiveSection("assign")}
+              >
+                Start Delivery
+              </button>
+          </div> }
+
           {/* Assignment Section - Visible Only When Delivery Not Started */}
-          {!deliveryStarted && (
+          {activeSection == "assign" &&  !deliveryStarted && (
             <>
               <div className="mb-6">
                 <label className="font-bold text-xs text-gray-500">Driver Name</label>
@@ -530,7 +602,7 @@ const DriverBillingPage = () => {
                   />
                   <i
                     onClick={() => setInvoiceNo("")}
-                    className="fa fa-times absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
+                    className="fa fa-angle-down absolute right-3 bottom-2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
                   ></i>
                 </div>
               </div>
@@ -567,11 +639,11 @@ const DriverBillingPage = () => {
                           Invoice No: {bill.invoiceNo}
                         </h4>
                         <p className="text-xs text-gray-600">Customer: {bill.customerName}</p>
-                        <p className="text-xs text-gray-600">
-                          Bill Amount: ₹ {bill.billingAmount}
+                        <p className="text-xs font-bold text-gray-600">
+                          Net Amount: ₹ {bill.billingAmount - bill.discount}
                         </p>
                         <p className="text-xs text-gray-600">
-                          Remaining Amount: ₹ {bill.remainingAmount}
+                          Delivered Products:  {bill.deliveredProducts?.length}
                         </p>
                       </div>
                     ))}
@@ -592,9 +664,15 @@ const DriverBillingPage = () => {
 
           {/* After Starting Delivery */}
           {deliveryStarted &&
-            assignedBills.length > 0 &&
+            assignedBills.length > 0 && (
+              <div>
+                <p className="font-bold text-sm mb-10 ">Assigned Invoices</p>
+                {
             assignedBills.map((bill, billIndex) => (
-              <div key={bill.invoiceNo} className="mb-8">
+              <div key={bill.invoiceNo} className="mb-8 border-t-2 border-red-300">
+                 <h5 className="mt-8 text-md font-bold tracking-tight text-gray-600">
+                            Invoice No: {bill.invoiceNo}
+                          </h5>
                 {/* Integrated Navigation with Bottom Border Animation */}
                 <div className="flex justify-center gap-8 mt-4">
                   <button
@@ -645,9 +723,6 @@ const DriverBillingPage = () => {
                       <div>
                         {/* Billing Details Content */}
                         <div className="mt-4">
-                          <h5 className="mb-2 text-sm font-bold tracking-tight text-gray-600">
-                            Invoice No: {bill.invoiceNo}
-                          </h5>
                           <div className="flex justify-between">
                             <p className="mt-1 text-xs font-bold text-gray-600">
                               Customer: {bill.customerName}
@@ -671,8 +746,16 @@ const DriverBillingPage = () => {
                             </p>
                           </div>
                           <div className="flex justify-between">
-                            <p className="mt-1 text-sm font-bold text-gray-600">
-                              Billing Amount: ₹ {bill.billingAmount}
+                          <p className="mt-1 font-bold text-sm text-gray-600">
+                              Net Amount: ₹ {bill.billingAmount - bill.discount}
+                            </p>
+                            <p className="mt-1 font-bold text-sm text-gray-600">
+                              Bill Amount: ₹ {bill.billingAmount}
+                            </p>
+                            </div>
+                          <div className="flex justify-between">
+                            <p className="mt-1 text-sm text-gray-600">
+                              Discount: ₹ {bill.discount}
                             </p>
                             <p className="mt-1 text-xs font-bold text-green-600">
                               Received Amount: ₹ {bill.receivedAmount}
@@ -1214,7 +1297,7 @@ const DriverBillingPage = () => {
                   </div>
                 )}
               </div>
-            ))}
+            ))}</div>)}
 
           {showSuccessModal && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
@@ -1233,13 +1316,17 @@ const DriverBillingPage = () => {
             </div>
           )}
 
+          {deliveredModal && <DeliverySuccess invoiceNo={currentDelivered?.invoiceNo} deliveryNo={currentDelivered?.deliveryId}  setDeliveryModal={setShowDeliveredModal} />}
+
+
+
           {/* If no bills are assigned and delivery hasn't started, show LowStockPreview */}
-          {assignedBills.length === 0 && !deliveryStarted && (
+          {activeSection == "home" && !deliveryStarted && 
             <LowStockPreview driverPage={true} />
-          )}
+          } 
 
           {/* My Deliveries Section */}
-          <div className="my-deliveries-section mt-8">
+        {activeSection == "my" &&  <div className="my-deliveries-section mt-8">
             <h2 className="text-xl font-bold text-gray-600 mb-4">My Deliveries</h2>
 
             {/* Search Input */}
@@ -1278,7 +1365,7 @@ const DriverBillingPage = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </div> }
 
           {/* Delivery Modal */}
           {showDeliveryModal && selectedDelivery && (

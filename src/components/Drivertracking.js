@@ -57,7 +57,7 @@ const DriverTracking = ({
               <p className="text-xs font-bold text-gray-700">
                 <strong>Driver Name:</strong> {location.driverName}
               </p>
-              <p className="text-xs font-medium text-gray-700">
+              <p className="text-xs truncate text-gray-700">
                 <strong>Delivery ID:</strong> {location.deliveryId}
               </p>
             </div>
@@ -95,6 +95,30 @@ const DriverTracking = ({
                         ))}
                       </p>
                     )}
+
+                    <div>
+                    {delivery.productsDelivered?.length > 0 && (
+          <div className="mt-4">
+            <h5 className="text-xs font-bold text-red-600 mb-2">Products Delivered:</h5>
+            <table className="w-full text-xs text-left text-red-500">
+              <thead className="text-xs text-gray-700 uppercase bg-red-100">
+                <tr>
+                  <th className="px-2 py-1">Product ID</th>
+                  <th className="px-2 py-1">Delivered Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {delivery.productsDelivered.map((prod, idx) => (
+                  <tr key={idx} className="bg-white border-b hover:bg-red-50">
+                    <td className="px-2 py-1">{prod.item_id}</td>
+                    <td className="px-2 py-1">{prod.deliveredQuantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+                      </div>
                   </div>
                 );
               }
@@ -104,7 +128,7 @@ const DriverTracking = ({
             {/* Filter Button */}
             <button
               onClick={() => handleFilter(location.deliveryId)}
-              className="text-red-600 text-xs font-bold mt-2"
+              className="text-white foont-bold bg-red-500 px-3 py-1 rounded-lg cursor-pointer text-xs font-bold mt-2"
             >
               View This Tracking
             </button>
@@ -115,7 +139,7 @@ const DriverTracking = ({
         {filteredDeliveryId && (
           <button
             onClick={handleResetFilter}
-            className="text-red-600 text-xs font-bold mt-4"
+            className="text-white foont-bold bg-red-500 px-3 py-1 rounded-lg cursor-pointer text-xs font-bold mt-5"
           >
             Show All Trackings
           </button>
