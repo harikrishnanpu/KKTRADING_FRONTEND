@@ -39,6 +39,8 @@ function Navbar() {
   const signoutHandler = () => {
     dispatch(signout(userInfo._id));
     setDropdownOpen(false);
+    localStorage.clear();
+    navigate('/signin');
   };
 
   const navbarMenu = useRef(null);
@@ -71,8 +73,8 @@ function Navbar() {
           className="absolute sm:hidden bg-gray-100 hover:bg-gray-200 transition py-1 px-4 rounded-lg right-16 top-4 cursor-pointer flex items-center"
           onClick={toggleDropdown}
         >
-          <p className="mr-2 text-md font-bold">
-            Hi, <span>{userInfo?.name.slice(0, 4)}..</span>
+          <p className="mr-2 text-sm font-bold">
+            Hi, <span>{userInfo?.name.slice(0, 5)}..</span>
           </p>
           <i className="fa fa-user-circle text-xl"></i>
         </div>
@@ -127,7 +129,7 @@ function Navbar() {
         <div ref={navbarMenu} className="menu" id="menu">
           <ul className="menu-inner">
             {userInfo && (
-              <li className="menu-item bg-gray-200 py-1 px-3 rounded-lg transition">
+              <li className="menu-item text-sm bg-gray-200 py-1 px-3 rounded-lg transition">
                 <a href="/profile" onClick={sidebarClose} ref={menuLink} className="menu-link">
                   Hi, {userInfo?.name}
           <i className="fa fa-user-circle text-xl ml-2"></i>

@@ -5,6 +5,8 @@ import LowStockPreview from "../components/lowStockPreview";
 import api from "./api";
 import Loading from "../components/loading";
 import DeliverySuccess from "../components/deliverySuccess";
+import { dblClick } from "../../node_modules/@testing-library/user-event/dist/click";
+import DeliveredProducts from "../components/deliveredProductscomponent";
 
 const DriverBillingPage = () => {
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -22,11 +24,16 @@ const DriverBillingPage = () => {
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [deliveredModal,setShowDeliveredModal] = useState(false); 
-  const [currentDelivered,setCurrentDelivered] = useState({invoiceNo: '', deliveryId: ''})
+  const [currentDelivered,setCurrentDelivered] = useState({invoiceNo: '', deliveryId: ''});
+  const [psRatio,setPsRatio] = useState(0);
+  const [qtyInBox,setQtyInBox] = useState('');
   const navigate = useNavigate();
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
+
+
+  
 
   // Load assigned bills and driverName from local storage on component mount
   useEffect(() => {
@@ -261,7 +268,7 @@ const DriverBillingPage = () => {
     }
   };
 
-  const handleDeliveredQuantityChange = (billIndex, productId, value) => {
+  const handleDeliveredQuantityChange = (billIndex, productId, totalDelivered) => {
     setAssignedBills((prevBills) => {
       const updatedBills = [...prevBills];
       const bill = updatedBills[billIndex];
@@ -270,16 +277,14 @@ const DriverBillingPage = () => {
       );
       if (productIndex >= 0) {
         const deliveredProduct = bill.deliveredProducts[productIndex];
-        const deliveredQuantity = Math.min(
-          Math.max(0, Number(value)),
-          deliveredProduct.pendingQuantity
-        );
-        deliveredProduct.deliveredQuantity = deliveredQuantity;
-        // Update tick marks based on delivered quantity
-        if (deliveredQuantity === deliveredProduct.pendingQuantity) {
+        const newDeliveredQuantity = Math.min(totalDelivered, deliveredProduct.quantity);
+        deliveredProduct.deliveredQuantity = newDeliveredQuantity;
+
+        // Update delivery status
+        if (newDeliveredQuantity === deliveredProduct.quantity) {
           deliveredProduct.isDelivered = true;
           deliveredProduct.isPartiallyDelivered = false;
-        } else if (deliveredQuantity > 0) {
+        } else if (newDeliveredQuantity > 0) {
           deliveredProduct.isDelivered = false;
           deliveredProduct.isPartiallyDelivered = true;
         } else {
@@ -868,77 +873,25 @@ const DriverBillingPage = () => {
 
                           {/* For smaller screens, use a card-based layout */}
                           <div className="md:hidden space-y-4">
-                            {bill.deliveredProducts.map((dp, index) => {
-                              return (
-                                <div
-                                  key={index}
-                                  className="bg-white p-4 border rounded-lg shadow-sm"
-                                >
-                                  <div className="flex justify-between mb-2">
-                                    <span className="font-bold text-sm text-gray-600">
-                                      Product:
-                                    </span>
-                                    <span className="text-xs">{dp.name}</span>
-                                  </div>
-                                  <div className="flex justify-between mb-2">
-                                    <span className="font-bold text-xs text-gray-600">
-                                      ID: {dp.item_id}
-                                    </span>
-                                    <span className="font-bold text-xs text-gray-600">
-                                      Qty. Ordered: {dp.quantity}
-                                    </span>
-                                    <span className="font-bold text-xs text-gray-600">
-                                      Qty. Pending: {dp.pendingQuantity}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between mb-2"></div>
-                                  <div className="flex justify-between mb-4">
-                                    <span className="font-bold text-xs text-gray-600">
-                                      Qty. Delivered:
-                                    </span>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max={dp.pendingQuantity}
-                                      value={dp.deliveredQuantity}
-                                      onChange={(e) =>
-                                        handleDeliveredQuantityChange(
-                                          billIndex,
-                                          dp.item_id,
-                                          e.target.value
-                                        )
-                                      }
-                                      className="px-2 py-2 text-xs border border-gray-300 rounded"
-                                    />
-                                  </div>
-                                  <div className="flex justify-between mb-2 ">
-                                    <span className="font-bold text-sm text-gray-600">
-                                      Delivered:
-                                    </span>
-                                    <i
-                                      className={`fa ${
-                                        dp.isDelivered
-                                          ? "fa-check text-green-500"
-                                          : "fa-times text-red-500"
-                                      }`}
-                                    ></i>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="font-bold text-sm text-gray-600">
-                                      Partially Delivered:
-                                    </span>
-                                    <i
-                                      className={`fa ${
-                                        dp.isPartiallyDelivered
-                                          ? "fa-check text-yellow-500"
-                                          : "fa-times text-red-500"
-                                      }`}
-                                    ></i>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+        {assignedBills.map((bill, billIndex) => (
+          <div key={bill.invoiceNo}>
+            {bill.deliveredProducts.map((dp, dpIndex) => (
+              <DeliveredProducts
+                key={dp.item_id}
+                dp={dp}
+                billIndex={billIndex}
+                handleDeliveredQuantityChange={handleDeliveredQuantityChange}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+
+
+
+
+
+
                         </div>
 
                         {/* Continue and Cancel Buttons */}

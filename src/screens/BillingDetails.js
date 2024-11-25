@@ -48,6 +48,7 @@ const BillingList = () => {
       );
 
   const unapprovedBillings = billings.filter((billing) => !billing.isApproved && billing.submittedBy == userInfo._id);
+  const unapprovedAdminBillings = billings.filter((billing) => !billing.isApproved);
 
   const paginateBillings = () => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -443,6 +444,15 @@ const BillingList = () => {
           <p className="font-bold text-xs">Submitted for Review</p>
           <p className="text-xs">
             You have {unapprovedBillings.length} billing(s) awaiting approval.
+          </p>
+        </div>
+      )}
+
+{userInfo.isAdmin && unapprovedAdminBillings.length > 0 && (
+        <div className="bg-yellow-100 rounded-md border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+          <p className="font-bold text-xs">Submitted for Review</p>
+          <p className="text-xs">
+            {unapprovedAdminBillings.length} billing(s) awaiting approval.
           </p>
         </div>
       )}

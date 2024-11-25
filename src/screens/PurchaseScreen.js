@@ -1,4 +1,3 @@
-// src/screens/PurchasePage.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { createPurchase } from "../actions/productActions";
@@ -8,57 +7,87 @@ import ErrorModal from "../components/ErrorModal";
 
 export default function PurchasePage() {
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Seller Information
+  const [sellerId, setSellerId] = useState("");
   const [sellerName, setSellerName] = useState("");
+  const [sellerAddress, setSellerAddress] = useState("");
+  const [sellerGst, setSellerGst] = useState("");
+  const [sellerSuggestions, setSellerSuggestions] = useState([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const [lastBillId, setLastBillId] = useState("");
+
+  // Purchase Information
+  const [purchaseId, setPurchaseId] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
+  const [billingDate, setBillingDate] = useState(
+    new Date().toISOString().substring(0, 10)
+  );
+  const [invoiceDate, setInvoiceDate] = useState("");
+
+  // Item Information
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [itemLoading, setItemLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [itemId, setItemId] = useState("");
   const [itemName, setItemName] = useState("");
   const [itemQuantity, setItemQuantity] = useState("");
   const [itemUnit, setItemUnit] = useState("");
   const [itemBrand, setItemBrand] = useState("");
   const [itemCategory, setItemCategory] = useState("");
-  const [itemPrice, setItemPrice] = useState("");
+  const [itemBillPrice, setItemBillPrice] = useState("");
+  const [itemCashPrice, setItemCashPrice] = useState("");
   const [categories, setCategories] = useState([]);
-  const [sellerSuggestions, setSellerSuggestions] = useState([]);
-  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
-  const [sellerAddress, setSellerAddress] = useState("");
-  const [sellerGst, setSellerGst] = useState("");
-  const [purchaseId, setPurchaseId] = useState("");
-  const [billingDate, setBillingDate] = useState(
-    new Date().toISOString().substring(0, 10)
-  );
-  const [invoiceDate, setInvoiceDate] = useState("");
 
+  // Item Additional Information
   const [sUnit, setSUnit] = useState("");
   const [psRatio, setPsRatio] = useState("");
   const [length, setLength] = useState("");
   const [breadth, setBreadth] = useState("");
   const [size, setSize] = useState("");
 
+  // Transportation Information
+  const [logisticCompany, setLogisticCompany] = useState("");
+  const [logisticBillId, setLogisticBillId] = useState("");
+  const [logisticCompanyGst, setLogisticCompanyGst] = useState("");
+  const [logisticAmount, setLogisticAmount] = useState("");
+  const [logisticRemark, setLogisticRemark] = useState("");
+  const [localCompany, setLocalCompany] = useState("");
+  const [localBillId, setLocalBillId] = useState("");
+  const [localCompanyGst, setLocalCompanyGst] = useState("");
+  const [localAmount, setLocalAmount] = useState("");
+  const [localRemark, setLocalRemark] = useState("");
+  const [transportCompanies, setTransportCompanies] = useState([]);
+
+  // Other States
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // Refs for input fields to enable Enter navigation
+  const sellerIdRef = useRef();
   const sellerNameRef = useRef();
-  const purchaseIdRef = useRef();
-  const billingDateRef = useRef();
-  const invoiceDateRef = useRef();
   const sellerAddressRef = useRef();
   const sellerGstRef = useRef();
+  const purchaseIdRef = useRef();
   const invoiceNoRef = useRef();
+  const billingDateRef = useRef();
+  const invoiceDateRef = useRef();
   const itemIdRef = useRef();
-  const itemQuantityRef = useRef();
   const itemNameRef = useRef();
-  const itemUnitRef = useRef();
   const itemBrandRef = useRef();
   const itemCategoryRef = useRef();
-  const itemPriceRef = useRef();
+  const itemBillPriceRef = useRef();
+  const itemCashPriceRef = useRef();
+  const itemUnitRef = useRef();
+  const itemQuantityRef = useRef();
+  const logisticCompanyRef = useRef();
+  const logisticAmountRef = useRef();
+  const localCompanyRef = useRef();
+  const localAmountRef = useRef();
 
   // Effect to auto-hide messages after 3 seconds
   useEffect(() => {
@@ -71,6 +100,28 @@ export default function PurchasePage() {
     }
   }, [message, error]);
 
+
+    // Fetch Last Bill ID on Mount
+    useEffect(() => {
+      const fetchLastBill = async () => {
+        setLoading(true);
+        try {
+          const { data } = await api.get('/api/purchases/lastOrder/id');
+          const nextInvoiceNo =  "KP" + parseInt(parseInt(data.slice(2), 10) + 1);
+          if(data){
+            setLastBillId(data);
+            setPurchaseId(nextInvoiceNo)
+          }
+          } catch (error) {
+          console.error('Error fetching last bill:', error);
+          setError('Failed to fetch last billing information.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchLastBill();
+    }, []);
+
   // Effect to focus on the first input of each step
   useEffect(() => {
     if (currentStep === 1) {
@@ -79,10 +130,12 @@ export default function PurchasePage() {
       sellerAddressRef.current?.focus();
     } else if (currentStep === 3) {
       itemIdRef.current?.focus();
+    } else if (currentStep === 4) {
+      logisticCompanyRef.current?.focus();
     }
   }, [currentStep]);
 
-  // Fetch categories on component mount
+  // Fetch categories and transport companies on component mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -92,7 +145,19 @@ export default function PurchasePage() {
         console.error("Error fetching categories:", error);
       }
     };
+
+    const fetchTransportCompanies = async () => {
+      try {
+        const { data } = await api.get("/api/purchases/get-all/transportCompany");
+        const newData = [...data, "Haha", "HIHI"];
+        setTransportCompanies(newData);
+      } catch (error) {
+        console.error("Error fetching transport companies:", error);
+      }
+    };
+
     fetchCategories();
+    fetchTransportCompanies();
   }, []);
 
   // Handle Seller Name change with suggestions
@@ -101,6 +166,7 @@ export default function PurchasePage() {
     setSellerName(value);
     if (value.trim() === "") {
       setSellerSuggestions([]);
+      setSellerId("");
       return;
     }
     try {
@@ -114,6 +180,27 @@ export default function PurchasePage() {
     }
   };
 
+  // Function to handle selecting a seller from suggestions
+  const handleSelectSeller = (seller) => {
+    setSellerName(seller.sellerName);
+    setSellerId(seller.sellerId);
+    setSellerAddress(seller.sellerAddress || "");
+    setSellerGst(seller.sellerGst || "");
+    setSellerSuggestions([]);
+    invoiceNoRef.current?.focus();
+  };
+
+  // Function to generate a new seller ID
+  const generateSellerId = async () => {
+    try {
+      const lastId = 'KKSELLER' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      setSellerId(lastId);
+    } catch (err) {
+      setError("Error generating seller ID");
+      setShowErrorModal(true);
+    }
+  };
+
   // Function to handle adding items with consistent calculations
   const addItem = () => {
     // Validate all required fields
@@ -122,14 +209,15 @@ export default function PurchasePage() {
       !itemName ||
       !itemBrand ||
       !itemCategory ||
-      !itemPrice ||
+      itemBillPrice === "" ||
+      itemCashPrice === "" ||
       !itemUnit ||
-      !itemQuantity ||
-      !sUnit ||
-      !psRatio ||
-      !length ||
-      !breadth ||
-      !size
+      itemQuantity === "" ||
+      sUnit === "" ||
+      psRatio === "" ||
+      length === "" ||
+      breadth === "" ||
+      size === ""
     ) {
       setError("Please fill in all required fields before adding an item.");
       setShowErrorModal(true);
@@ -138,7 +226,8 @@ export default function PurchasePage() {
 
     // Parse numerical inputs
     const parsedQuantity = parseFloat(itemQuantity);
-    const parsedPrice = parseFloat(itemPrice);
+    const parsedBillPrice = parseFloat(itemBillPrice);
+    const parsedCashPrice = parseFloat(itemCashPrice);
     const productLength = parseFloat(length);
     const productBreadth = parseFloat(breadth);
     const productSize = parseFloat(size);
@@ -148,8 +237,10 @@ export default function PurchasePage() {
     if (
       isNaN(parsedQuantity) ||
       parsedQuantity <= 0 ||
-      isNaN(parsedPrice) ||
-      parsedPrice <= 0 ||
+      isNaN(parsedBillPrice) ||
+      parsedBillPrice < 0 ||
+      isNaN(parsedCashPrice) ||
+      parsedCashPrice < 0 ||
       isNaN(productLength) ||
       productLength <= 0 ||
       isNaN(productBreadth) ||
@@ -166,24 +257,6 @@ export default function PurchasePage() {
       return;
     }
 
-    let adjustedQuantity = parsedQuantity;
-
-    // Calculate Adjusted Quantity based on the Unit
-    if (itemUnit === "SQFT") {
-      const area = productLength * productBreadth;
-      if (area > 0) {
-        adjustedQuantity = parsedQuantity / area;
-      }
-    } else if (itemUnit === "BOX") {
-      const areaPerBox = productLength * productBreadth;
-      adjustedQuantity = parsedQuantity * productPsRatio;
-    } else if (itemUnit === "TNOS") {
-      const areaPerTnos = productLength * productBreadth;
-    } else if (itemUnit === "NOS") {
-      // No adjustment needed for NOS
-      adjustedQuantity = parsedQuantity;
-    }
-
     // Prevent duplicate items
     if (items.some((item) => item.itemId === itemId)) {
       setError("This item is already added. Please adjust the quantity instead.");
@@ -197,14 +270,14 @@ export default function PurchasePage() {
       brand: itemBrand,
       category: itemCategory,
       quantity: parsedQuantity,
-      enteredQty: parsedQuantity,
       unit: itemUnit,
-      price: parsedPrice,
+      billPrice: parsedBillPrice,
+      cashPrice: parsedCashPrice,
       sUnit,
-      psRatio,
-      length,
-      breadth,
-      size,
+      psRatio: productPsRatio,
+      length: productLength,
+      breadth: productBreadth,
+      size: productSize,
     };
 
     setItems([newItem, ...items]);
@@ -218,7 +291,8 @@ export default function PurchasePage() {
     setItemName("");
     setItemBrand("");
     setItemCategory("");
-    setItemPrice("");
+    setItemBillPrice("");
+    setItemCashPrice("");
     setItemUnit("");
     setItemQuantity("");
     setSUnit("");
@@ -243,7 +317,8 @@ export default function PurchasePage() {
         setItemName(data.name);
         setItemBrand(data.brand);
         setItemCategory(data.category);
-        setItemPrice(data.price);
+        setItemBillPrice(data.billPrice);
+        setItemCashPrice(data.cashPrice);
         setBreadth(data.breadth);
         setLength(data.length);
         setPsRatio(data.psRatio);
@@ -260,6 +335,7 @@ export default function PurchasePage() {
       setError("Error fetching item details.");
       setShowErrorModal(true);
       clearItemFields();
+      setItemId(itemId);
     } finally {
       setItemLoading(false);
     }
@@ -283,17 +359,70 @@ export default function PurchasePage() {
     }
   };
 
-  // Calculate Total Amount
-  const calculateTotalAmount = () => {
-    return items.reduce((acc, item) => acc + item.enteredQty * item.price, 0);
+  // Calculate Total Amounts
+  const calculateTotals = () => {
+    let billPartTotal = 0;
+    let cashPartTotal = 0;
+
+    items.forEach((item) => {
+      billPartTotal += item.quantity * item.billPrice;
+      cashPartTotal += item.quantity * item.cashPrice;
+    });
+
+    // GST rate for items is 18%
+    const gstRateItems = 0.18;
+
+    const amountWithoutGSTItems = billPartTotal / (1 + gstRateItems);
+    const gstAmountItems = billPartTotal - amountWithoutGSTItems;
+    const cgstItems = gstAmountItems / 2;
+    const sgstItems = gstAmountItems / 2;
+
+    // Transportation charges
+    const logisticAmountValue = parseFloat(logisticAmount || 0);
+    const localAmountValue = parseFloat(localAmount || 0);
+    const totalTransportationCharges = logisticAmountValue + localAmountValue;
+
+    // GST rate for transportation is 5%
+    const gstRateTransport = 0.05;
+
+    const amountWithoutGSTTransport =
+      totalTransportationCharges / (1 + gstRateTransport);
+    const gstAmountTransport = totalTransportationCharges - amountWithoutGSTTransport;
+    const cgstTransport = gstAmountTransport / 2;
+    const sgstTransport = gstAmountTransport / 2;
+
+    const totalPurchaseAmount = billPartTotal + cashPartTotal;
+
+    return {
+      billPartTotal,
+      cashPartTotal,
+      amountWithoutGSTItems,
+      gstAmountItems,
+      cgstItems,
+      sgstItems,
+      totalTransportationCharges,
+      amountWithoutGSTTransport,
+      gstAmountTransport,
+      cgstTransport,
+      sgstTransport,
+      totalPurchaseAmount,
+    };
   };
 
-  // GST Calculations (Assuming 18% GST split into CGST and SGST)
-  const totalAmount = calculateTotalAmount();
-  const amountWithoutGST = totalAmount / 1.18;
-  const gstAmount = totalAmount - amountWithoutGST;
-  const cgst = gstAmount / 2;
-  const sgst = gstAmount / 2;
+  const {
+    billPartTotal,
+    cashPartTotal,
+    amountWithoutGSTItems,
+    gstAmountItems,
+    cgstItems,
+    sgstItems,
+    totalTransportationCharges,
+    amountWithoutGSTTransport,
+    gstAmountTransport,
+    cgstTransport,
+    sgstTransport,
+    totalPurchaseAmount,
+  } = calculateTotals();
 
   // Handle Form Submission
   const submitHandler = async () => {
@@ -307,28 +436,63 @@ export default function PurchasePage() {
 
     // Prepare purchase data
     const purchaseData = {
+      sellerId,
       sellerName,
+      sellerAddress,
+      sellerGst,
       invoiceNo,
+      purchaseId,
+      billingDate,
+      invoiceDate,
       items: items.map((item) => ({
-        itemId: item.itemId,
+        itemId: item.itemId || itemId,
         name: item.name,
         brand: item.brand,
         category: item.category,
         quantity: item.quantity,
         pUnit: item.unit,
-        price: item.price,
         sUnit: item.sUnit,
         psRatio: item.psRatio,
         length: item.length,
         breadth: item.breadth,
         size: item.size,
+        billPartPrice: item.billPrice,
+        cashPartPrice: item.cashPrice
       })),
-      purchaseId,
-      sellerAddress,
-      sellerGst,
-      billingDate,
-      invoiceDate,
-      totalAmount
+      totals: {
+        billPartTotal,
+        cashPartTotal,
+        amountWithoutGSTItems,
+        gstAmountItems,
+        cgstItems,
+        sgstItems,
+        amountWithoutGSTTransport,
+        gstAmountTransport,
+        cgstTransport,
+        sgstTransport,
+        totalPurchaseAmount,
+        transportationCharges: totalTransportationCharges,
+      },
+      transportationDetails: {
+        logistic: {
+          purchaseId: purchaseId,
+          invoiceNo: invoiceNo,
+          billId: logisticBillId,
+          companyGst: logisticCompanyGst,
+          transportCompanyName: logisticCompany,
+          transportationCharges: logisticAmount,
+          remark: logisticRemark,
+        },
+        local: {
+          purchaseId: purchaseId,
+          invoiceNo: invoiceNo,
+          billId: localBillId,
+          companyGst: localCompanyGst,
+          transportCompanyName: localCompany,
+          transportationCharges: localAmount,
+          remark: localRemark,
+        },
+      },
     };
 
     try {
@@ -337,14 +501,21 @@ export default function PurchasePage() {
       alert("Purchase submitted successfully!");
       // Reset form fields
       setCurrentStep(1);
+      setSellerId("");
       setSellerName("");
-      setInvoiceNo("");
-      setItems([]);
-      setPurchaseId("");
       setSellerAddress("");
       setSellerGst("");
+      setInvoiceNo("");
+      setPurchaseId("");
       setBillingDate(new Date().toISOString().substring(0, 10));
       setInvoiceDate("");
+      setItems([]);
+      setLogisticCompany("");
+      setLogisticAmount("");
+      setLogisticRemark("");
+      setLocalCompany("");
+      setLocalAmount("");
+      setLocalRemark("");
     } catch (error) {
       setError("Error submitting purchase. Please try again.");
       setShowErrorModal(true);
@@ -373,12 +544,12 @@ export default function PurchasePage() {
       )}
 
       {/* Error Modal */}
-      {showErrorModal && (
+      {showErrorModal && ( 
         <ErrorModal
           message={error}
           onClose={() => setShowErrorModal(false)}
         />
-      )}
+      )} 
 
       {/* Top Banner */}
       <div
@@ -410,37 +581,59 @@ export default function PurchasePage() {
             )}
           </div>
           <div className="text-right">
-            <button
-              onClick={submitHandler}
-              className="py-2 font-bold px-4 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs"
-            >
-              Submit
-            </button>
+            {currentStep === 4 ? (
+              <button
+                onClick={submitHandler}
+                className="py-2 font-bold px-4 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs"
+              >
+                Submit
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCurrentStep(currentStep + 1)}
+                className="mt-6 text-xs py-2 px-4 bg-red-600 text-white font-bold rounded-md hover:bg-red-700"
+              >
+                Next
+              </button>
+            )}
             <p className="text-xs mt-1 text-gray-400">
-              Please click submit only after all fields are filled
+              Please fill all fields before proceeding
             </p>
           </div>
         </div>
 
         {/* Total Amount Display */}
-       {currentStep === 3 && <div className="bg-gray-100 p-4 rounded-lg shadow-inner mb-4">
-          <div className="flex justify-between">
-            <p className="text-xs">Subtotal (without GST):</p>
-            <p className="text-xs">₹{amountWithoutGST.toFixed(2)}</p>
+        {currentStep === 3 && (
+          <div className="bg-gray-100 p-4 rounded-lg shadow-inner mb-4">
+            <div className="flex justify-between">
+              <p className="text-xs font-bold">Bill Part Total:</p>
+              <p className="text-xs">₹{billPartTotal.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs">Amount without GST:</p>
+              <p className="text-xs">₹{amountWithoutGSTItems.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs">CGST (9%):</p>
+              <p className="text-xs">₹{cgstItems.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs">SGST (9%):</p>
+              <p className="text-xs">₹{sgstItems.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-sm font-bold">Cash Part Total:</p>
+              <p className="text-xs">₹{cashPartTotal.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-sm font-bold">Total Purchase Amount:</p>
+              <p className="text-xs font-bold">
+                ₹{(billPartTotal + cashPartTotal).toFixed(2)}
+              </p>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <p className="text-xs">CGST (9%):</p>
-            <p className="text-xs">₹{cgst.toFixed(2)}</p>
-          </div>
-          <div className="flex justify-between">
-            <p className="text-xs">SGST (9%):</p>
-            <p className="text-xs">₹{sgst.toFixed(2)}</p>
-          </div>
-          <div className="flex justify-between mt-2">
-            <p className="text-sm font-bold">Total Amount (with GST):</p>
-            <p className="text-xs font-bold">₹{totalAmount.toFixed(2)}</p>
-          </div>
-        </div> }
+        )}
 
         {/* Form */}
         <div>
@@ -448,10 +641,14 @@ export default function PurchasePage() {
             {/* Step 1: Supplier Information */}
             {currentStep === 1 && (
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Supplier Information</h2>
+                <h2 className="text-sm font-bold text-gray-900">
+                  Supplier Information
+                </h2>
                 <div className="mt-4 space-y-4">
                   <div className="flex flex-col">
-                    <label className="text-xs mb-1 text-gray-700">Purchase ID</label>
+                    <label className="text-xs flex justify-between mb-1 text-gray-700">
+                      Purchase ID <p className="text-xs italic text-gray-400">Last Billed: {lastBillId}</p>
+                    </label>
                     <input
                       type="text"
                       placeholder="Purchase ID"
@@ -465,14 +662,23 @@ export default function PurchasePage() {
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="mb-1 text-xs text-gray-700">Supplier Name</label>
+                    <label className="mb-1 text-xs text-gray-700">
+                      Supplier Name
+                    </label>
                     <input
                       type="text"
                       ref={sellerNameRef}
                       value={sellerName}
                       placeholder="Enter Supplier Name"
                       onChange={handleSellerNameChange}
-                      onKeyDown={(e) => changeRef(e, invoiceNoRef)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          if (!sellerId) {
+                            generateSellerId();
+                          }
+                         changeRef(e, invoiceNoRef)
+                        }
+                      }}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       required
                     />
@@ -482,58 +688,52 @@ export default function PurchasePage() {
                         {sellerSuggestions.map((suggestion, index) => (
                           <li
                             key={index}
-                            className={`p-2 cursor-pointer hover:bg-gray-100 ${
-                              selectedSuggestionIndex === index ? "bg-gray-200" : ""
+                            className={`p-3 text-xs border-t cursor-pointer hover:bg-gray-100 ${
+                              selectedSuggestionIndex === index
+                                ? "bg-gray-200"
+                                : ""
                             }`}
-                            onClick={() => {
-                              setSellerName(suggestion);
-                              setSellerSuggestions([]);
-                              invoiceNoRef.current?.focus();
-                            }}
+                            onClick={() => handleSelectSeller(suggestion)}
                           >
-                            {suggestion}
+                            {suggestion.sellerName}
                           </li>
                         ))}
                       </ul>
                     )}
                   </div>
 
+                  {/* Seller ID */}
                   <div className="flex flex-col">
-                    <label className="mb-1 text-xs text-gray-700">Invoice No.</label>
+                    <label className="mb-1 text-xs text-gray-700">
+                      Supplier ID
+                    </label>
+                    <input
+                      type="text"
+                      ref={sellerIdRef}
+                      value={sellerId}
+                      placeholder="Supplier ID"
+                      onChange={(e) => setSellerId(e.target.value)}
+                      onKeyDown={(e) => changeRef(e, invoiceNoRef)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100 focus:outline-none text-xs"
+                      readOnly
+                    />
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="mb-1 text-xs text-gray-700">
+                      Invoice No.
+                    </label>
                     <input
                       type="text"
                       ref={invoiceNoRef}
                       value={invoiceNo}
                       placeholder="Enter invoice number"
                       onChange={(e) => setInvoiceNo(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          setCurrentStep(2)
-                        }
-                      }}
+                      onKeyDown={(e)=> {if(e.key === "Enter") setCurrentStep(2)  }}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       required
                     />
                   </div>
-                </div>
-
-                {/* Step Navigation Buttons */}
-                <div className="flex justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(1)}
-                    disabled={currentStep === 1}
-                    className="mt-6 text-xs py-2 px-4 bg-red-600 text-white font-bold rounded-md hover:bg-red-700 disabled:bg-gray-300 cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="mt-6 text-xs py-2 px-4 bg-red-600 text-white font-bold rounded-md hover:bg-red-700"
-                  >
-                    Next
-                  </button>
                 </div>
               </div>
             )}
@@ -542,11 +742,13 @@ export default function PurchasePage() {
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div className="flex flex-col">
-                  <label className="text-xs mb-1 text-gray-700">Supplier Address</label>
+                  <label className="text-xs mb-1 text-gray-700">
+                    Supplier Address
+                  </label>
                   <input
                     type="text"
                     ref={sellerAddressRef}
-                    placeholder="Seller Address"
+                    placeholder="Supplier Address"
                     value={sellerAddress}
                     onKeyDown={(e) => changeRef(e, sellerGstRef)}
                     onChange={(e) => setSellerAddress(e.target.value)}
@@ -556,10 +758,12 @@ export default function PurchasePage() {
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs mb-1 text-gray-700">Supplier GSTIN</label>
+                  <label className="text-xs mb-1 text-gray-700">
+                    Supplier GSTIN
+                  </label>
                   <input
                     type="text"
-                    placeholder="Seller GST"
+                    placeholder="Supplier GST"
                     ref={sellerGstRef}
                     value={sellerGst}
                     onKeyDown={(e) => changeRef(e, billingDateRef)}
@@ -570,7 +774,9 @@ export default function PurchasePage() {
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs mb-1 text-gray-700">Billing Date</label>
+                  <label className="text-xs mb-1 text-gray-700">
+                    Billing Date
+                  </label>
                   <input
                     type="date"
                     value={billingDate}
@@ -582,33 +788,19 @@ export default function PurchasePage() {
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs mb-1 text-gray-700">Invoice Date</label>
+                  <label className="text-xs mb-1 text-gray-700">
+                    Invoice Date
+                  </label>
                   <input
                     type="date"
                     ref={invoiceDateRef}
                     value={invoiceDate}
-                    onKeyDown={(e) => { if (e.key === "Enter") setCurrentStep(3); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") setCurrentStep(3);
+                    }}
                     onChange={(e) => setInvoiceDate(e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                   />
-                </div>
-
-                {/* Step Navigation Buttons */}
-                <div className="flex justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(1)}
-                    className="mt-6 text-xs py-2 px-4 bg-red-600 text-white font-bold rounded-md hover:bg-red-700"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(3)}
-                    className="mt-6 text-xs py-2 px-4 bg-red-600 text-white font-bold rounded-md hover:bg-red-700"
-                  >
-                    Next
-                  </button>
                 </div>
               </div>
             )}
@@ -617,6 +809,120 @@ export default function PurchasePage() {
             {currentStep === 3 && (
               <div>
                 <h2 className="text-sm font-bold text-gray-900">Add Item</h2>
+                {/* Table of Added Items */}
+                {items.length > 0 && (
+                  <div className="mt-6">
+                    {/* Responsive Table for Desktop */}
+                    <div className="overflow-x-auto hidden md:block">
+                      <table className="min-w-full table-auto bg-white shadow-md rounded-md">
+                        <thead>
+                          <tr className="bg-red-500 text-white text-xs">
+                            <th className="px-4 py-2 text-left">Item ID</th>
+                            <th className="px-4 py-2 text-left">Name</th>
+                            <th className="px-4 py-2 text-left">Brand</th>
+                            <th className="px-4 py-2 text-left">Category</th>
+                            <th className="px-4 py-2 text-left">Quantity</th>
+                            <th className="px-4 py-2 text-left">Unit</th>
+                            <th className="px-4 py-2 text-left">
+                              Bill Price (₹)
+                            </th>
+                            <th className="px-4 py-2 text-left">
+                              Cash Price (₹)
+                            </th>
+                            <th className="px-4 py-2 text-left">Total (₹)</th>
+                            <th className="px-4 py-2 text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-600 text-xs">
+                          {items.map((item, index) => (
+                            <tr
+                              key={index}
+                              className={`border-b hover:bg-gray-100 ${
+                                index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                              }`}
+                            >
+                              <td className="px-4 py-2">{item.itemId}</td>
+                              <td className="px-4 py-2">{item.name}</td>
+                              <td className="px-4 py-2">{item.brand}</td>
+                              <td className="px-4 py-2">{item.category}</td>
+                              <td className="px-4 py-2">{item.quantity}</td>
+                              <td className="px-4 py-2">{item.unit}</td>
+                              <td className="px-4 py-2">
+                                {item.billPrice.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2">
+                                {item.cashPrice.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2">
+                                {(
+                                  item.quantity *
+                                  (item.billPrice + item.cashPrice)
+                                ).toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  onClick={() => removeItem(index)}
+                                  className="text-red-600 hover:text-red-800 text-xs"
+                                >
+                                  <i
+                                    className="fa fa-trash"
+                                    aria-hidden="true"
+                                  ></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Responsive Cards for Mobile */}
+                    <div className="block md:hidden mt-4">
+                      <div className="space-y-4">
+                        {items.map((item, index) => (
+                          <div
+                            key={index}
+                            className="bg-white shadow-lg rounded-lg p-4 border"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <p className="text-xs font-bold">
+                                {item.name} - {item.itemId}
+                              </p>
+                              <button
+                                onClick={() => removeItem(index)}
+                                className="text-red-600 hover:text-red-800 text-xs"
+                              >
+                                <i
+                                  className="fa fa-trash"
+                                  aria-hidden="true"
+                                ></i>
+                              </button>
+                            </div>
+                            <p className="text-xs">Brand: {item.brand}</p>
+                            <p className="text-xs">Category: {item.category}</p>
+                            <p className="text-xs">
+                              Quantity: {item.quantity} {item.unit}
+                            </p>
+                            <p className="text-xs">
+                              Bill Price: ₹{item.billPrice.toFixed(2)}
+                            </p>
+                            <p className="text-xs">
+                              Cash Price: ₹{item.cashPrice.toFixed(2)}
+                            </p>
+                            <p className="text-xs">
+                              Total: ₹
+                              {(
+                                item.quantity *
+                                (item.billPrice + item.cashPrice)
+                              ).toFixed(2)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4 space-y-4">
                   {/* Item ID and Search */}
                   <div className="flex flex-col">
@@ -627,8 +933,8 @@ export default function PurchasePage() {
                         ref={itemIdRef}
                         value={itemId}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSearchItem()
+                          if (e.key === "Enter") {
+                            handleSearchItem();
                           }
                         }}
                         onChange={(e) => setItemId(e.target.value)}
@@ -648,7 +954,9 @@ export default function PurchasePage() {
                   {/* Item Name and Brand */}
                   <div className="flex flex-col md:flex-row gap-2">
                     <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">Item Name</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        Item Name
+                      </label>
                       <input
                         type="text"
                         placeholder="Enter Item Name"
@@ -661,7 +969,9 @@ export default function PurchasePage() {
                       />
                     </div>
                     <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">Item Brand</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        Item Brand
+                      </label>
                       <input
                         type="text"
                         placeholder="Enter Item Brand"
@@ -678,16 +988,20 @@ export default function PurchasePage() {
                   {/* Item Category and Add Category */}
                   <div className="flex flex-col md:flex-row gap-2">
                     <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">Item Category</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        Item Category
+                      </label>
                       <select
                         value={itemCategory}
                         ref={itemCategoryRef}
                         onChange={(e) => setItemCategory(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemPriceRef)}
+                        onKeyDown={(e) => changeRef(e, itemBillPriceRef)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         required
                       >
-                        <option value="" disabled>Select Category</option>
+                        <option value="" disabled>
+                          Select Category
+                        </option>
                         {categories.map((category, index) => (
                           <option key={index} value={category}>
                             {category}
@@ -706,21 +1020,42 @@ export default function PurchasePage() {
                     </div>
                   </div>
 
-                  {/* Item Price */}
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-700 mb-1">Price (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="Enter Price"
-                      value={itemPrice}
-                      ref={itemPriceRef}
-                      onChange={(e) => setItemPrice(e.target.value)}
-                      onKeyDown={(e) => changeRef(e, itemQuantityRef)}
-                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
+                  {/* Item Prices */}
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex flex-col flex-1">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Bill Part Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Enter Bill Part Price"
+                        value={itemBillPrice}
+                        ref={itemBillPriceRef}
+                        onChange={(e) => setItemBillPrice(e.target.value)}
+                        onKeyDown={(e) => changeRef(e, itemCashPriceRef)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col flex-1">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Cash Part Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Enter Cash Part Price"
+                        value={itemCashPrice}
+                        ref={itemCashPriceRef}
+                        onChange={(e) => setItemCashPrice(e.target.value)}
+                        onKeyDown={(e) => changeRef(e, itemUnitRef)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </div>
                   </div>
 
                   {/* Item Unit, Quantity, and Dimensions */}
@@ -731,23 +1066,29 @@ export default function PurchasePage() {
                         value={itemUnit}
                         onChange={(e) => setItemUnit(e.target.value)}
                         ref={itemUnitRef}
+                        onKeyDown={(e) => changeRef(e, itemQuantityRef)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         required
                       >
-                        <option value="" disabled>Select Unit</option>
+                        <option value="" disabled>
+                          Select Unit
+                        </option>
                         <option value="SQFT">SQFT</option>
                         <option value="BOX">BOX</option>
                         <option value="NOS">NOS</option>
-                        <option value="NOS">GSQFT</option>
+                        <option value="GSQFT">GSQFT</option>
                       </select>
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">Quantity</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        Quantity
+                      </label>
                       <input
                         type="number"
                         placeholder="Enter Quantity"
                         value={itemQuantity}
+                        ref={itemQuantityRef}
                         onChange={(e) => setItemQuantity(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -763,7 +1104,9 @@ export default function PurchasePage() {
 
                     {/* Dimensions and Ratios */}
                     <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">S Unit</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        S Unit
+                      </label>
                       <input
                         type="text"
                         placeholder="Enter S Unit"
@@ -774,7 +1117,9 @@ export default function PurchasePage() {
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">P/S Ratio</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        P/S Ratio
+                      </label>
                       <input
                         type="number"
                         placeholder="Enter P/S Ratio"
@@ -787,7 +1132,9 @@ export default function PurchasePage() {
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">Length (m)</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        Length (m)
+                      </label>
                       <input
                         type="number"
                         placeholder="Enter Length"
@@ -800,7 +1147,9 @@ export default function PurchasePage() {
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">Breadth (m)</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        Breadth (m)
+                      </label>
                       <input
                         type="number"
                         placeholder="Enter Breadth"
@@ -813,7 +1162,9 @@ export default function PurchasePage() {
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">Size (m)</label>
+                      <label className="text-xs text-gray-700 mb-1">
+                        Size (m)
+                      </label>
                       <input
                         type="number"
                         placeholder="Enter Size"
@@ -836,92 +1187,263 @@ export default function PurchasePage() {
                     Add Item
                   </button>
                 </div>
-                {/* Add Item Button */}
               </div>
             )}
 
-            {/* Added Products Section */}
-            {currentStep === 3 && items.length > 0 && (
-              <div className="mt-6">
-                {/* Responsive Table for Desktop */}
-                <div className="overflow-x-auto hidden md:block">
-                  <table className="min-w-full table-auto bg-white shadow-md rounded-md">
-                    <thead>
-                      <tr className="bg-red-500 text-white text-xs">
-                        <th className="px-4 py-2 text-left">Item ID</th>
-                        <th className="px-4 py-2 text-left">Name</th>
-                        <th className="px-4 py-2 text-left">Brand</th>
-                        <th className="px-4 py-2 text-left">Category</th>
-                        <th className="px-4 py-2 text-left">Quantity</th>
-                        <th className="px-4 py-2 text-left">Unit</th>
-                        <th className="px-4 py-2 text-left">Price (₹)</th>
-                        <th className="px-4 py-2 text-left">Total (₹)</th>
-                        <th className="px-4 py-2 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-600 text-xs">
-                      {items.map((item, index) => (
-                        <tr
-                          key={index}
-                          className={`border-b hover:bg-gray-100 ${
-                            index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                          }`}
-                        >
-                          <td className="px-4 py-2">{item.itemId}</td>
-                          <td className="px-4 py-2">{item.name}</td>
-                          <td className="px-4 py-2">{item.brand}</td>
-                          <td className="px-4 py-2">{item.category}</td>
-                          <td className="px-4 py-2">{item.enteredQty}</td>
-                          <td className="px-4 py-2">{item.unit}</td>
-                          <td className="px-4 py-2">{item.price.toFixed(2)}</td>
-                          <td className="px-4 py-2">
-                            {(item.quantity * item.price).toFixed(2)}
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            <button
-                              onClick={() => removeItem(index)}
-                              className="text-red-600 hover:text-red-800 text-xs"
-                            >
-                              <i className="fa fa-trash" aria-hidden="true"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {/* Step 4: Transportation Details */}
+            {currentStep === 4 && (
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">
+                  Transportation Details
+                </h2>
+                <div className="mt-4 space-y-6">
+                  {/* Logistic Transportation */}
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-800 mb-2">
+                      Logistic Transportation (National)
+                    </h3>
+                    <div className="flex flex-col md:flex-row gap-2">
+        <div className="flex flex-col flex-1">
+  <label className="text-xs text-gray-700 mb-1">Company</label>
+  <select
+    value={logisticCompany}
+    ref={logisticCompanyRef}
+    onChange={(e) => {
+      if (e.target.value === "add-custom") {
+        const customCompany = prompt("Enter custom company name:");
+        if (customCompany) {
+          setTransportCompanies((prev) => [...prev, customCompany]); // Add to the list
+          setLogisticCompany(customCompany); // Set as selected value
+        }
+      } else {
+        setLogisticCompany(e.target.value);
+      }
+    }}
+    onKeyDown={(e) => changeRef(e, logisticAmountRef)}
+    className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+  >
+    <option value="" disabled>
+      Select Company
+    </option>
+    {transportCompanies.map((company, index) => (
+      <option key={index} value={company}>
+        {company}
+      </option>
+    ))}
+    <option value="add-custom" className="text-red-500">
+      Add Custom Company
+    </option>
+  </select>
+</div>
 
-                {/* Responsive Cards for Mobile */}
-                <div className="block md:hidden mt-4">
-                  <div className="space-y-4">
-                    {items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="bg-white shadow-lg rounded-lg p-4 border"
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-xs font-bold">
-                            {item.name} - {item.itemId}
-                          </p>
-                          <button
-                            onClick={() => removeItem(index)}
-                            className="text-red-600 hover:text-red-800 text-xs"
-                          >
-                            <i className="fa fa-trash" aria-hidden="true"></i>
-                          </button>
-                        </div>
-                        <p className="text-xs">Brand: {item.brand}</p>
-                        <p className="text-xs">Category: {item.category}</p>
-                        <p className="text-xs">
-                          Quantity: {item.enteredQty} {item.unit}
-                        </p>
-                        <p className="text-xs">Price: ₹{item.price.toFixed(2)}</p>
-                        <p className="text-xs">
-                          Total: ₹{(item.quantity * item.price).toFixed(2)}
-                        </p>
+                      <div className="flex flex-col flex-1">
+                        <label className="text-xs text-gray-700 mb-1">
+                          Amount (with GST)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Enter Amount"
+                          value={logisticAmount}
+                          ref={logisticAmountRef}
+                          onChange={(e) => setLogisticAmount(e.target.value)}
+                          onKeyDown={(e) => changeRef(e, localCompanyRef)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                          min="0"
+                          step="0.01"
+                        />
                       </div>
-                    ))}
+                    </div>
+                    <div className="flex justify-between mt-2 space-x-2">
+                      <div className="w-full">
+                      <label className="text-xs text-gray-700 mb-1">
+                        GSTIN
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Remark"
+                        value={logisticCompanyGst}
+                        onChange={(e) => setLogisticCompanyGst(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      />
+                      </div>
+
+                      <div className="w-full">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Bill Id
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Remark"
+                        value={logisticBillId}
+                        onChange={(e) => setLogisticBillId(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      />
+                      </div>
+
+
+                      <div className="w-full">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Remark
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Remark"
+                        value={logisticRemark}
+                        onChange={(e) => setLogisticRemark(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Local Transportation */}
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-800 mb-2">
+                      Local Transportation (In-State)
+                    </h3>
+                    <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex flex-col flex-1">
+  <label className="text-xs text-gray-700 mb-1">Company</label>
+  <select
+    value={localCompany}
+    ref={localCompanyRef}
+    onChange={(e) => {
+      if (e.target.value === "add-custom") {
+        const customCompany = prompt("Enter custom company name:");
+        if (customCompany) {
+          setTransportCompanies((prev) => [...prev, customCompany]); // Add to the list
+          setLocalCompany(customCompany); // Set as selected value
+        }
+      } else {
+        setLocalCompany(e.target.value);
+      }
+    }}
+    onKeyDown={(e) => changeRef(e, localAmountRef)}
+    className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+  >
+    <option value="" disabled>
+      Select Company
+    </option>
+    {transportCompanies.map((company, index) => (
+      <option key={index} value={company}>
+        {company}
+      </option>
+    ))}
+    <option value="add-custom" className="text-red-500">
+      Add Custom Company
+    </option>
+  </select>
+</div>
+
+                      <div className="flex flex-col flex-1">
+                        <label className="text-xs text-gray-700 mb-1">
+                          Amount (with GST)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Enter Amount"
+                          value={localAmount}
+                          ref={localAmountRef}
+                          onChange={(e) => setLocalAmount(e.target.value)}
+                          onKeyDown={(e) => {}}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between mt-2 space-x-2">
+                      <div className="w-full">
+                      <label className="text-xs text-gray-700 mb-1">
+                        GSTIN
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Remark"
+                        value={localCompanyGst}
+                        onChange={(e) => setLocalCompanyGst(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      />
+                      </div>
+
+                      <div className="w-full">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Bill Id
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Remark"
+                        value={localBillId}
+                        onChange={(e) => setLocalBillId(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      />
+                      </div>
+
+
+                      <div className="w-full">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Remark
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Remark"
+                        value={localRemark}
+                        onChange={(e) => setLocalRemark(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Overall Details */}
+            {currentStep === 4 && (
+              <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-inner">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">
+                  Overall Details
+                </h3>
+                <div className="flex justify-between">
+                  <p className="text-xs font-bold">Bill Part Total:</p>
+                  <p className="text-xs">₹{billPartTotal.toFixed(2)}</p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-xs">Subtotal (without GST):</p>
+                  <p className="text-xs">₹{amountWithoutGSTItems.toFixed(2)}</p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-xs">CGST (9%):</p>
+                  <p className="text-xs">₹{cgstItems.toFixed(2)}</p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-xs">SGST (9%):</p>
+                  <p className="text-xs">₹{sgstItems.toFixed(2)}</p>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <p className="text-sm font-bold">Cash Part Total:</p>
+                  <p className="text-xs">₹{cashPartTotal.toFixed(2)}</p>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <p className="text-sm font-bold">
+                    Transportation Charges:
+                  </p>
+                  <p className="text-xs">
+                    ₹
+                    {(
+                      parseFloat(logisticAmount || 0) +
+                      parseFloat(localAmount || 0)
+                    ).toFixed(2)}
+                  </p>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <p className="text-sm font-bold">Total Purchase Amount:</p>
+                  <p className="text-xs font-bold">
+                    ₹
+                    {(
+                      totalPurchaseAmount
+                    ).toFixed(2)}
+                  </p>
                 </div>
               </div>
             )}

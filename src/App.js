@@ -54,6 +54,9 @@ import PaymentUpdatePage from './screens/paymentUpdateScreen';
 import SalesReport from './screens/salesReport';
 import DailyTransactions from './screens/dailyTransactionsScreen';
 import EditPurchasePaymentPage from './screens/updatePurchasePyaments';
+import PaymentAccountForm from './screens/createAccount';
+import PaymentAccountsList from './screens/AccountsListScreen';
+import EditTransportPaymentPage from './screens/EditTransportpaymentsPage';
 
 
 function App() {
@@ -154,6 +157,9 @@ useEffect(() => {
             <Route path="/sales-report" element={<SalesReport />}></Route>
             <Route path="/daily-transactions" element={<DailyTransactions />}></Route>
             <Route path="/purchase-payments" element={<EditPurchasePaymentPage />}></Route>
+            <Route path="/create-account" element={<PaymentAccountForm />}></Route>
+            <Route path="/payment-accounts" element={<PaymentAccountsList />}></Route>
+            <Route path="/transport-payments" element={<EditTransportPaymentPage />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}

@@ -1,17 +1,27 @@
-// src/screens/DailyTransactions.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api';
 import { useSelector } from 'react-redux';
-import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
-import ErrorModal from '../components/ErrorModal'; // Ensure this component exists
+
+const ErrorModal = ({ message, onClose }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="bg-white rounded-lg p-4 shadow-lg relative w-11/12 max-w-sm">
+      <button onClick={onClose} className="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+        ×
+      </button>
+      <p className="text-sm text-gray-700">{message}</p>
+    </div>
+  </div>
+);
 
 const DailyTransactions = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
   const [billings, setBillings] = useState([]);
-  const [purchasePayments, setPurchasePayments] = useState([]); // New state for purchase payments
+  const [purchasePayments, setPurchasePayments] = useState([]);
+  const [transportPayments, setTransportPayments] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -19,10 +29,7 @@ const DailyTransactions = () => {
   const [totalIn, setTotalIn] = useState(0);
   const [totalOut, setTotalOut] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState('in'); // 'in' or 'out'
-  const [categories, setCategories] = useState([]);
-  const [newCategory, setNewCategory] = useState('');
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [modalType, setModalType] = useState('in');
   const [transactionData, setTransactionData] = useState({
     date: selectedDate,
     amount: '',
@@ -32,6 +39,8 @@ const DailyTransactions = () => {
     method: '',
     remark: '',
     billId: '',
+    purchaseId: '',
+    transportId: '',
   });
 
   const userSignin = useSelector((state) => state.userSignin);
@@ -39,55 +48,57 @@ const DailyTransactions = () => {
 
   const paymentMethods = ['Cash', 'Bank', 'UPI', 'Online'];
 
-  // Fetch transactions, billings, purchase payments, and categories for the selected date
   const fetchTransactions = async () => {
     setLoading(true);
     setError('');
     try {
-      const [transRes, billingRes, purchaseRes, catRes] = await Promise.all([
-        api.get(`/api/daily/transactions`, {
-          params: { date: selectedDate },
-        }),
-        api.get(`/api/daily/billing`, {
-          params: { date: selectedDate },
-        }),
-        api.get(`/api/purchases/purchases/payments`, { // New API call for purchase payments
-          params: { date: selectedDate },
-        }),
+      const [transRes, billingRes, purchaseRes, transportRes, catRes, accRes] = await Promise.all([
+        api.get(`/api/daily/transactions`, { params: { date: selectedDate } }),
+        api.get(`/api/daily/billing`, { params: { date: selectedDate } }),
+        api.get(`/api/sellerPayments/daily/payments`, { params: { date: selectedDate } }),
+        api.get(`/api/transportpayments/daily/payments`, { params: { date: selectedDate } }),
         api.get('/api/daily/transactions/categories'),
+        api.get('/api/accounts/allaccounts'),
       ]);
+
       setTransactions(transRes.data);
       setBillings(billingRes.data);
-      setPurchasePayments(purchaseRes.data); // Set purchase payments
+      setPurchasePayments(purchaseRes.data.flatMap((seller) => seller.payments || []));
+      setTransportPayments(transportRes.data.flatMap((transport) => transport.payments || []));
       setCategories(catRes.data);
-      calculateTotals(transRes.data, billingRes.data, purchaseRes.data);
+      setAccounts(accRes.data);
+
+      calculateTotals(
+        transRes.data,
+        billingRes.data,
+        purchaseRes.data.flatMap((seller) => seller.payments || []),
+        transportRes.data.flatMap((transport) => transport.payments || [])
+      );
     } catch (err) {
       setError('Failed to fetch transactions.');
-      console.error(err);
+      console.error(err.message || err);
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateTotals = (transactionsData, billingsData, purchasePaymentsData) => {
+  const calculateTotals = (transactionsData, billingsData, purchasePaymentsData, transportPaymentsData) => {
     let totalInAmount = 0;
     let totalOutAmount = 0;
 
-    // Calculate total payments in from transactions
     transactionsData.forEach((trans) => {
+      const amount = parseFloat(trans.amount) || 0;
       if (trans.type === 'in') {
-        totalInAmount += parseFloat(trans.amount) || 0;
-      } else {
-        totalOutAmount += parseFloat(trans.amount) || 0;
+        totalInAmount += amount;
+      } else if (trans.type === 'out') {
+        totalOutAmount += amount;
       }
     });
 
-    // Include billing payments received in totalInAmount
     billingsData.forEach((billing) => {
-      if (billing.billingAmountReceived) {
-        totalInAmount += parseFloat(billing.billingAmountReceived) || 0;
-      }
-      // Include other expenses in totalOutAmount
+      const billingReceived = parseFloat(billing.billingAmountReceived) || 0;
+      totalInAmount += billingReceived;
+
       if (billing.otherExpenses) {
         billing.otherExpenses.forEach((expense) => {
           totalOutAmount += parseFloat(expense.amount) || 0;
@@ -95,27 +106,25 @@ const DailyTransactions = () => {
       }
     });
 
-    // Include purchase payments in totalOutAmount
     purchasePaymentsData.forEach((payment) => {
       totalOutAmount += parseFloat(payment.amount) || 0;
     });
 
-    setTotalIn(totalInAmount);
-    setTotalOut(totalOutAmount);
+    transportPaymentsData.forEach((payment) => {
+      totalOutAmount += parseFloat(payment.amount) || 0;
+    });
+
+    setTotalIn(Number(totalInAmount.toFixed(2)));
+    setTotalOut(Number(totalOutAmount.toFixed(2)));
   };
 
   useEffect(() => {
     fetchTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
-  const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
-  };
+  const handleDateChange = (e) => setSelectedDate(e.target.value);
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-  };
+  const handleTabChange = (tab) => setActiveTab(tab);
 
   const openModal = (type) => {
     setModalType(type);
@@ -128,72 +137,73 @@ const DailyTransactions = () => {
       method: '',
       remark: '',
       billId: '',
+      purchaseId: '',
+      transportId: '',
     });
-    setIsAddingCategory(false);
     setError('');
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setNewCategory('');
-    setIsAddingCategory(false);
     setError('');
   };
 
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    // Validate amount
+
     if (isNaN(transactionData.amount) || parseFloat(transactionData.amount) <= 0) {
       setError('Please enter a valid amount.');
       return;
     }
 
-    // Validate required fields based on modal type
     if (modalType === 'in' && !transactionData.paymentFrom.trim()) {
-      setError('Please enter the payer\'s name.');
-      return;
-    }
-    if (modalType === 'out' && !transactionData.paymentTo.trim()) {
-      setError('Please enter the recipient\'s name.');
+      setError('Please select a payment source.');
       return;
     }
 
-    // Validate category
+    if (modalType === 'out' && !transactionData.paymentTo.trim()) {
+      setError('Please select a payment destination.');
+      return;
+    }
+
+    if (modalType === 'transfer') {
+      if (!transactionData.paymentFrom.trim() || !transactionData.paymentTo.trim()) {
+        setError('Please select both payment source and destination.');
+        return;
+      }
+      if (transactionData.paymentFrom.trim() === transactionData.paymentTo.trim()) {
+        setError('Payment source and destination cannot be the same.');
+        return;
+      }
+    }
+
     if (!transactionData.category.trim()) {
       setError('Please select a category.');
       return;
     }
 
-    // Validate payment method
     if (!transactionData.method.trim()) {
       setError('Please select a payment method.');
       return;
     }
 
     try {
-      if (modalType === 'in') {
-        // Add Payment In Transaction
-        await api.post('/api/daily/transactions', {
-          ...transactionData,
-          type: modalType,
-          userId: userInfo._id
-        });
-      } else {
-        // Add Payment Out Payment (Purchase Payment)
-        // Assuming the user selects a purchase to associate the payment
-        if (!transactionData.purchaseId) {
-          setError('Please select a Purchase ID to associate the payment.');
-          return;
-        }
+      const payload = {
+        ...transactionData,
+        type: modalType,
+        userId: userInfo._id,
+      };
 
-        await api.post(`/api/purchase/${transactionData.purchaseId}/payments`, {
-          amount: transactionData.amount,
-          method: transactionData.method,
-          remark: transactionData.remark,
-          date: transactionData.date,
-        });
+      if (modalType === 'transfer') {
+        await api.post('/api/daily/trans/transfer', payload);
+      } else if (transactionData.category === 'Purchase Payment') {
+        await api.post('/api/purchases/purchases/payments', payload);
+      } else if (transactionData.category === 'Transport Payment') {
+        await api.post('/api/transport/payments', payload);
+      } else {
+        await api.post('/api/daily/transactions', payload);
       }
 
       closeModal();
@@ -204,44 +214,6 @@ const DailyTransactions = () => {
     }
   };
 
-  const handleAddCategory = async () => {
-    if (newCategory.trim() === '') {
-      setError('Category name cannot be empty.');
-      return;
-    }
-    setError('');
-    try {
-      const res = await api.post('/api/daily/transactions/categories', { name: newCategory, userId: userInfo._id });
-      setCategories([...categories, res.data]); // Use response data for consistency
-      setTransactionData({ ...transactionData, category: res.data.name }); // Automatically select the new category
-      setNewCategory('');
-      setIsAddingCategory(false);
-    } catch (err) {
-      setError('Failed to add category.');
-      console.error(err);
-    }
-  };
-
-  // Fetch all purchases for the selected date to allow associating payments
-  const [purchases, setPurchases] = useState([]);
-
-  const fetchPurchases = async () => {
-    try {
-      const purchasesRes = await api.get(`/api/purchases/purchases/payments`, {
-        params: { date: selectedDate },
-      }); 
-      setPurchases(purchasesRes.data);
-    } catch (err) {
-      console.error('Failed to fetch purchases:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchPurchases();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate]);
-
-  // Memoize filtered transactions to optimize performance
   const filteredTransactions = useMemo(() => {
     let filtered = transactions.filter((trans) => {
       if (activeTab === 'in') return trans.type === 'in';
@@ -249,7 +221,6 @@ const DailyTransactions = () => {
       return true;
     });
 
-    // Include billing payments based on activeTab
     if (activeTab === 'in' || activeTab === 'all') {
       billings.forEach((billing) => {
         if (billing.billingAmountReceived > 0) {
@@ -259,7 +230,7 @@ const DailyTransactions = () => {
             amount: billing.billingAmountReceived,
             paymentFrom: billing.customerName,
             category: 'Billing Payment',
-            method: 'Cash',
+            method: billing.method || 'Cash',
             remark: 'Payment received from billing',
             type: 'in',
           });
@@ -267,7 +238,6 @@ const DailyTransactions = () => {
       });
     }
 
-    // Include other expenses from billings based on activeTab
     if (activeTab === 'out' || activeTab === 'all') {
       billings.forEach((billing) => {
         if (billing.otherExpenses) {
@@ -285,10 +255,7 @@ const DailyTransactions = () => {
           });
         }
       });
-    }
 
-    // Include purchase payments based on activeTab
-    if (activeTab === 'out' || activeTab === 'all') {
       purchasePayments.forEach((payment) => {
         filtered.push({
           _id: payment._id,
@@ -301,32 +268,48 @@ const DailyTransactions = () => {
           type: 'out',
         });
       });
+
+      transportPayments.forEach((payment) => {
+        filtered.push({
+          _id: payment._id,
+          date: payment.date,
+          amount: payment.amount,
+          paymentTo: payment.paidTo || 'Transporter',
+          category: payment.category || 'Transport Payment',
+          method: payment.method || 'Cash',
+          remark: payment.remark || 'Payment towards transport',
+          type: 'out',
+        });
+      });
     }
 
-    // Sort transactions by date descending
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-
     return filtered;
-  }, [transactions, billings, purchasePayments, activeTab]);
+  }, [transactions, billings, purchasePayments, transportPayments, activeTab]);
 
   return (
     <>
-      {/* Top Navigation */}
-      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4">
+      <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
         <div
           onClick={() => navigate('/')}
           className="text-center cursor-pointer"
         >
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
           <p className="text-gray-400 text-xs font-bold">
-            Daily Transactions
+            Daily Transactions and Accounts
           </p>
         </div>
+        <i className="fa fa-list text-gray-500" />
+      </div>
+
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between bg-white p-4 shadow-md">
+        <h2 className="text-sm font-bold text-gray-800">Daily Transactions</h2>
         <input
           type="date"
           value={selectedDate}
           onChange={handleDateChange}
-          className="border border-gray-300 rounded p-1 text-xs"
+          className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
         />
       </div>
 
@@ -336,58 +319,55 @@ const DailyTransactions = () => {
       )}
 
       {/* Totals Section */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="bg-green-100 text-green-700 px-4 py-2 rounded text-xs">
-          Total Payment In: Rs. {totalIn.toFixed(2)}
+      <div className="flex space-x-4 p-4">
+        <div className="flex-1 bg-green-100 text-green-700 p-3 rounded-lg">
+          <p className="text-xs">Total Payment In</p>
+          <p className="text-sm font-bold">₹ {totalIn.toFixed(2)}</p>
         </div>
-        <div className="bg-red-100 text-red-700 px-4 py-2 rounded text-xs">
-          Total Payment Out: Rs. {totalOut.toFixed(2)}
+        <div className="flex-1 bg-red-100 text-red-700 p-3 rounded-lg">
+          <p className="text-xs">Total Payment Out</p>
+          <p className="text-sm font-bold">₹ {totalOut.toFixed(2)}</p>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex justify-center mb-4">
-        <div className="flex space-x-4">
+      <div className="flex justify-center p-2">
+        <div className="flex space-x-2 bg-gray-100 p-1 rounded-full">
           <button
             onClick={() => handleTabChange('all')}
-            className={`relative px-4 py-2 text-xs font-semibold ${
-              activeTab === 'all' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-600 hover:text-red-600'
+            className={`px-4 py-1 text-xs rounded-full ${
+              activeTab === 'all' ? 'bg-white text-red-600 shadow-md' : 'text-gray-600'
             }`}
           >
             All Payments
-            {activeTab === 'all' && (
-              <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-red-600"></span>
-            )}
           </button>
           <button
             onClick={() => handleTabChange('in')}
-            className={`relative px-4 py-2 text-xs font-semibold ${
-              activeTab === 'in' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-600 hover:text-red-600'
+            className={`px-4 py-1 text-xs rounded-full ${
+              activeTab === 'in' ? 'bg-white text-red-600 shadow-md' : 'text-gray-600'
             }`}
           >
             Payment In
-            {activeTab === 'in' && (
-              <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-red-600"></span>
-            )}
           </button>
           <button
             onClick={() => handleTabChange('out')}
-            className={`relative px-4 py-2 text-xs font-semibold ${
-              activeTab === 'out' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-600 hover:text-red-600'
+            className={`px-4 py-1 text-xs rounded-full ${
+              activeTab === 'out' ? 'bg-white text-red-600 shadow-md' : 'text-gray-600'
             }`}
           >
             Payment Out
-            {activeTab === 'out' && (
-              <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-red-600"></span>
-            )}
           </button>
         </div>
       </div>
 
       {/* Transactions List */}
-      <div className="mb-20"> {/* Added margin bottom to prevent overlap with fixed buttons */}
+      <div className="p-4 mb-20">
         {loading ? (
-          <Skeleton count={5} height={80} />
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 animate-pulse rounded-lg"></div>
+            ))}
+          </div>
         ) : (
           <>
             {filteredTransactions.length === 0 ? (
@@ -395,63 +375,25 @@ const DailyTransactions = () => {
                 No transactions found for the selected criteria.
               </p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 {filteredTransactions.map((trans) => (
                   <div
                     key={trans._id}
-                    className={`p-4 rounded shadow-md flex flex-col space-y-1 relative ${
-                      trans.type === 'in' ? 'bg-green-50' : 'bg-red-50'
-                    }`}
+                    className="flex justify-between items-center p-2 bg-white shadow-sm rounded-lg"
                   >
-                    {/* Status Indicator */}
-                    <div className="absolute top-3 right-3 flex items-center">
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full animate-ping ${
-                          trans.type === 'in' ? 'bg-green-500' : 'bg-red-500'
-                        }`}
-                      ></span>
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full ${
-                          trans.type === 'in' ? 'bg-green-500' : 'bg-red-500'
-                        }`}
-                      ></span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-sm font-semibold text-gray-700">
-                        {trans.category}
-                      </h3>
-                      <span
-                        className={`text-xs font-bold ${
-                          trans.type === 'in'
-                            ? 'text-green-700'
-                            : 'text-red-700'
-                        }`}
-                      >
-                        {trans.type === 'in' ? 'Payment In' : 'Payment Out'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600">
-                      Date: {new Date(trans.date).toLocaleDateString()}
-                    </p>
-                    {trans.type === 'in' ? (
-                      <p className="text-xs text-gray-600">
-                        Payment From: {trans.paymentFrom || 'N/A'}
+                    <div>
+                      <p className="text-xs font-bold text-gray-700">{trans.category}</p>
+                      <p className="text-xs text-gray-500">
+                        {trans.type === 'in' ? 'From' : 'To'}: {trans.type === 'in' ? trans.paymentFrom : trans.paymentTo}
                       </p>
-                    ) : (
-                      <p className="text-xs text-gray-600">
-                        Payment To: {trans.paymentTo || 'N/A'}
+                      <p className="text-xs text-gray-500">{trans.remark}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-bold ${trans.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                        {trans.type === 'in' ? '+' : '-'}₹{parseFloat(trans.amount).toFixed(2)}
                       </p>
-                    )}
-                    <p className="text-xs text-gray-600">
-                      Amount: Rs. {parseFloat(trans.amount).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Method: {trans.method}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Remark: {trans.remark || 'N/A'}
-                    </p>
+                      <p className="text-xs text-gray-500">{new Date(trans.date).toLocaleDateString()}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -461,34 +403,49 @@ const DailyTransactions = () => {
       </div>
 
       {/* Fixed Payment Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white shadow-md p-4 flex justify-around">
+      <div className="fixed bottom-0 left-0 right-0 bg-white p-2 flex justify-around border-t">
         <button
           onClick={() => openModal('in')}
-          className="bg-green-500 text-white px-4 py-2 rounded text-xs hover:bg-green-600 transition-colors duration-200 w-40"
+          className="flex font-bold items-center justify-center bg-green-500 text-white w-12 h-12 rounded-full shadow-lg"
         >
-          + Payment In
+          +
         </button>
+
+        <button
+          onClick={() => openModal('transfer')}
+          className="flex font-bold items-center justify-center bg-blue-500 text-white w-12 h-12 rounded-full shadow-lg"
+        >
+          <i className='fa fa-money' />
+        </button>
+
         <button
           onClick={() => openModal('out')}
-          className="bg-red-500 text-white px-4 py-2 rounded text-xs hover:bg-red-600 transition-colors duration-200 w-40"
+          className="flex font-bold items-center justify-center bg-red-500 text-white w-12 h-12 rounded-full shadow-lg"
         >
-          + Payment Out
+          -
         </button>
       </div>
 
       {/* Add Transaction Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white w-full max-w-md rounded-lg p-5 relative">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-end z-50">
+          <div className="bg-white w-full rounded-t-lg p-4 relative shadow-lg animate-slide-up">
+            <div className="flex justify-between items-center mb-2">
               <h2 className="text-sm font-bold">
-                Add {modalType === 'in' ? 'Payment In' : 'Payment Out'}
+                {modalType === 'in'
+                  ? 'Add Payment In'
+                  : modalType === 'out'
+                  ? 'Add Payment Out'
+                  : 'Transfer Between Accounts'}
               </h2>
-              <button onClick={closeModal}>
-                <i className="fa fa-times text-gray-500"></i>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
+                ×
               </button>
             </div>
             <form onSubmit={handleTransactionSubmit}>
+              {error && (
+                <p className="text-xs text-red-500 mb-2">{error}</p>
+              )}
               <div className="mb-2">
                 <label className="block text-xs font-bold mb-1">Date</label>
                 <input
@@ -497,7 +454,7 @@ const DailyTransactions = () => {
                   onChange={(e) =>
                     setTransactionData({ ...transactionData, date: e.target.value })
                   }
-                  className="w-full border border-gray-300 rounded p-1 text-xs"
+                  className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                   required
                 />
               </div>
@@ -507,8 +464,7 @@ const DailyTransactions = () => {
                     <label className="block text-xs font-bold mb-1">
                       Payment From
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={transactionData.paymentFrom}
                       onChange={(e) =>
                         setTransactionData({
@@ -516,18 +472,23 @@ const DailyTransactions = () => {
                           paymentFrom: e.target.value,
                         })
                       }
-                      className="w-full border border-gray-300 rounded p-1 text-xs"
+                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                       required
-                      placeholder="Enter payer's name"
-                    />
+                    >
+                      <option value="">Select Account</option>
+                      {accounts.map((account) => (
+                        <option key={account._id} value={account.accountId}>
+                          {account.accountName}
+                        </option>
+                      ))}
+                    </select>
                   </>
-                ) : (
+                ) : modalType === 'out' ? (
                   <>
                     <label className="block text-xs font-bold mb-1">
                       Payment To
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={transactionData.paymentTo}
                       onChange={(e) =>
                         setTransactionData({
@@ -535,16 +496,98 @@ const DailyTransactions = () => {
                           paymentTo: e.target.value,
                         })
                       }
-                      className="w-full border border-gray-300 rounded p-1 text-xs"
+                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                       required
-                      placeholder="Enter recipient's name"
-                    />
+                    >
+                      <option value="">Select Account</option>
+                      {accounts.map((account) => (
+                        <option key={account._id} value={account.accountId}>
+                          {account.accountName}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-xs font-bold mb-1">
+                      Payment From
+                    </label>
+                    <select
+                      value={transactionData.paymentFrom}
+                      onChange={(e) =>
+                        setTransactionData({
+                          ...transactionData,
+                          paymentFrom: e.target.value,
+                        })
+                      }
+                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                      required
+                    >
+                      <option value="">Select Account</option>
+                      {accounts.map((account) => (
+                        <option key={account._id} value={account.accountId}>
+                          {account.accountName}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="block text-xs font-bold mb-1 mt-2">
+                      Payment To
+                    </label>
+                    <select
+                      value={transactionData.paymentTo}
+                      onChange={(e) =>
+                        setTransactionData({
+                          ...transactionData,
+                          paymentTo: e.target.value,
+                        })
+                      }
+                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                      required
+                    >
+                      <option value="">Select Account</option>
+                      {accounts.map((account) => (
+                        <option key={account._id} value={account.accountId}>
+                          {account.accountName}
+                        </option>
+                      ))}
+                    </select>
                   </>
                 )}
               </div>
-              {modalType === 'out' && (
+              <div className="mb-2">
+                <label className="block text-xs font-bold mb-1">Category</label>
+                <select
+                  value={transactionData.category}
+                  onChange={(e) =>
+                    setTransactionData({
+                      ...transactionData,
+                      category: e.target.value,
+                    })
+                  }
+                  className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                  required
+                >
+                  <option value="">Select Category</option>
+                  {modalType === 'out' && (
+                    <>
+                      <option value="Purchase Payment">Purchase Payment</option>
+                      <option value="Transport Payment">Transport Payment</option>
+                    </>
+                  )}
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                  {modalType === 'transfer' && (
+                    <option value="Account Transfer">Account Transfer</option>
+                  )}
+                </select>
+              </div>
+              {modalType === 'out' && transactionData.category === 'Purchase Payment' && (
                 <div className="mb-2">
-                  <label className="block text-xs font-bold mb-1">Purchase ID</label>
+                  <label className="block text-xs font-bold mb-1">Purchase</label>
                   <select
                     value={transactionData.purchaseId || ''}
                     onChange={(e) =>
@@ -553,11 +596,11 @@ const DailyTransactions = () => {
                         purchaseId: e.target.value,
                       })
                     }
-                    className="w-full border border-gray-300 rounded p-1 text-xs"
+                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                     required
                   >
-                    <option value="">Select Purchase ID</option>
-                    {purchases.map((purchase) => (
+                    <option value="">Select Purchase</option>
+                    {purchasePayments.map((purchase) => (
                       <option key={purchase._id} value={purchase._id}>
                         {purchase.invoiceNo} - {purchase.sellerName}
                       </option>
@@ -565,54 +608,29 @@ const DailyTransactions = () => {
                   </select>
                 </div>
               )}
-              <div className="mb-2">
-                <label className="block text-xs font-bold mb-1">Category</label>
-                <div className="flex">
+              {modalType === 'out' && transactionData.category === 'Transport Payment' && (
+                <div className="mb-2">
+                  <label className="block text-xs font-bold mb-1">Transport</label>
                   <select
-                    value={transactionData.category}
+                    value={transactionData.transportId || ''}
                     onChange={(e) =>
                       setTransactionData({
                         ...transactionData,
-                        category: e.target.value,
+                        transportId: e.target.value,
                       })
                     }
-                    className="w-full border border-gray-300 rounded p-1 text-xs"
+                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                     required
                   >
-                    <option value="">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat.name}>
-                        {cat.name}
+                    <option value="">Select Transport</option>
+                    {transportPayments.map((transport) => (
+                      <option key={transport._id} value={transport._id}>
+                        {transport.transportName} - {transport.transportDate}
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingCategory(true)}
-                    className="ml-2 bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-300 transition-colors duration-200"
-                  >
-                    + Add
-                  </button>
                 </div>
-                {isAddingCategory && (
-                  <div className="mt-2 flex">
-                    <input
-                      type="text"
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      className="w-full border border-gray-300 rounded p-1 text-xs"
-                      placeholder="New Category Name"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCategory}
-                      className="ml-2 bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors duration-200"
-                    >
-                      Save
-                    </button>
-                  </div>
-                )}
-              </div>
+              )}
               <div className="mb-2">
                 <label className="block text-xs font-bold mb-1">Amount</label>
                 <input
@@ -624,7 +642,7 @@ const DailyTransactions = () => {
                       amount: e.target.value,
                     })
                   }
-                  className="w-full border border-gray-300 rounded p-1 text-xs"
+                  className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                   required
                   min="0.01"
                   step="0.01"
@@ -641,15 +659,24 @@ const DailyTransactions = () => {
                       method: e.target.value,
                     })
                   }
-                  className="w-full border border-gray-300 rounded p-1 text-xs"
+                  className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                   required
                 >
                   <option value="">Select Method</option>
-                  {paymentMethods.map((method) => (
-                    <option key={method} value={method}>
-                      {method}
-                    </option>
-                  ))}
+                  <optgroup label="Predefined Methods">
+                    {paymentMethods.map((method) => (
+                      <option key={method} value={method}>
+                        {method}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Accounts">
+                    {accounts.map((account) => (
+                      <option key={account._id} value={account.accountId}>
+                        {account.accountName}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
               <div className="mb-2">
@@ -662,37 +689,22 @@ const DailyTransactions = () => {
                       remark: e.target.value,
                     })
                   }
-                  className="w-full border border-gray-300 rounded p-1 text-xs"
+                  className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
                   rows="2"
                   placeholder="Optional remarks"
                 ></textarea>
-              </div>
-              <div className="mb-4">
-                <label className="block text-xs font-bold mb-1">Bill ID (Optional)</label>
-                <input
-                  type="text"
-                  value={transactionData.billId}
-                  onChange={(e) =>
-                    setTransactionData({
-                      ...transactionData,
-                      billId: e.target.value,
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded p-1 text-xs"
-                  placeholder="Enter Bill ID if applicable"
-                />
               </div>
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded mr-2 text-xs hover:bg-gray-300 transition-colors duration-200"
+                  className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md mr-2 text-xs hover:bg-gray-300 transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-red-500 text-white px-4 py-2 rounded text-xs hover:bg-red-600 transition-colors duration-200"
+                  className="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600 transition-colors duration-200"
                 >
                   Add Transaction
                 </button>
@@ -701,6 +713,21 @@ const DailyTransactions = () => {
           </div>
         </div>
       )}
+
+      {/* CSS for modal animation */}
+      <style jsx>{`
+        @keyframes slide-up {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0%);
+          }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 };

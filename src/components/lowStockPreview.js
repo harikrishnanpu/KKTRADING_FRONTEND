@@ -77,7 +77,7 @@ const LowStockPreview = ({ driverPage, adminPage }) => {
   }
 
   return (
-    <div className="p-4 shadow-lg rounded-lg bg-white max-w-4xl mb-10 mx-auto">
+    <div className="p-2 shadow-lg rounded-lg bg-white max-w-4xl mb-10 mx-auto">
      {!driverPage  && <p className="text-sm font-bold mb-4 text-gray-600 text-center">Low Stock & Deliveries</p> }
 
       <div className={`grid ${driverPage || adminPage ?  'md:grid-cols-1' : 'md:grid-cols-2' } gap-6`}>
@@ -90,8 +90,8 @@ const LowStockPreview = ({ driverPage, adminPage }) => {
           ) : (
             filteredProducts.map((product) => (
               <div onClick={()=> navigate(`/get-product/${product.item_id}`)} key={product.item_id} className="flex cursor-pointer hover:bg-gray-100 rounded-md justify-between items-center p-3 border-b border-gray-200">
-                <div>
-                  <p className="text-xs font-bold text-gray-600">{product.name}</p>
+                <div className='space-y-1'>
+                  <p className="text-xs font-bold text-gray-600">{product.name.slice(0,20)}...</p>
                   <p className="text-xs text-red-500">In Stock: {product.countInStock}</p>
                   <p className="text-xs text-gray-500">Item ID: {product.item_id}</p>
                 </div>

@@ -1,4 +1,4 @@
-// src/screens/EditSellerPaymentPage.js
+// src/screens/EditTransportPaymentPage.js
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "./api"; // Adjust the import path as necessary
@@ -6,9 +6,9 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useSelector } from "react-redux";
 
-const EditSellerPaymentPage = () => {
-  const [sellerName, setSellerName] = useState("");
-  const [sellerDetails, setSellerDetails] = useState(null);
+const EditTransportPaymentPage = () => {
+  const [transportName, setTransportName] = useState("");
+  const [transportDetails, setTransportDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
@@ -29,31 +29,30 @@ const EditSellerPaymentPage = () => {
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
 
-  const sellerNameRef = useRef();
+  const transportNameRef = useRef();
 
   useEffect(() => {
     const fetchAccounts = async () => {
-      setIsLoading(true); // Set loading state
+      setIsLoading(true);
       try {
         const response = await api.get("/api/accounts/allaccounts");
         const getPaymentMethod = response.data.map((acc) => acc.accountId);
 
-        // Check if there are any accounts and set the first account as the default
         if (getPaymentMethod.length > 0) {
           const firstAccountId = getPaymentMethod[0];
-          setPaymentMethod(firstAccountId); // Set the first account as default
+          setPaymentMethod(firstAccountId);
         } else {
-          setPaymentMethod(null); // Handle case where there are no accounts
+          setPaymentMethod(null);
         }
 
-        setAccounts(response.data); // Set the accounts in state
+        setAccounts(response.data);
       } catch (err) {
-        setErrorMessage("Failed to fetch payment accounts."); // Set error message
+        setErrorMessage("Failed to fetch payment accounts.");
         setShowErrorModal(true);
         setTimeout(() => setShowErrorModal(false), 3000);
         console.error(err);
       } finally {
-        setIsLoading(false); // Stop loading
+        setIsLoading(false);
       }
     };
 
@@ -62,10 +61,10 @@ const EditSellerPaymentPage = () => {
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (sellerName) {
+      if (transportName) {
         try {
           const response = await api.get(
-            `/api/sellerpayments/suggestions?search=${sellerName}`
+            `/api/transportpayments/suggestions?search=${transportName}`
           );
           setSuggestions(response.data);
         } catch (error) {
@@ -81,29 +80,29 @@ const EditSellerPaymentPage = () => {
     }, 300); // Debounce to reduce API calls
 
     return () => clearTimeout(debounceFetch);
-  }, [sellerName]);
+  }, [transportName]);
 
-  const handleFetchSellerDetails = async (id) => {
+  const handleFetchTransportDetails = async (id) => {
     setIsLoading(true);
     try {
-      const response = await api.get(`/api/sellerpayments/get-seller/${id}`);
-      setSellerDetails(response.data);
+      const response = await api.get(`/api/transportpayments/get-transport/${id}`);
+      setTransportDetails(response.data);
       const remaining = response.data.paymentRemaining;
       setRemainingAmount(remaining >= 0 ? remaining : 0);
       setErrorMessage("");
     } catch (error) {
-      console.error("Error fetching seller data:", error);
-      setErrorMessage("Error fetching seller data. Please check the seller name.");
+      console.error("Error fetching transport data:", error);
+      setErrorMessage("Error fetching transport data. Please check the company name.");
       setShowErrorModal(true);
       setTimeout(() => setShowErrorModal(false), 3000);
-      setSellerDetails(null);
+      setTransportDetails(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleAddPayment = async () => {
-    if (!sellerDetails) return;
+    if (!transportDetails) return;
     if (!paymentAmount || !paymentMethod || !paymentDate) {
       setErrorMessage("Please enter a valid payment amount, method, and date.");
       setShowErrorModal(true);
@@ -127,16 +126,19 @@ const EditSellerPaymentPage = () => {
 
     setIsLoading(true);
     try {
-      await api.post(`/api/sellerpayments/add-payments/${sellerDetails._id}`, {
-        amount: Number(paymentAmount),
-        method: paymentMethod,
-        remark: remark,
-        date: paymentDate,
-        userId: userInfo._id,
-        sellerId: sellerDetails.sellerId,
-        sellerName: sellerDetails.sellerName,
-      });
-      await handleFetchSellerDetails(sellerDetails._id);
+      await api.post(
+        `/api/transportpayments/add-payments/${transportDetails._id}`,
+        {
+          amount: Number(paymentAmount),
+          method: paymentMethod,
+          remark: remark,
+          date: paymentDate,
+          userId: userInfo._id,
+          transportId: transportDetails.transportId,
+          transportName: transportDetails.transportName,
+        }
+      );
+      await handleFetchTransportDetails(transportDetails._id);
       setPaymentAmount("");
       setPaymentMethod(""); // Reset to default
       setPaymentDate("");
@@ -157,9 +159,9 @@ const EditSellerPaymentPage = () => {
   };
 
   const handleSuggestionClick = (suggestion) => {
-    setSellerName(suggestion.sellerName);
+    setTransportName(suggestion.transportName);
     setSuggestions([]);
-    handleFetchSellerDetails(suggestion._id);
+    handleFetchTransportDetails(suggestion._id);
   };
 
   const handleKeyDown = (e) => {
@@ -177,7 +179,7 @@ const EditSellerPaymentPage = () => {
   };
 
   return (
-    <div className="p-2">
+    <div className="p-6">
       {/* Header */}
       <div
         className="flex max-w-4xl mx-auto items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 cursor-pointer"
@@ -186,14 +188,14 @@ const EditSellerPaymentPage = () => {
         <div className="text-center">
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
           <p className="text-gray-400 text-xs font-bold">
-            Edit Seller Payments
+            Edit Transport Payments
           </p>
         </div>
         <i className="fa fa-money-check-alt text-gray-500" />
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex justify-center gap-8">
+      <div className="flex justify-center gap-8 mb-6">
         <button
           className={`font-bold text-xs focus:outline-none relative pb-2 transition-all duration-300 ${
             activeSection === "home"
@@ -223,25 +225,25 @@ const EditSellerPaymentPage = () => {
       </div>
 
       <div className="flex flex-col justify-center items-center p-2">
-        <div className="bg-white shadow-xl rounded-lg w-full max-w-lg p-4">
-          {/* Seller Name Input */}
-          {!sellerDetails && (
+        <div className="bg-white shadow-xl rounded-lg w-full max-w-lg p-6">
+          {/* Transport Name Input */}
+          {!transportDetails && (
             <div className="mb-4">
               <div className="relative w-full">
                 <label className="font-bold text-xs text-gray-500">
-                  Supplier Name
+                  Company Name
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter Seller Name"
-                  value={sellerName}
+                  placeholder="Enter Company Name"
+                  value={transportName}
                   onKeyDown={handleKeyDown}
-                  onChange={(e) => setSellerName(e.target.value)}
-                  ref={sellerNameRef}
+                  onChange={(e) => setTransportName(e.target.value)}
+                  ref={transportNameRef}
                   className="w-full p-2 pr-8 focus:outline-none focus:border-red-300 focus:ring-red-300 border-gray-300 rounded-md text-xs"
                 />
                 <i
-                  onClick={() => setSellerName(" ")}
+                  onClick={() => setTransportName(" ")}
                   className="fa fa-angle-down absolute right-3 bottom-0 transform -translate-y-1/2 text-gray-400 cursor-pointer"
                 ></i>
               </div>
@@ -249,7 +251,7 @@ const EditSellerPaymentPage = () => {
           )}
 
           {/* Suggestions Dropdown */}
-          {!sellerDetails && suggestions.length > 0 && (
+          {!transportDetails && suggestions.length > 0 && (
             <ul className="bg-white divide-y shadow-lg rounded-md overflow-hidden mb-4 border border-gray-300">
               {suggestions.map((suggestion, index) => (
                 <li
@@ -260,7 +262,7 @@ const EditSellerPaymentPage = () => {
                   onClick={() => handleSuggestionClick(suggestion)}
                 >
                   <span className="font-bold text-xs text-gray-500">
-                    {suggestion.sellerName}
+                    {suggestion.transportName}
                   </span>
                   <i className="fa fa-arrow-right text-gray-300" />
                 </li>
@@ -268,25 +270,34 @@ const EditSellerPaymentPage = () => {
             </ul>
           )}
 
-          {/* Seller Details */}
+          {/* Error and Success Modals */}
+          {showErrorModal && (
+            <div className="fixed top-4 right-4 bg-red-500 text-white p-3 rounded-md shadow-md animate-slideIn">
+              <p className="text-xs">{errorMessage}</p>
+            </div>
+          )}
+
+          {showSuccessModal && (
+            <div className="fixed top-4 right-4 bg-green-500 text-white p-3 rounded-md shadow-md animate-slideIn">
+              <p className="text-xs">{successMessage}</p>
+            </div>
+          )}
+
+          {/* Transport Details */}
           {isLoading ? (
             <div>
               <Skeleton height={30} count={1} />
-              <Skeleton
-                height={20}
-                count={3}
-                style={{ marginTop: "10px" }}
-              />
+              <Skeleton height={20} count={3} style={{ marginTop: "10px" }} />
             </div>
           ) : (
-            sellerDetails && (
+            transportDetails && (
               <>
                 {activeSection === "home" && (
                   <div className="mt-4">
                     {/* Summary at the Top */}
                     <div className="border-b pb-4 flex justify-between items-center relative">
                       <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900">
-                        {sellerDetails.sellerName}
+                        {transportDetails.transportName}
                       </h5>
 
                       {/* Payment Status Badge */}
@@ -294,20 +305,20 @@ const EditSellerPaymentPage = () => {
                         let paymentStatus = "";
                         let paymentStatusClass = "";
 
-                        if (sellerDetails.paymentRemaining === 0) {
+                        if (transportDetails.paymentRemaining === 0) {
                           paymentStatus = "Paid";
                           paymentStatusClass =
                             "text-green-600 bg-green-200 hover:bg-green-300 hover:scale-105";
                         } else if (
-                          sellerDetails.totalAmountPaid === 0 &&
-                          sellerDetails.paymentRemaining > 0
+                          transportDetails.totalAmountPaid === 0 &&
+                          transportDetails.paymentRemaining > 0
                         ) {
                           paymentStatus = "Unpaid";
                           paymentStatusClass =
                             "text-red-600 bg-red-200 hover:bg-red-300 hover:scale-105";
                         } else if (
-                          sellerDetails.paymentRemaining > 0 &&
-                          sellerDetails.totalAmountPaid > 0
+                          transportDetails.paymentRemaining > 0 &&
+                          transportDetails.totalAmountPaid > 0
                         ) {
                           paymentStatus = "Partial";
                           paymentStatusClass =
@@ -331,7 +342,7 @@ const EditSellerPaymentPage = () => {
                           Total Billed Amount:
                         </span>
                         <span className="text-sm font-bold text-gray-800">
-                          ₹{sellerDetails.totalAmountBilled.toFixed(2)}
+                          ₹{transportDetails.totalAmountBilled.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex flex-col">
@@ -339,7 +350,7 @@ const EditSellerPaymentPage = () => {
                           Paid Amount:
                         </span>
                         <span className="text-sm font-bold text-green-600">
-                          ₹{sellerDetails.totalAmountPaid.toFixed(2)}
+                          ₹{transportDetails.totalAmountPaid.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex flex-col">
@@ -347,7 +358,7 @@ const EditSellerPaymentPage = () => {
                           Remaining Amount:
                         </span>
                         <span className="text-sm font-bold text-red-600">
-                          ₹{sellerDetails.paymentRemaining.toFixed(2)}
+                          ₹{transportDetails.paymentRemaining.toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -367,13 +378,13 @@ const EditSellerPaymentPage = () => {
                       <h3 className="text-md font-bold text-gray-600 mb-2">
                         Billings
                       </h3>
-                      {sellerDetails.billings.length === 0 ? (
+                      {transportDetails.billings.length === 0 ? (
                         <p className="text-xs text-gray-500">
                           No billings found.
                         </p>
                       ) : (
                         <div className="grid grid-cols-1 gap-4">
-                          {sellerDetails.billings.map((billing, index) => (
+                          {transportDetails.billings.map((billing, index) => (
                             <div
                               key={index}
                               className="bg-white shadow-md rounded-lg p-4 flex justify-between items-center"
@@ -388,9 +399,7 @@ const EditSellerPaymentPage = () => {
                               </div>
                               <div>
                                 <p className="text-xs text-gray-500">
-                                  {new Date(
-                                    billing.date
-                                  ).toLocaleDateString()}
+                                  {new Date(billing.date).toLocaleDateString()}
                                 </p>
                               </div>
                             </div>
@@ -406,13 +415,13 @@ const EditSellerPaymentPage = () => {
                     <h3 className="text-md font-bold text-gray-600 mb-2">
                       Payments
                     </h3>
-                    {sellerDetails.payments.length === 0 ? (
+                    {transportDetails.payments.length === 0 ? (
                       <p className="text-xs text-gray-500">
                         No payments made yet.
                       </p>
                     ) : (
                       <div className="grid grid-cols-1 gap-4">
-                        {sellerDetails.payments.map((payment, index) => (
+                        {transportDetails.payments.map((payment, index) => (
                           <div
                             key={index}
                             className="bg-white shadow-md rounded-lg p-4 flex justify-between items-center"
@@ -442,27 +451,12 @@ const EditSellerPaymentPage = () => {
             )
           )}
 
-          {/* Error and Success Modals */}
-          {showErrorModal && (
-            <div className="fixed top-4 right-4 bg-red-500 text-white p-3 rounded-md shadow-md animate-slideIn">
-              <p className="text-xs">{errorMessage}</p>
-            </div>
-          )}
-
-          {showSuccessModal && (
-            <div className="fixed top-4 right-4 bg-green-500 text-white p-3 rounded-md shadow-md animate-slideIn">
-              <p className="text-xs">{successMessage}</p>
-            </div>
-          )}
-
           {/* Add Payment Modal */}
           {addPaymentModal && (
             <div className="fixed inset-0 flex items-end justify-center bg-black bg-opacity-50">
               <div className="bg-white animate-slide-up w-full rounded-t-lg p-4 animate-slideUp">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-md font-bold text-gray-600">
-                    Add Payment
-                  </h3>
+                  <h3 className="text-md font-bold text-gray-600">Add Payment</h3>
                   <button
                     className="text-gray-500 hover:text-gray-700"
                     onClick={() => setAddPaymentModal(false)}
@@ -544,4 +538,4 @@ const EditSellerPaymentPage = () => {
   );
 };
 
-export default EditSellerPaymentPage;
+export default EditTransportPaymentPage;

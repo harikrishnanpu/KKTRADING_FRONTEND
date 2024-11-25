@@ -1,15 +1,21 @@
+// src/screens/EditBillScreen.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import SuccessModal from '../components/successModal';
+import SuccessModal from '../components/SccessModal';
 import SummaryModal from '../components/SummaryModal';
 import OutOfStockModal from '../components/itemAddingModal';
 import api from './api';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
 
 export default function EditBillScreen() {
   const navigate = useNavigate();
   const { id } = useParams();
+
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
 
   // Billing Information States
   const [invoiceNo, setInvoiceNo] = useState('');
@@ -26,6 +32,11 @@ export default function EditBillScreen() {
   const [receivedAmount, setReceivedAmount] = useState(0);
   const [receivedDate, setReceivedDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [unloading, setUnloading] = useState(0);
+  const [transportation, setTransportation] = useState(0);
+  const [handlingCharge, setHandlingCharge] = useState(0);
+  const [remark, setRemark] = useState('');
+  const [grandTotal, setGrandTotal] = useState(0);
 
   // Product Information States
   const [itemId, setItemId] = useState('');
@@ -40,164 +51,238 @@ export default function EditBillScreen() {
   const [filterText, setFilterText] = useState('');
   const [fetchQuantity, setFetchQuantity] = useState(0);
   const [showOutOfStockModal, setShowOutOfStockModal] = useState(false);
-  const [outofStockProduct, setOutofstockProduct] = useState(null);
+  const [outOfStockProduct, setOutOfStockProduct] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [salesmanPhoneNumber, setSalesmanPhoneNumber] = useState('');
   const [salesmen, setSalesmen] = useState([]);
-
-  // Summary Modal States
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [amountWithoutGST, setAmountWithoutGST] = useState(0);
-  const [cgst, setCgst] = useState(0);
-  const [sgst, setSgst] = useState(0);
+  const [accounts, setAccounts] = useState([]);
 
   // Stepper Control
   const [step, setStep] = useState(1);
 
+  // Modal Controls
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   // Loading States
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const outofStockRef = useRef();
-  const sellingPriceRef = useRef();
 
   // Refs for Input Navigation
-  const itemIdRef = useRef();
-  const itemQuantityRef = useRef();
   const invoiceNoRef = useRef();
   const customerNameRef = useRef();
   const customerAddressRef = useRef();
   const customerContactNumberRef = useRef();
+  const salesmanNameRef = useRef();
+  const invoiceDateRef = useRef();
+  const expectedDeliveryDateRef = useRef();
+  const deliveryStatusRef = useRef();
+  const paymentStatusRef = useRef();
+  const itemIdRef = useRef();
+  const itemQuantityRef = useRef();
+  const outOfStockRef = useRef();
+  const sellingPriceRef = useRef();
   const marketedByRef = useRef();
+  const unloadingRef = useRef();
+  const transportationRef = useRef();
+  const handlingChargeRef = useRef();
   const discountRef = useRef();
   const receivedAmountRef = useRef();
   const receivedDateRef = useRef();
   const paymentMethodRef = useRef();
-  const invoiceDateRef = useRef();
-  const salesmanNameRef = useRef();
-  const expectedDeliveryDateRef = useRef();
 
 
+  const [billingsuggestions,setBillingSuggestions] = useState([]);
+  const [selectedBillingSuggestions,setSelectedBillingSuggestions] = useState();
+
+  useEffect(()=>{
+    if(!id){
+      const fetchSuggestions = async () => {
+        if (invoiceNo) {
+          try {
+            const response = await api.get(
+              `/api/billing/billing/suggestions?search=${invoiceNo}`
+            );
+            setBillingSuggestions(response.data); 
+          } catch (error) {
+            console.error("Error fetching suggestions:", error);
+          }
+        } else {
+          setBillingSuggestions([]);
+        }
+      };
+  
+      fetchSuggestions();
+
+    }
+  },[invoiceNo]);
+
+
+  const handleSuggestionClick = (suggestion) => {
+    navigate(`/bills/edit/${suggestion._id}`)
+    navigate(0);
+    setBillingSuggestions([]);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "ArrowDown") {
+      setSelectedBillingSuggestions((prevIndex) =>
+        prevIndex < billingsuggestions.length - 1 ? prevIndex + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      setSelectedBillingSuggestions((prevIndex) =>
+        prevIndex > 0 ? prevIndex - 1 : billingsuggestions.length - 1
+      );
+    } else if (e.key === "Enter" && selectedBillingSuggestions >= 0) {
+      setSelectedBillingSuggestions(billingsuggestions[selectedBillingSuggestions]);
+      handleSuggestionClick(billingsuggestions[selectedBillingSuggestions])
+      setBillingSuggestions([]);
+    }else if(e.key === "Enter" && id){
+      changeRef(e, customerNameRef);
+    }
+  };
+
+  // Effect to Clear Error Messages After 3 Seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  // Fetch Salesmen and Accounts on Mount
   useEffect(() => {
     const fetchSalesmen = async () => {
       try {
-        const { data } = await api.get('/api/users/salesmen/all'); // Adjust the API endpoint as needed
+        const { data } = await api.get('/api/users/salesmen/all');
         setSalesmen(data);
       } catch (error) {
         console.error('Error fetching salesmen:', error);
       }
     };
-    fetchSalesmen();
-  }, []);
 
-
-  const handleSalesmanChange = (e) => {
-    const selectedName = e.target.value;
-    setSalesmanName(selectedName);
-
-    // Find the contact number for the selected salesman
-    const selectedSalesman = salesmen.find(
-      (salesman) => salesman.name === selectedName
-    );
-    if (selectedSalesman) {
-      if(selectedSalesman.contactNumber){
-        setSalesmanPhoneNumber(selectedSalesman.contactNumber);
-      }else{
-        setSalesmanPhoneNumber('');
-      }
-    }
-
-  };
-
-
-  useEffect(() => {
-    if (selectedProduct) {
-      if (unit === 'SQFT') {
-        const quantity = selectedProduct.countInStock;
-        const adjustedQuantity = (parseFloat(quantity) * parseFloat(selectedProduct.length * selectedProduct.breadth)).toFixed(2);
-        setFetchQuantity(adjustedQuantity);
-        setQuantity(0);
-      } else if (unit === 'BOX') {
-        const quantity = selectedProduct.countInStock;
-        const adjustedQuantity = (parseFloat(quantity) / parseFloat(selectedProduct.psRatio)).toFixed(2);
-        setFetchQuantity(adjustedQuantity);
-        setQuantity(0);
-      } else {
-        const quantity = selectedProduct.countInStock;
-        setFetchQuantity(quantity);
-        setQuantity(0);
-      }
-    }
-  }, [unit, selectedProduct]);
-
-
-  const formatDateTimeLocal = (date) => {
-    const pad = (num) => String(num).padStart(2, '0');
-    const d = new Date(date);
-    
-    const year = d.getFullYear();
-    const month = pad(d.getMonth() + 1); // Months are zero-based
-    const day = pad(d.getDate());
-    const hours = pad(d.getHours());
-    const minutes = pad(d.getMinutes());
-    
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  // Fetch Billing Details
-  useEffect(() => {
-    const fetchBillingDetails = async () => {
+    const fetchAccounts = async () => {
       setIsLoading(true);
       try {
-        const { data } = await api.get(`/api/billing/${id}`);
-        setInvoiceNo(data.invoiceNo);
-        setInvoiceDate(new Date(data.invoiceDate).toISOString().split('T')[0]);
-
-  // Format expectedDeliveryDate to 'YYYY-MM-DDTHH:MM' in local timezone
-  const formattedExpectedDeliveryDate = formatDateTimeLocal(data.expectedDeliveryDate);
-  setExpectedDeliveryDate(formattedExpectedDeliveryDate);
-
-        setReceivedDate(new Date(data.paymentReceivedDate || new Date()).toISOString().split('T')[0]);
-        setDeliveryStatus(data.deliveryStatus);
-        setPaymentStatus(data.paymentStatus);
-        setCustomerName(data.customerName);
-        setCustomerAddress(data.customerAddress);
-        setCustomerContactNumber(data.customerContactNumber);
-        setMarketedBy(data.marketedBy);
-        setDiscount(data.discount);
-        setReceivedAmount(data.billingAmountReceived);
-        setProducts(data.products);
-        setSalesmanName(data.salesmanName);
-        
-        // Find the contact number for the selected salesman
-        const selectedSalesman = salesmen.find(
-          (salesman) => salesman.name === data.salesmanName
-        );
-        if (selectedSalesman && selectedSalesman.contactNumber) {
-          setSalesmanPhoneNumber(selectedSalesman.contactNumber);
+        const response = await api.get('/api/accounts/allaccounts');
+        setAccounts(response.data);
+        if (response.data.length > 0) {
+          setPaymentMethod(response.data[0].accountId);
         } else {
-          setSalesmanPhoneNumber('');
+          setPaymentMethod('');
         }
-      } catch (error) {
-        console.error('Error fetching billing details:', error);
-        setError('Failed to fetch billing information.');
+      } catch (err) {
+        setError('Failed to fetch payment accounts.');
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
-  
-    if (id && salesmen.length > 0) {
-      fetchBillingDetails();
-    }
-  }, [id, salesmen]);
-  
 
+    fetchSalesmen();
+    fetchAccounts();
+  }, []);
+
+  // Fetch Billing Details
   useEffect(() => {
-    if (error) {
-      setTimeout(() => {
-        setError('');
-      }, 3000);
+    const fetchSalesmen = async () => {
+      try {
+        const { data } = await api.get('/api/users/salesmen/all');
+        setSalesmen(data);
+      } catch (error) {
+        console.error('Error fetching salesmen:', error);
+      }
+    };
+
+    const fetchAccounts = async () => {
+      setIsLoading(true);
+      try {
+        const response = await api.get('/api/accounts/allaccounts');
+        setAccounts(response.data);
+        if (response.data.length > 0) {
+          setPaymentMethod(response.data[0].accountId);
+        } else {
+          setPaymentMethod('');
+        }
+      } catch (err) {
+        setError('Failed to fetch payment accounts.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSalesmen();
+    fetchAccounts();
+  }, []);
+
+ // Fetch Billing Details
+useEffect(() => {
+  const fetchBillingDetails = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await api.get(`/api/billing/${id}`);
+      setInvoiceNo(data.invoiceNo);
+      setInvoiceDate(new Date(data.invoiceDate).toISOString().split('T')[0]);
+
+      const formattedExpectedDeliveryDate = new Date(data.expectedDeliveryDate).toISOString().slice(0, 16);
+      setExpectedDeliveryDate(formattedExpectedDeliveryDate);
+
+      setReceivedDate(new Date(data.paymentReceivedDate || new Date()).toISOString().split('T')[0]);
+      setDeliveryStatus(data.deliveryStatus);
+      setPaymentStatus(data.paymentStatus);
+      setCustomerName(data.customerName);
+      setCustomerAddress(data.customerAddress);
+      setCustomerContactNumber(data.customerContactNumber);
+      setMarketedBy(data.marketedBy);
+      setDiscount(parseFloat(data.discount) || 0); // Ensure numeric
+      setReceivedAmount(parseFloat(data.paymentAmount) || 0); // Ensure numeric
+      setUnloading(parseFloat(data.unloading) || 0); // Ensure numeric
+      setTransportation(parseFloat(data.transportation) || 0); // Ensure numeric
+      setHandlingCharge(parseFloat(data.handlingCharge) || 0); // Ensure numeric
+      setRemark(data.remark)
+      // Ensure products have necessary numeric fields
+      const fetchedProducts = data.products.map((product) => ({
+        ...product,
+        quantity: parseFloat(product.quantity) || 0,
+        sellingPriceinQty: parseFloat(product.sellingPriceinQty) || 0,
+      }));
+      setProducts(fetchedProducts);
+
+      setSalesmanName(data.salesmanName);
+
+      // Find the contact number for the selected salesman
+      const selectedSalesman = salesmen.find(
+        (salesman) => salesman.name === data.salesmanName
+      );
+      if (selectedSalesman && selectedSalesman.contactNumber) {
+        setSalesmanPhoneNumber(selectedSalesman.contactNumber);
+      } else {
+        setSalesmanPhoneNumber('');
+      }
+
+      // Calculate total quantity
+      const totalQuantity = fetchedProducts.reduce((acc, product) => acc + product.quantity, 0);
+
+      // Calculate per item discount
+      const calculatedPerItemDiscount = totalQuantity > 0 ? parseFloat(data.discount) / totalQuantity : 0;
+      setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
+
+    } catch (error) {
+      console.error('Error fetching billing details:', error);
+      setError('Failed to fetch billing information.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [error]);
+  };
+
+  if (id && salesmen.length > 0) {
+    fetchBillingDetails();
+  }
+}, [id, salesmen]);
+
 
   // Fetch Suggestions for Item ID
   useEffect(() => {
@@ -218,6 +303,23 @@ export default function EditBillScreen() {
     fetchSuggestions();
   }, [itemId]);
 
+  // Handle Salesman Selection
+  const handleSalesmanChange = (e) => {
+    const selectedName = e.target.value;
+    setSalesmanName(selectedName);
+
+    // Find the contact number for the selected salesman
+    const selectedSalesman = salesmen.find(
+      (salesman) => salesman.name === selectedName
+    );
+    if (selectedSalesman) {
+      setSalesmanPhoneNumber(selectedSalesman.contactNumber || '');
+    } else {
+      setSalesmanPhoneNumber('');
+    }
+  };
+
+  // Add Product by Selecting from Suggestions
   const addProductByItemId = async (product) => {
     setIsLoading(true);
     setError('');
@@ -225,12 +327,12 @@ export default function EditBillScreen() {
       const { data } = await api.get(`/api/products/itemId/${product.item_id}`);
 
       if (data.countInStock <= 0) {
-        setOutofstockProduct(data);
+        setOutOfStockProduct(data);
         setQuantity(1);
         setItemId('');
         setSuggestions([]);
         setShowOutOfStockModal(true);
-        outofStockRef.current?.focus();
+        outOfStockRef.current?.focus();
         return;
       }
 
@@ -249,59 +351,7 @@ export default function EditBillScreen() {
     }
   };
 
-  const handleEditProduct = (index, field, value) => {
-    const updatedProducts = [...products];
-    const product = updatedProducts[index];
-    const parsedValue = parseFloat(value) || 0;
-  
-    // Helper function to safely parse and multiply values
-    const safeMultiply = (a, b) => (a && b ? parseFloat(a) * parseFloat(b) : 0);
-  
-    // Calculate area if length and breadth are present
-    const area = safeMultiply(product.length, product.breadth)
-  
-    // Handle changes to enteredQty field
-    if (field === 'enteredQty') {
-      if (product.unit === 'SQFT' && area > 0) {
-        // Calculate quantity based on area for 'SQFT'
-        product.quantity = parsedValue / area;
-      } else if (product.unit === 'BOX' && product.psRatio) {
-        // Calculate quantity for 'BOX'
-        product.quantity = parsedValue * parseFloat(product.psRatio);
-      } else if (product.unit === 'TNOS') {
-        // For 'TNOS', quantity is directly the enteredQty value
-        product.quantity = parsedValue;
-      } else {
-        // For other units, use the enteredQty directly
-        product.quantity = parsedValue;
-      }
-      product[field] = parsedValue;
-  
-    } else if (field === 'sellingPrice') {
-      // Handle changes to sellingPrice
-      product[field] = parsedValue;
-  
-      if (product.unit === 'BOX' && area > 0) {
-        product.sellingPriceinQty = parsedValue * area;
-      } else if (product.unit === 'TNOS' && area > 0) {
-        product.sellingPriceinQty = parsedValue * area;
-      } else if (product.unit === 'SQFT' && area > 0) {
-        product.sellingPriceinQty = parsedValue * area;
-      } else {
-        product.sellingPriceinQty = parsedValue;
-      }
-  
-    } else {
-      // Handle changes to other fields
-      product[field] = parsedValue;
-    }
-  
-    // Update the products state
-    setProducts(updatedProducts);
-  };
-  
-
-
+  // Handle Adding Product with Quantity and Selling Price
   const handleAddProductWithQuantity = () => {
     // Check if a product is selected
     if (!selectedProduct) {
@@ -365,12 +415,15 @@ export default function EditBillScreen() {
     };
 
     const updatedProducts = [productWithDetails, ...products];
-    setProducts(updatedProducts); 
+    setProducts(updatedProducts);
 
-    // Save updated products to local storag
-
-    // Focus on the next item input
+    // Show success modal and focus on the next item
+    setShowSuccessModal(true);
     itemIdRef.current?.focus();
+
+    setTimeout(() => {
+      setShowSuccessModal(false);
+    }, 2000);
 
     // Reset Fields
     setSelectedProduct(null);
@@ -380,41 +433,132 @@ export default function EditBillScreen() {
     setError('');
   };
 
+  // Delete a Product from the List
   const deleteProduct = (indexToDelete) => {
     setProducts(products.filter((_, index) => index !== indexToDelete));
   };
 
-  const handleBillingSubmit = () => {
-    if (
-      !customerName ||
-      !customerAddress ||
-      !invoiceNo ||
-      !expectedDeliveryDate ||
-      !salesmanName ||
-      products.length === 0
-    ) {
-      setError('Please fill all required fields and add at least one product.');
-      return;
+  // Edit Product Details
+  const handleEditProduct = (index, field, value) => {
+    const updatedProducts = [...products];
+    const product = updatedProducts[index];
+    const parsedValue = parseFloat(value) || 0;
+
+    // Helper function to safely parse and multiply values
+    const safeMultiply = (a, b) => (a && b ? parseFloat(a) * parseFloat(b) : 0);
+
+    // Calculate area if length and breadth are present
+    const area = safeMultiply(product.length, product.breadth);
+
+    // Handle changes to enteredQty field
+    if (field === 'enteredQty') {
+      if (product.unit === 'SQFT' && area > 0) {
+        // Calculate quantity based on area for 'SQFT'
+        product.quantity = parsedValue / area;
+      } else if (product.unit === 'BOX' && product.psRatio) {
+        // Calculate quantity for 'BOX'
+        product.quantity = parsedValue * parseFloat(product.psRatio);
+      } else if (product.unit === 'TNOS') {
+        // For 'TNOS', quantity is directly the enteredQty value
+        product.quantity = parsedValue;
+      } else {
+        // For other units, use the enteredQty directly
+        product.quantity = parsedValue;
+      }
+      product[field] = parsedValue;
+
+    } else if (field === 'sellingPrice') {
+      // Handle changes to sellingPrice
+      product[field] = parsedValue;
+
+      if (product.unit === 'BOX' && area > 0) {
+        product.sellingPriceinQty = parsedValue * area;
+      } else if (product.unit === 'TNOS' && area > 0) {
+        product.sellingPriceinQty = parsedValue * area;
+      } else if (product.unit === 'SQFT' && area > 0) {
+        product.sellingPriceinQty = parsedValue * area;
+      } else {
+        product.sellingPriceinQty = parsedValue;
+      }
+
+    } else {
+      // Handle changes to other fields
+      product[field] = parsedValue;
     }
 
-    const totalAmount = calculateTotalAmount();
-    const amountWithoutGST = totalAmount / 1.18;
-    const gstAmount = totalAmount - amountWithoutGST;
-    const cgst = gstAmount / 2;
-    const sgst = gstAmount / 2;
-
-    setAmountWithoutGST(amountWithoutGST);
-    setCgst(cgst);
-    setSgst(sgst);
-    setShowSummaryModal(true);
-
+    // Update the products state
+    setProducts(updatedProducts);
   };
 
+  // Calculate Total Amount
+  const calculateTotalAmount = () => {
+    return products.reduce(
+      (acc, product) => acc + product.quantity * product.sellingPriceinQty,
+      0
+    );
+  };
+
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [amountWithoutGST, setAmountWithoutGST] = useState(0);
+  const [gstAmount, setGSTAmount] = useState(0);
+  const [cgst, setCGST] = useState(0);
+  const [sgst, setSGST] = useState(0);
+  const [perItemDiscount, setPerItemDiscount] = useState(0);
+
+  // Calculate Totals and GST whenever relevant fields change
+ // Calculate Totals and GST whenever relevant fields change
+useEffect(() => {
+  const parsedDiscount = parseFloat(discount) || 0;
+  const parsedTransportation = parseFloat(transportation) || 0;
+  const parsedUnloading = parseFloat(unloading) || 0;
+  const parsedHandling = parseFloat(handlingCharge) || 0;
+
+  // Calculate the total product amount without discount
+  const totalProductAmount = products.reduce((acc, product) => {
+    const parsedQty = parseFloat(product.quantity) || 0;
+    const parsedSellingPrice = parseFloat(product.sellingPriceinQty) || 0;
+    return acc + (parsedQty * parsedSellingPrice);
+  }, 0);
+
+  // Apply the total discount directly
+  const calculatedGrandTotal = totalProductAmount - parsedDiscount + parsedTransportation + parsedUnloading + parsedHandling;
+
+  setTotalAmount(totalProductAmount.toFixed(2));
+
+  // Calculate GST based on the grand total
+  const amountExcludingGST = calculatedGrandTotal / 1.18;
+  const calculatedGSTAmount = calculatedGrandTotal - amountExcludingGST;
+  const calculatedCGST = calculatedGSTAmount / 2;
+  const calculatedSGST = calculatedGSTAmount / 2;
+
+  setAmountWithoutGST(amountExcludingGST.toFixed(2));
+  setGSTAmount(calculatedGSTAmount.toFixed(2));
+  setCGST(calculatedCGST.toFixed(2));
+  setSGST(calculatedSGST.toFixed(2));
+  setGrandTotal(calculatedGrandTotal.toFixed(2));
+
+  // Reset totals if no products are present
+  if (products.length <= 0) {
+    setPerItemDiscount(0);
+    setDiscount(0);
+    setGrandTotal(0);
+    setTotalAmount(0);
+    setAmountWithoutGST(0);
+    setGSTAmount(0);
+    setCGST(0);
+    setSGST(0);
+  }
+}, [discount, products, unloading, transportation, handlingCharge]);
+
+
+  
+  
+
+  // Handle Billing Submission
   const submitBillingData = async () => {
     setIsSubmitting(true);
     setError('');
-    console.log(products)
-
+  
     const billingData = {
       invoiceNo,
       invoiceDate,
@@ -422,6 +566,7 @@ export default function EditBillScreen() {
       expectedDeliveryDate,
       deliveryStatus,
       paymentStatus,
+      userId: userInfo._id,
       billingAmount: totalAmount,
       cgst,
       sgst,
@@ -431,7 +576,12 @@ export default function EditBillScreen() {
       customerName,
       customerAddress,
       customerContactNumber,
+      salesmanPhoneNumber,
       marketedBy,
+      unloading,
+      transportation,
+      handlingcharge: handlingCharge,
+      remark,
       discount,
       products: products.map((product) => ({
         item_id: product.item_id,
@@ -443,20 +593,25 @@ export default function EditBillScreen() {
         enteredQty: product.enteredQty,
         sellingPriceinQty: product.sellingPriceinQty,
         unit: product.unit,
-        length: product.length,
-        breadth: product.breadth,
-        size: product.size,
-        psRatio: product.psRatio,
+        length: product.length || 0,
+        breadth: product.breadth || 0,
+        size: product.size || 0,
+        psRatio: product.psRatio || 0,
       })),
     };
-
+  
     try {
       const response = await api.post(`/api/billing/edit/${id}`, billingData);
       console.log('Billing Response:', response.data);
-      alert('Billing data submitted successfully!');
-      navigate('/bills');
+      setShowSummaryModal(false);
+      setShowSuccessModal(true);
+  
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        navigate('/bills');
+      }, 2000);
     } catch (error) {
-      console.error('Error submitting billing data:', error);
+      console.error('Error submitting billing data:', error.message);
       setError('There was an error submitting the billing data. Please try again.');
       alert('There was an error submitting the billing data. Please try again.');
     } finally {
@@ -464,69 +619,30 @@ export default function EditBillScreen() {
     }
   };
 
-  const calculateTotalAmount = () => {
-    return products.reduce(
-      (acc, product) => acc + product.quantity * product.sellingPriceinQty,
-      0
-    );
-  };
 
-  const totalAmount = calculateTotalAmount();
-
-  const handleproductUpdate = (updatedProduct) => {
-    const updatedProductsList = products.map((product) =>
-      product._id === updatedProduct._id ? updatedProduct : product
-    );
-    setProducts(updatedProductsList);
-    setShowOutOfStockModal(false);
-    setOutofstockProduct(null);
-  };
-
-
-
-
-  function changeRef(e, nextRef) {
-    if (e.key === 'Enter') { 
-      e.preventDefault();
-        if(nextRef === salesmanNameRef || nextRef === invoiceDateRef || nextRef === itemIdRef) {
-        setStep((prevStep) => prevStep + 1);
-        nextRef?.current?.focus();
-      } else {
-        nextRef?.current?.focus();
-      }
-    } 
-  }
-
-  useEffect(() => {
-    if (step === 2) {
-      salesmanNameRef.current?.focus();
-    } else if (step === 3) {
-      invoiceDateRef.current?.focus();
-    } else if (step === 4) {
-      itemIdRef.current?.focus();
+  const openSummaryModal = () => {
+    // Validate Required Fields
+    if (
+      !customerName ||
+      !customerAddress ||
+      !invoiceNo ||
+      !expectedDeliveryDate ||
+      !salesmanName ||
+      products.length === 0
+    ) {
+      setError('Please fill all required fields and add at least one product.');
+      return;
     }
-  }, [step]);
+  
+    setShowSummaryModal(true);
+  };
+  
 
 
-  const handleStockproductUpdate = async (newQ,product)=> {
-    if(newQ){
-      const { data } = await api.get(`/api/products/itemId/${product.item_id}`);
-      if(newQ && data.countInStock){
-        setSelectedProduct(data);
-        setQuantity(1);
-        setSellingPrice(data.price); 
-        setFetchQuantity(data.countInStock);
-        itemQuantityRef.current?.focus();
-        setItemId('');
-        setSuggestions([]);
-      }else{
-        alert("Error Occured In Updating the Stock")
-      }
-    }
-  }
 
-
-  function printInvoice() {
+  // Generate PDF Invoice
+  const generatePDF = async () => {
+    setIsLoading(true);
 
     const formData = {
       invoiceNo,
@@ -536,7 +652,9 @@ export default function EditBillScreen() {
       deliveryStatus,
       salesmanPhoneNumber,
       paymentStatus,
-      billingAmount: totalAmount - discount,
+      billingAmount: totalAmount,
+      cgst,
+      sgst,
       paymentAmount: receivedAmount,
       paymentMethod,
       paymentReceivedDate: receivedDate,
@@ -544,7 +662,72 @@ export default function EditBillScreen() {
       customerAddress,
       customerContactNumber,
       marketedBy,
-      subTotal: totalAmount - (cgst + sgst),
+      unloading,
+      transportation,
+      handlingcharge: handlingCharge,
+      remark,
+      discount,
+      subTotal: amountWithoutGST,
+      grandTotal,
+      products: products.map((product) => ({
+        item_id: product.item_id,
+        name: product.name,
+        category: product.category,
+        brand: product.brand,
+        quantity: product.quantity,
+        sellingPrice: product.sellingPrice,
+        enteredQty: product.enteredQty,
+        sellingPriceinQty: product.sellingPriceinQty,
+        unit: product.unit,
+        size: product.size,
+      })),
+    };
+
+    try {
+      const response = await api.post(
+        '/api/print/generate-pdf',
+        formData,
+        { responseType: 'blob' }
+      );
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Invoice_${formData.invoiceNo}.pdf`;
+      link.click();
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+      setError('Failed to generate PDF invoice.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Print Invoice
+  const printInvoice = () => {
+    const formData = {
+      invoiceNo,
+      invoiceDate,
+      salesmanName,
+      expectedDeliveryDate,
+      deliveryStatus,
+      salesmanPhoneNumber,
+      paymentStatus,
+      billingAmount: totalAmount,
+      paymentAmount: receivedAmount,
+      paymentMethod,
+      paymentReceivedDate: receivedDate,
+      customerName,
+      customerAddress,
+      customerContactNumber,
+      marketedBy,
+      perItemDiscount,
+      subTotal: amountWithoutGST,
+      grandTotal,
+      transportation,
+      unloading,
+      handling: handlingCharge,
+      remark,
       cgst,
       sgst,
       discount,
@@ -562,33 +745,123 @@ export default function EditBillScreen() {
       })),
     };
 
-    api.post('https://kktrading-backend.vercel.app/generate-invoice-html', formData)
-    .then(response => {
-      const htmlContent = response.data; // Extract the HTML content
-      const printWindow = window.open('', '', 'height=800,width=600');
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-    })
-    .catch(error => {
-      console.error('Error:', error);
-    });
-  
+    api
+      .post('api/print/generate-invoice-html', formData)
+      .then((response) => {
+        const htmlContent = response.data;
+        const printWindow = window.open('', '', 'height=800,width=600');
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.print();
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        setError('Failed to print invoice.');
+      });
+  };
+
+  // Handle Step Navigation
+  const nextStep = () => {
+    if (step === 4) {
+      setShowSummaryModal(true);
+    } else {
+      setStep(step + 1);
+    }
+  };
+
+  const prevStep = () => setStep(step - 1);
+
+  // Handle Keyboard Navigation Between Fields
+  function changeRef(e, nextRef) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      nextRef?.current?.focus();
+    }
   }
+
+  useEffect(() => {
+    if (step === 2) {
+      salesmanNameRef.current?.focus();
+    } else if (step === 3) {
+      invoiceDateRef.current?.focus();
+    } else if (step === 4) {
+      itemIdRef.current?.focus();
+    }
+  }, [step]);
+
+  // Auto-focus the quantity input when a product is selected
+  useEffect(() => {
+    if (selectedProduct) {
+      itemQuantityRef.current.focus();
+    }
+  }, [selectedProduct]);
+
+  // Handle Customer Name Change with Suggestions
+  const [customerSuggestions, setCustomerSuggestions] = useState([]);
+  const [customerSuggestionIndex, setCustomerSuggestionIndex] = useState(-1);
+
+  const handleCustomerNameChange = async (e) => {
+    const value = e.target.value;
+    setCustomerName(value);
+
+    if (value.trim() === "") {
+      setCustomerSuggestions([]);
+      return;
+    }
+
+    try {
+      const { data } = await api.get(
+        `/api/billing/customer/suggestions?suggestions=true&search=${encodeURIComponent(value)}`
+      );
+      setCustomerSuggestions(data.suggestions);
+    } catch (err) {
+      console.error("Error fetching customer suggestions:", err);
+      setError("Error fetching customer suggestions.");
+    }
+  };
+
+  // Handle Customer Contact Number Change with Suggestions
+  const handleCustomerContactNumberChange = async (e) => {
+    const value = e.target.value;
+    setCustomerContactNumber(value);
+
+    if (value.trim() === "") {
+      setCustomerSuggestions([]);
+      return;
+    }
+
+    try {
+      const { data } = await api.get(
+        `/api/billing/customer/suggestions?suggestions=true&search=${encodeURIComponent(value)}`
+      );
+      setCustomerSuggestions(data.suggestions);
+    } catch (err) {
+      console.error("Error fetching customer suggestions:", err);
+      setError("Error fetching customer suggestions.");
+    }
+  };
 
   return (
     <div className="container mx-auto p-2">
       {/* Header */}
-      <div className="flex max-w-4xl mx-auto items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4">
-        <div onClick={() => navigate('/')} className="text-center cursor-pointer">
+      <div
+        className="flex max-w-4xl mx-auto items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 cursor-pointer"
+        onClick={() => navigate('/')}
+      >
+        <div className="text-center">
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
-          <p className="text-gray-400 text-xs font-bold">Billing Edit and Update</p>
+          <p className="text-gray-400 text-xs font-bold">
+            Billing Edit and Update
+          </p>
         </div>
       </div>
 
       {/* Loading Indicator */}
       {isLoading && (
-        <div className="max-w-sm mx-auto">
-          <div className="font-bold bg-gray-300 px-4 py-2 rounded-lg text-gray-600 text-xs animate-pulse">Loading...</div>
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="font-bold bg-white px-4 py-2 rounded-lg text-gray-600 text-xs animate-pulse">
+            Loading...
+          </div>
         </div>
       )}
 
@@ -599,73 +872,168 @@ export default function EditBillScreen() {
           <p className="text-sm font-bold mb-5 text-gray-500">
             <i className="fa fa-list" /> Editing Billing
           </p>
-          <div className="text-right">
+          <div className="flex space-x-2">
           <button
-              onClick={()=> printInvoice()}
-              className="mb-2 mx-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600"
-            >
-              <i className='fa fa-print' />
-            </button>
-            <button
-              onClick={handleBillingSubmit}
-              className="mb-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600"
-            >
-              Submit
-            </button>
-            <p className="text-xs text-gray-400">
-              Fill all fields before submission
-            </p>
-          </div>
+            onClick={generatePDF}
+            className={`bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
+              products.length === 0 || !userInfo.isAdmin
+                ? 'opacity-70 cursor-not-allowed'
+                : 'hover:bg-red-600'
+            }`}
+            disabled={products.length === 0 || !userInfo.isAdmin}
+          >
+            <i className="fa fa-download" />
+          </button>
+          <button
+            onClick={printInvoice}
+            className={`bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
+              products.length === 0 || !userInfo.isAdmin
+                ? 'opacity-70 cursor-not-allowed'
+                : 'hover:bg-red-600'
+            }`}
+            disabled={products.length === 0 || !userInfo.isAdmin}
+          >
+            <i className="fa fa-print" />
+          </button>
+          <button
+  onClick={openSummaryModal} 
+  className={`bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
+    products.length === 0
+      ? 'opacity-70 cursor-not-allowed'
+      : 'hover:bg-red-600'
+  }`}
+  disabled={products.length === 0}
+>
+  Submit
+</button>
+
+        </div>
         </div>
 
         {/* Step 1: Customer Information */}
         {step === 1 && (
           <div className="mb-6">
-            <h2 className="text-md text-gray-500 font-bold mb-4">Customer Information</h2>
+            <h2 className="text-md text-gray-500 font-bold mb-4">
+              Customer Information
+            </h2>
             <div className="mb-4">
               <label className="block text-xs text-gray-700">Invoice No</label>
               <input
                 type="text"
                 ref={invoiceNoRef}
                 value={invoiceNo}
-                onKeyDown={(e)=> changeRef(e, customerNameRef)}
                 onChange={(e) => setInvoiceNo(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                onKeyDown={(e) => handleKeyDown(e)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                 placeholder="Enter Invoice No"
               />
+
+{billingsuggestions.length > 0 && (
+                <ul className="bg-white divide-y shadow-lg rounded-md overflow-hidden mb-4 border border-gray-300 max-h-48 overflow-y-auto">
+                  {billingsuggestions.map((suggestion, index) => (
+                    <li
+                      key={suggestion._id}
+                      className={`p-4 cursor-pointer hover:bg-gray-100 flex justify-between ${
+                        index === selectedBillingSuggestions ? "bg-gray-200" : ""
+                      }`}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                    >
+                      <span className="font-bold text-xs text-gray-500">
+                        {suggestion.invoiceNo}
+                      </span>
+                      <i className="fa fa-arrow-right text-gray-300" />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <div className="mb-4">
+            <div className="mb-4 relative">
               <label className="block text-xs text-gray-700">Customer Name</label>
               <input
                 type="text"
                 ref={customerNameRef}
                 value={customerName}
-                onKeyDown={(e)=> changeRef(e, customerContactNumberRef)}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                autoComplete="off"
+                onChange={handleCustomerNameChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setCustomerSuggestionIndex((prev) =>
+                      prev < customerSuggestions.length - 1 ? prev + 1 : prev
+                    );
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setCustomerSuggestionIndex((prev) =>
+                      prev > 0 ? prev - 1 : prev
+                    );
+                  } else if (e.key === 'Enter') {
+                    if (
+                      customerSuggestionIndex >= 0 &&
+                      customerSuggestionIndex < customerSuggestions.length
+                    ) {
+                      e.preventDefault();
+                      const selectedCustomer = customerSuggestions[customerSuggestionIndex];
+                      setCustomerName(selectedCustomer.customerName);
+                      setCustomerContactNumber(selectedCustomer.customerContactNumber);
+                      setCustomerAddress(selectedCustomer.customerAddress);
+                      customerAddressRef.current?.focus();
+                      setCustomerSuggestionIndex(-1);
+                      setCustomerSuggestions([]);
+                    } else {
+                      customerContactNumberRef.current?.focus();
+                    }
+                  }
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                 placeholder="Enter Customer Name"
               />
+              {customerSuggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border rounded-md max-h-60 overflow-y-auto">
+                  {customerSuggestions.map((customer, index) => (
+                    <div
+                      key={index}
+                      onClick={() => {
+                        setCustomerName(customer.customerName);
+                        setCustomerContactNumber(customer.customerContactNumber);
+                        setCustomerAddress(customer.customerAddress);
+                        customerAddressRef.current?.focus();
+                        setCustomerSuggestionIndex(-1);
+                        setCustomerSuggestions([]);
+                      }}
+                      className={`p-2 text-xs cursor-pointer hover:bg-gray-100 ${
+                        index === customerSuggestionIndex ? 'bg-gray-200' : ''
+                      }`}
+                    >
+                      {customer.customerName}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="mb-4">
-              <label className="block text-xs text-gray-700">Customer Contact Number</label>
+              <label className="block text-xs text-gray-700">
+                Customer Contact Number
+              </label>
               <input
                 type="number"
-                ref={customerContactNumberRef}
                 placeholder="Enter Customer Number"
+                ref={customerContactNumberRef}
                 value={customerContactNumber}
-                onKeyDown={(e)=> changeRef(e, customerAddressRef)}
-                onChange={(e) => setCustomerContactNumber(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                onChange={handleCustomerContactNumberChange}
+                onKeyDown={(e) => changeRef(e, customerAddressRef)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               />
             </div>
             <div className="mb-4">
-              <label className="block text-xs text-gray-700">Customer Address</label>
+              <label className="block text-xs text-gray-700">
+                Customer Address
+              </label>
               <textarea
                 value={customerAddress}
                 ref={customerAddressRef}
-                onKeyDown={(e)=> changeRef(e, salesmanNameRef)}
                 onChange={(e) => setCustomerAddress(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                onKeyDown={(e) =>{ if(e.key === "Enter") nextStep() }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                 placeholder="Enter Customer Address"
               />
             </div>
@@ -674,476 +1042,578 @@ export default function EditBillScreen() {
 
         {/* Step 2: Salesman Information */}
         {step === 2 && (
-  <div className="mb-4">
-  <label className="block text-gray-700 text-xs">Salesman Name</label>
-  <select
-    value={salesmanName}
-    ref={salesmanNameRef}
-    onKeyDown={(e)=> changeRef(e, invoiceDateRef)}
-    onChange={(e)=> { setSalesmanPhoneNumber('') ; handleSalesmanChange(e) }}
-    className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-  >
-    <option value="">Select Salesman</option>
-    {salesmen.map((salesman) => (
-      <option key={salesman._id} value={salesman.name}>
-        {salesman.name}
-      </option>
-    ))}
-  </select>
-
-  {salesmanName && (
-    <div className="mt-4">
-      <label className="block text-gray-700 text-xs">Salesman Phone Number</label>
-      <input
-        type="text"
-        value={salesmanPhoneNumber}
-        onChange={(e) => setSalesmanPhoneNumber(e.target.value)}
-        className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-        placeholder="Salesman Phone Number"
-      />
-    </div>
-  )}
-</div>
+          <div className="mb-6">
+            <h2 className="text-md text-gray-500 font-bold mb-4">
+              Salesman Information
+            </h2>
+            <div className="mb-4">
+              <label className="block text-xs text-gray-700">Salesman Name</label>
+              <select
+                value={salesmanName}
+                ref={salesmanNameRef}
+                onChange={handleSalesmanChange}
+                onKeyDown={(e) => {if(e.key === "Enter") nextStep()}}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              >
+                <option value="">Select Salesman</option>
+                {salesmen.map((salesman) => (
+                  <option key={salesman._id} value={salesman.name}>
+                    {salesman.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {salesmanName && (
+              <div className="mb-4">
+                <label className="block text-xs text-gray-700">
+                  Salesman Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={salesmanPhoneNumber}
+                  onChange={(e) => setSalesmanPhoneNumber(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  placeholder="Salesman Phone Number"
+                />
+              </div>
+            )}
+          </div>
         )}
 
         {/* Step 3: Payment and Delivery Information */}
         {step === 3 && (
           <div className="mb-6">
-            <h2 className="text-md text-gray-500 font-bold mb-4">Delivery Information</h2>
+            <h2 className="text-md text-gray-500 font-bold mb-4">
+              Payment and Delivery Information
+            </h2>
             <div className="mb-4">
               <label className="block text-xs text-gray-700">Invoice Date</label>
               <input
                 type="date"
                 ref={invoiceDateRef}
                 value={invoiceDate}
-                onKeyDown={(e)=> changeRef(e, expectedDeliveryDateRef)}
                 onChange={(e) => setInvoiceDate(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                onKeyDown={(e) => changeRef(e, expectedDeliveryDateRef)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               />
             </div>
             <div className="mb-4">
-              <label className="block text-xs text-gray-700">Expected Delivery Date</label>
+              <label className="block text-xs text-gray-700">
+                Expected Delivery Date
+              </label>
               <input
                 type="datetime-local"
                 ref={expectedDeliveryDateRef}
                 value={expectedDeliveryDate}
-                onKeyDown={(e)=> changeRef(e, marketedByRef)}
                 onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                onKeyDown={(e) => changeRef(e, marketedByRef)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               />
             </div>
             <div className="mb-4">
               <label className="block text-xs text-gray-700">Marketed By</label>
               <input
-                value={marketedBy}
+                type="text"
                 ref={marketedByRef}
-                onKeyDown={(e)=> changeRef(e, itemIdRef)}
+                value={marketedBy}
                 onChange={(e) => setMarketedBy(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                onKeyDown={(e) => changeRef(e, deliveryStatusRef)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                 placeholder="Marketed by"
               />
+            </div>
+            <div className="mb-4">
+              <label className="block text-xs text-gray-700">
+                Delivery Status
+              </label>
+              <select
+                value={deliveryStatus}
+                ref={deliveryStatusRef}
+                onChange={(e) => setDeliveryStatus(e.target.value)}
+                onKeyDown={(e) => nextStep()}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Delivered">Delivered</option>
+              </select>
             </div>
           </div>
         )}
 
         {/* Step 4: Add Products */}
         {step === 4 && (
-          <div className="mb-6">
-            {/* Display Total Amount */}
-            <div className="mb-4 bg-gray-100 flex justify-between items-center text-center rounded-lg p-5">
-              <div className='text-gray-600'>
-                <p className='text-sm font-bold'>Total</p>
-                <p className='text-sm font-bold'>Bill Amount:</p>
-                <p className='text-xs font-bold'></p>
+  <div className="mb-6">
+    {/* Display Total Amount */}
+    <div className="mb-4 bg-gray-100 flex justify-between items-center text-center rounded-lg p-5">
+      <div className="text-gray-600">
+        <p className="text-sm font-bold">Total</p>
+        <p className="text-sm font-bold">Bill Amount:</p>
+      </div>
+      <h2 className="text-md font-bold text-gray-700">
+        INR. {parseFloat(grandTotal).toFixed(2)}
+        <p className="font-bold" style={{ fontSize: '9px' }}>
+          Discount: {parseFloat(discount || 0).toFixed(2)}
+        </p>
+      </h2>
+    </div>
+
+    <div>
+      {/* Item ID Input */}
+      <div className="mb-4 relative">
+        <label className="block text-xs text-gray-700">Item ID</label>
+        <input
+          type="text"
+          ref={itemIdRef}
+          value={itemId}
+          onChange={(e) => setItemId(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setSelectedSuggestionIndex((prev) =>
+                prev < suggestions.length - 1 ? prev + 1 : prev
+              );
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setSelectedSuggestionIndex((prev) =>
+                prev > 0 ? prev - 1 : prev
+              );
+            } else if (e.key === 'Enter') {
+              if (
+                selectedSuggestionIndex >= 0 &&
+                selectedSuggestionIndex < suggestions.length
+              ) {
+                e.preventDefault();
+                addProductByItemId(suggestions[selectedSuggestionIndex]);
+              }
+            }
+          }}
+          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+          placeholder="Enter Item ID or Name"
+        />
+        {error && <p className="text-red-500 mt-1 text-xs">{error}</p>}
+
+        {/* Suggestions Dropdown */}
+        {suggestions.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full bg-white border rounded-md max-h-60 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <div
+                key={index}
+                onClick={() => addProductByItemId(suggestion)}
+                className={`p-2 text-xs cursor-pointer hover:bg-gray-100 ${
+                  index === selectedSuggestionIndex ? 'bg-gray-200' : ''
+                }`}
+              >
+                {suggestion.name} - {suggestion.item_id}
               </div>
-              <h2 className="text-md font-bold text-gray-700">
-                INR. {(totalAmount - discount).toFixed(2)}
-                <p className='font-bold' style={{ fontSize: '9px' }}>Discount: {parseFloat(discount || 0)?.toFixed(2)}</p>
-              </h2>
-            </div>
-
-            <div>
-              {/* Item ID Input */}
-              <div className="mb-4">
-                <label className="block text-gray-700 text-xs font-bold ml-1">
-                  Item ID
-                </label>
-                <input
-                  type="text"
-                  ref={itemIdRef}
-                  value={itemId}
-                  onChange={(e) => setItemId(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      setSelectedSuggestionIndex((prev) =>
-                        prev < suggestions.length - 1 ? prev + 1 : prev
-                      );
-                    } else if (e.key === 'ArrowUp') {
-                      e.preventDefault();
-                      setSelectedSuggestionIndex((prev) =>
-                        prev > 0 ? prev - 1 : prev
-                      );
-                    } else if (e.key === 'Enter') {
-                      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length) {
-                        e.preventDefault();
-                        addProductByItemId(suggestions[selectedSuggestionIndex]);
-                      }
-                    }
-                  }}
-                  className="w-full px-4 py-2 mt-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-                  placeholder="Enter Item ID or Name"
-                />
-                {error && <p className="text-red-500 mt-1 text-xs">{error}</p>}
-
-                {/* Suggestions Dropdown */}
-                {suggestions.length > 0 && (
-                  <div className="mt-2 bg-white border rounded-md max-h-60 divide-y overflow-y-auto">
-                    {suggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        onClick={() => addProductByItemId(suggestion)}
-                        className={`p-4 text-xs cursor-pointer hover:bg-gray-100 ${
-                          index === selectedSuggestionIndex ? 'bg-gray-200' : ''
-                        }`}
-                      >
-                        {suggestion.name} - {suggestion.item_id}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Selected Product Details */}
-              {selectedProduct && (
-                <div className="p-4 border border-gray-200 rounded-lg shadow-md bg-white mb-4">
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs font-bold truncate">
-                      {selectedProduct.name.slice(0, 25)}... ID: {selectedProduct.item_id}
-                    </p>
-                    <p
-                      className={`text-xs font-bold px-2 py-1 rounded ${
-                        fetchQuantity > 10
-                          ? 'bg-green-300 text-green-700'
-                          : fetchQuantity > 0
-                          ? 'bg-yellow-300 text-yellow-700'
-                          : 'bg-red-300 text-red-700'
-                      }`}
-                    >
-                      {fetchQuantity > 10
-                        ? 'In Stock'
-                        : fetchQuantity > 0
-                        ? 'Low Stock'
-                        : 'Out of Stock'}
-                    </p>
-                  </div>
-                  <p className="text-xs font-bold truncate mb-2">
-                    Size: {selectedProduct.size}
-                  </p>
-                  <p
-                    className={`text-xs font-bold text-gray-500 mb-2 ${
-                      fetchQuantity > 10
-                        ? 'text-green-700'
-                        : fetchQuantity > 0
-                        ? 'text-yellow-700'
-                        : 'text-red-700'
-                    }`}
-                  >
-                    In stock: {fetchQuantity || 'error'} {unit}
-                  </p>
-
-                  {/* Quantity and Unit */}
-                  <div className="mb-4">
-                    <label className="block text-xs mb-1 text-gray-700">
-                      Quantity
-                    </label>
-                    <div className="flex">
-                      <input
-                        type="number"
-                        ref={itemQuantityRef}
-                        max={fetchQuantity}
-                        value={quantity}
-                        onChange={(e) =>
-                          setQuantity(Math.min(parseFloat(e.target.value) || 0, fetchQuantity))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            sellingPriceRef.current.focus();
-                          }
-                        }}
-                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-red-500 focus:ring-red-500"
-                      />
-                      <select
-                        value={unit}
-                        onChange={(e) => setUnit(e.target.value)}
-                        className="ml-2 px-3 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-                      >
-                        <option value="SQFT">SQFT</option>
-                        <option value="GSQFT">Granite SQFT</option>
-                        <option value="BOX">BOX</option>
-                        <option value="NOS">NOS</option>
-                        <option value="TNOS">Tiles NOS</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Selling Price */}
-                  <div className="mb-4">
-                    <label className="block text-xs mb-1 text-gray-700">
-                      Selling Price
-                    </label>
-                    <input
-                      type="number"
-                      ref={sellingPriceRef}
-                      value={sellingPrice}
-                      onChange={(e) => setSellingPrice(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleAddProductWithQuantity();
-                        }
-                      }}
-                      className="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-red-500 focus:ring-red-500"
-                      placeholder="Enter Selling Price"
-                    />
-                  </div>
-
-                  {/* Add Item Button */}
-                  <button
-                    className="bg-red-500 text-xs w-full text-white font-bold py-2 px-4 rounded focus:outline-none hover:bg-red-600"
-                    onClick={handleAddProductWithQuantity}
-                  >
-                    Add Item
-                  </button>
-                  <p
-                    onClick={() => {
-                      setOutofstockProduct(selectedProduct);
-                      setQuantity(0);
-                      setItemId('');
-                      setSuggestions([]);
-                      setShowOutOfStockModal(true);
-                      outofStockRef.current?.focus();
-                    }}
-                    className='text-xs cursor-pointer text-center italic my-3'
-                  >
-                    Update Stock
-                  </p>
-                </div>
-              )}
-
-              {/* Mobile View: Added Products List */}
-              {products.length > 0 && (
-                <div className="mt-6 md:hidden">
-                  <h2 className="text-sm border-t text-gray-600 pt-5 font-bold mb-4">Added Products: {products.length}</h2>
-                  <div className="mb-4 flex items-center">
-                    <input
-                      type="text"
-                      placeholder="Filter by product name or ID"
-                      value={filterText}
-                      onChange={(e) => setFilterText(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-                    />
-                    <i className='fa fa-search bg-red-500 px-5 py-3 text-white rounded-lg ml-2 items-center' />
-                  </div>
-                  {products.filter(
-                    (product) =>
-                      product.name
-                        .toLowerCase()
-                        .includes(filterText.toLowerCase()) ||
-                      product.item_id
-                        .toLowerCase()
-                        .includes(filterText.toLowerCase())
-                  ).map((product, index) => (
-                    <div
-                      key={index}
-                      className="mb-4 bg-white border border-gray-200 rounded-lg shadow-md flex flex-col space-y-2"
-                    >
-                      <div className="flex justify-between rounded-t-lg bg-red-500 p-2 items-center">
-                        <p className="text-xs text-white font-bold truncate">{product.name} - {product.item_id}</p>
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to delete ${product.name} from the bill?`))
-                              deleteProduct(index);
-                          }}
-                          className="text-white font-bold hover:text-white"
-                        >
-                          <i className="fa fa-trash" aria-hidden="true"></i>
-                        </button>
-                      </div>
-                      <div className='flex justify-between p-4'>
-                        <div className="text-xs font-bold text-gray-700">
-                          <div className='flex justify-left'>
-                            <p className='px-2 text-xs mt-auto'>Quantity ({product.unit}):</p>
-                            <input
-                              type="number"
-                              value={product.enteredQty}
-                              onChange={(e) => handleEditProduct(index, 'enteredQty', e.target.value)}
-                              className="text-center w-20 border-0 border-red-400 border-b-2 focus:border-red-600 focus:outline-none focus:ring-0"
-                            />
-                          </div>
-                          <div className='flex justify-left'>
-                            <p className='px-2 mt-auto text-xs'>Selling Price {product.unit === 'NOS' ? '(NOS)' : '(SQFT)'}:</p>
-                            <input
-                              type="number"
-                              value={product.sellingPrice}
-                              onChange={(e) => handleEditProduct(index, 'sellingPrice', e.target.value)}
-                              className="text-center w-20 border-0 border-b-2 border-red-400 focus:border-red-600 focus:outline-none focus:ring-0"
-                            />
-                          </div>
-                          <p className="px-2 mt-5 text-xs">
-                            Rate + Tax per (Nos): ₹{(product.sellingPriceinQty).toFixed(2)}
-                          </p>
-                          <p className='px-2 py-2 text-sm'>Total Price: ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}</p>
-                        </div>
-
-                        <div onClick={() => navigate(`${product.image.length > 8 ? product.image : '#'}`)} className='items-center cursor-pointer my-auto'>
-                          <img
-                            onError={() => setImageError(true)}
-                            className={`object-cover rounded-md w-20 h-20 ${imageError ? 'hidden' : ''}`}
-                            src={`${product.image}`}
-                            alt={product.image}
-                          />
-                          {imageError && (
-                            <div className="flex justify-center items-center w-20 h-20 bg-gray-200 rounded-md">
-                              <p className="text-gray-500 text-sm">No image</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Desktop View: Added Products Table */}
-              {products.length > 0 && (
-                <div className="hidden md:block mt-6">
-                  <h2 className="text-sm font-semibold mb-2">Added Products: {products.length}</h2>
-
-                  {/* Filter Input */}
-                  <div className="mb-4 flex items-center">
-                    <input
-                      type="text"
-                      placeholder="search added products..."
-                      value={filterText}
-                      onChange={(e) => setFilterText(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-                    />
-                    <i className='fa fa-search bg-red-500 px-5 py-3 text-white rounded-lg ml-2 items-center' />
-                  </div>
-
-                  {/* Product Table */}
-                  <div className="overflow-x-auto rounded-md">
-                    <table className="table-auto w-full border-collapse rounded-xl shadow-md">
-                      <thead>
-                        <tr className="bg-red-500 text-white text-xs">
-                          <th className="px-2 py-2 text-left">
-                            <i className="fa fa-cube" aria-hidden="true"></i> Name
-                          </th>
-                          <th className="px-2 py-2 text-center">Quantity</th>
-                          <th className="px-2 py-2 text-left">Unit</th>
-                          <th className="px-2 py-2 text-center">Selling Price</th>
-                          <th className="px-2 py-2 text-center">Quantity <br /> (per Nos)</th>
-                          <th className="px-2 py-2 text-center">Rate+T <br /> (per Nos)</th>
-                          <th className="px-2 py-2 text-left">Total</th>
-                          <th className="px-2 py-2 text-center">
-                            <i className="fa fa-trash" aria-hidden="true"></i>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className='divide-x'>
-                        {products
-                          .filter(
-                            (product) =>
-                              product.name
-                                .toLowerCase()
-                                .includes(filterText.toLowerCase()) ||
-                              product.item_id
-                                .toLowerCase()
-                                .includes(filterText.toLowerCase())
-                          )
-                          .sort((a, b) => b.originalIndex - a.originalIndex)
-                          .map((product, index) => (
-                            <tr
-                              key={index}
-                              className={`divide-x ${
-                                index % 2 === 0 ? 'bg-gray-100' : 'bg-white'
-                              } border-b hover:bg-red-50 transition duration-150`}
-                            >
-                              <td className="px-4 py-4 text-xs font-medium">
-                                {product.name} - {product.item_id}
-                              </td>
-                              <td className="px-2 py-2 text-center text-xs">
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={product.enteredQty}
-                                  onChange={(e) =>
-                                    handleEditProduct(
-                                      index,
-                                      'enteredQty',
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-16 text-center px-2 py-1 border rounded-md"
-                                />
-                              </td>
-                              <td className="px-2 py-2 text-xs">{product.unit}</td>
-                              <td className="px-2 py-2 text-xs text-center">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={product.sellingPrice}
-                                  onChange={(e) =>
-                                    handleEditProduct(
-                                      index,
-                                      'sellingPrice',
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-16 text-center px-2 py-1 border rounded-md"
-                                />
-                                <p className='text-center mt-2'>{product.unit === "NOS" ? '(NOS)' : '(SQFT)'}</p>
-                              </td>
-                              <td className="px-2 py-2 text-center text-xs">
-                                {product.quantity}
-                              </td>
-                              <td className="px-2 py-2 text-xs">
-                                ₹{(product.sellingPriceinQty).toFixed(2)}
-                              </td>
-                              <td className="px-2 py-2 text-xs">
-                                ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}
-                              </td>
-                              <td className="px-2 py-2 text-xs text-center">
-                                <button
-                                  onClick={() => {
-                                    if (
-                                      window.confirm(
-                                        `Are you sure you want to delete ${product.name} from the bill?`
-                                      )
-                                    )
-                                      deleteProduct(index);
-                                  }}
-                                  className="text-red-500 font-bold hover:text-red-700"
-                                >
-                                  <i className="fa fa-trash" aria-hidden="true"></i>
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
+            ))}
           </div>
         )}
+      </div>
+
+      {/* Selected Product Details */}
+      {selectedProduct && (
+        <div className="p-4 border border-gray-200 rounded-lg shadow-md bg-white mb-4">
+          <div className="flex justify-between items-center">
+            <p className="text-xs font-bold truncate">
+              {selectedProduct.name.slice(0, 25)}... ID: {selectedProduct.item_id}
+            </p>
+            <p
+              className={`text-xs font-bold px-2 py-1 rounded ${
+                fetchQuantity > 10
+                  ? 'bg-green-300 text-green-700'
+                  : fetchQuantity > 0
+                  ? 'bg-yellow-300 text-yellow-700'
+                  : 'bg-red-300 text-red-700'
+              }`}
+            >
+              {fetchQuantity > 10
+                ? 'In Stock'
+                : fetchQuantity > 0
+                ? 'Low Stock'
+                : 'Out of Stock'}
+            </p>
+          </div>
+          <p className="text-xs font-bold truncate mb-2">
+            Size: {selectedProduct.size}
+          </p>
+          <p
+            className={`text-xs font-bold text-gray-500 mb-2 ${
+              fetchQuantity > 10
+                ? 'text-green-700'
+                : fetchQuantity > 0
+                ? 'text-yellow-700'
+                : 'text-red-700'
+            }`}
+          >
+            In stock: {fetchQuantity || 'error'} {unit}
+          </p>
+
+          {/* Quantity and Unit */}
+          <div className="mb-4">
+            <label className="block text-xs mb-1 text-gray-700">
+              Quantity
+            </label>
+            <div className="flex">
+              <input
+                type="number"
+                ref={itemQuantityRef}
+                max={fetchQuantity}
+                value={quantity}
+                onChange={(e) =>
+                  setQuantity(Math.min(parseFloat(e.target.value) || 0, fetchQuantity))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    sellingPriceRef.current.focus();
+                  }
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              />
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              >
+                <option value="SQFT">SQFT</option>
+                <option value="GSQFT">Granite SQFT</option>
+                <option value="BOX">BOX</option>
+                <option value="NOS">NOS</option>
+                <option value="TNOS">Tiles NOS</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Selling Price */}
+          <div className="mb-4">
+            <label className="block text-xs mb-1 text-gray-700">
+              Selling Price
+            </label>
+            <input
+              type="number"
+              ref={sellingPriceRef}
+              value={sellingPrice}
+              onChange={(e) => setSellingPrice(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddProductWithQuantity();
+                }
+              }}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              placeholder="Enter Selling Price"
+            />
+          </div>
+
+          {/* Add Item Button */}
+          <button
+            className="bg-red-500 text-xs w-full text-white font-bold py-2 px-4 rounded focus:outline-none hover:bg-red-600"
+            onClick={handleAddProductWithQuantity}
+          >
+            Add Item
+          </button>
+          <p
+            onClick={() => {
+              setOutOfStockProduct(selectedProduct);
+              setQuantity(0);
+              setItemId('');
+              setSuggestions([]);
+              setShowOutOfStockModal(true);
+              outOfStockRef.current?.focus();
+            }}
+            className="text-xs cursor-pointer text-gray-500 text-center font-bold my-5"
+          >
+            Update Stock
+          </p>
+        </div>
+      )}
+
+      {/* Added Products Table - Mobile View */}
+      {products.length > 0 && (
+        <div className="mt-6 md:hidden">
+          <h2 className="text-sm border-t text-gray-600 pt-5 font-bold mb-4">
+            Added Products: {products.length}
+          </h2>
+          <div className="mb-4 flex items-center">
+            <input
+              type="text"
+              placeholder="Filter by product name or ID"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            />
+            <i className="fa fa-search bg-red-500 p-3 text-white rounded-lg ml-2 items-center" />
+          </div>
+          {products
+            .filter(
+              (product) =>
+                product.name.toLowerCase().includes(filterText.toLowerCase()) ||
+                product.item_id.toLowerCase().includes(filterText.toLowerCase())
+            )
+            .map((product, index) => (
+              <div
+                key={index}
+                className="mb-4 bg-white border border-gray-200 rounded-lg shadow-md flex flex-col space-y-2"
+              >
+                <div className="flex justify-between rounded-t-lg bg-red-500 p-2 items-center">
+                  <p className="text-xs text-white font-bold truncate">
+                    {product.name.slice(0, 20)}... - {product.item_id}
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (
+                        window.confirm(`Are you sure you want to delete ${product.name} from the bill?`)
+                      )
+                        deleteProduct(index);
+                    }}
+                    className="text-white text-xs font-bold hover:text-white"
+                  >
+                    <i className="fa fa-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div className="flex flex-col px-4 py-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold">Quantity:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={product.enteredQty}
+                      onChange={(e) =>
+                        handleEditProduct(index, 'enteredQty', e.target.value)
+                      }
+                      className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs text-center"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold">Unit:</span>
+                    <select
+                      value={product.unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                    >
+                      <option value="SQFT">SQFT</option>
+                      <option value="GSQFT">Granite SQFT</option>
+                      <option value="BOX">BOX</option>
+                      <option value="NOS">NOS</option>
+                      <option value="TNOS">Tiles NOS</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold">Selling Price:</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={product.sellingPrice}
+                      onChange={(e) =>
+                        handleEditProduct(index, 'sellingPrice', e.target.value)
+                      }
+                      className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs text-center"
+                      placeholder="Price"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold">Discount:</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={(product.quantity * product.sellingPriceinQty / totalAmount * discount).toFixed(2)}
+                      readOnly
+                      className="w-20 border border-gray-300 px-2 py-1 rounded-md text-xs text-center bg-gray-100"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold">Net Total:</span>
+                    <span className="text-xs font-bold">
+                      ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * product.sellingPriceinQty / totalAmount * discount)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between px-4 py-2">
+                  <div className="flex items-center">
+                    <span className="text-xs font-semibold">Total:</span>
+                    <span className="text-xs ml-2">
+                      ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-xs font-semibold">Discount:</span>
+                    <span className="text-xs ml-2">
+                      ₹{((product.quantity * product.sellingPriceinQty) / totalAmount * discount).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-xs font-semibold">Net Total:</span>
+                    <span className="text-xs ml-2">
+                      ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * product.sellingPriceinQty / totalAmount * discount)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Are you sure you want to delete ${product.name} from the bill?`
+                        )
+                      )
+                        deleteProduct(index);
+                    }}
+                    className="text-red-500 font-bold hover:text-red-700"
+                  >
+                    <i className="fa fa-trash" aria-hidden="true"></i> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {/* Added Products Table - Desktop View */}
+      {products.length > 0 && (
+        <div className="hidden md:block mt-6">
+          <h2 className="text-sm font-semibold mb-2">
+            Added Products: {products.length}
+          </h2>
+
+          {/* Filter Input */}
+          <div className="mb-4 flex items-center">
+            <input
+              type="text"
+              placeholder="Search added products..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            />
+            <i className="fa fa-search bg-red-500 p-2 text-white rounded-lg ml-2 items-center" />
+          </div>
+
+          {/* Product Table */}
+          <div className="overflow-x-auto rounded-md">
+            <table className="table-auto w-full border-collapse rounded-xl shadow-md">
+              <thead>
+                <tr className="bg-red-500 text-white text-xs">
+                  <th className="px-2 py-2 text-left">
+                    <i className="fa fa-cube" aria-hidden="true"></i> Name
+                  </th>
+                  <th className="px-2 py-2 text-center">Quantity</th>
+                  <th className="px-2 py-2 text-left">Unit</th>
+                  <th className="px-2 py-2 text-center">
+                    Selling Price
+                    <br />
+                    {/* Adjust unit display based on product */}
+                  </th>
+                  <th className="px-2 py-2 text-center">
+                    Quantity <br /> (per Nos)
+                  </th>
+                  <th className="px-2 py-2 text-center">
+                    Rate+T <br /> (per Nos)
+                  </th>
+                  <th className="px-2 py-2 text-left">Total</th>
+                  <th className="px-2 py-2 text-center">Discount</th>
+                  <th className="px-2 py-2 text-left">Net Total</th>
+                  <th className="px-2 py-2 text-center">
+                    <i className="fa fa-trash" aria-hidden="true"></i>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-x">
+                {products
+                  .filter(
+                    (product) =>
+                      product.name.toLowerCase().includes(filterText.toLowerCase()) ||
+                      product.item_id.toLowerCase().includes(filterText.toLowerCase())
+                  )
+                  .map((product, index) => {
+                    // Calculate product total and proportional discount
+                    const productTotal = product.quantity * product.sellingPriceinQty;
+                    const proportionalDiscount =
+                      totalAmount > 0 ? (productTotal / totalAmount) * discount : 0;
+                    const netTotal = productTotal - proportionalDiscount;
+
+                    return (
+                      <tr
+                        key={index}
+                        className={`divide-x ${
+                          index % 2 === 0 ? 'bg-gray-100' : 'bg-white'
+                        } border-b hover:bg-red-50 transition duration-150`}
+                      >
+                        <td className="px-4 py-4 text-xs font-medium">
+                          {product.name} - {product.item_id}
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <input
+                            type="number"
+                            min={1}
+                            value={product.enteredQty}
+                            onChange={(e) =>
+                              handleEditProduct(index, 'enteredQty', e.target.value)
+                            }
+                            className="w-16 text-center px-2 py-1 border rounded-md"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-xs">{product.unit}</td>
+                        <td className="px-2 py-2 text-xs text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            value={product.sellingPrice}
+                            onChange={(e) =>
+                              handleEditProduct(index, 'sellingPrice', e.target.value)
+                            }
+                            className="w-16 text-center px-2 py-1 border rounded-md"
+                          />
+                          <p className="text-center mt-2">
+                            {product.unit === 'NOS' ? '(NOS)' : '(SQFT)'}
+                          </p>
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          {product.quantity}
+                        </td>
+                        <td className="px-2 py-2 text-xs">
+                          ₹{parseFloat(product.sellingPriceinQty).toFixed(2)}
+                        </td>
+                        <td className="px-2 py-2 text-xs">
+                          ₹{productTotal.toFixed(2)}
+                        </td>
+                        <td className="px-2 py-2 text-xs text-center">
+                          ₹{proportionalDiscount.toFixed(2)}
+                        </td>
+                        <td className="px-2 py-2 text-xs">
+                          ₹{netTotal.toFixed(2)}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-center">
+                          <button
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Are you sure you want to delete ${product.name} from the bill?`
+                                )
+                              )
+                                deleteProduct(index);
+                            }}
+                            className="text-red-500 font-bold hover:text-red-700"
+                          >
+                            <i className="fa fa-trash" aria-hidden="true"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+
+
 
         {/* Step Navigation */}
         <div className="flex justify-between mb-8">
           <button
             disabled={step === 1}
-            onClick={() => setStep(step - 1)}
+            onClick={prevStep}
             className={`${
               step === 1
                 ? 'bg-gray-300 text-gray-500 text-xs font-bold py-2 px-4 rounded-lg cursor-not-allowed'
@@ -1155,11 +1625,11 @@ export default function EditBillScreen() {
           <p className="font-bold text-center text-xs mt-2">
             Step {step} of 4
           </p>
-          <button 
+          <button
             disabled={step === 4}
-            onClick={() => setStep(step + 1)}
+            onClick={nextStep}
             className={`${
-              step === 4 
+              step === 4
                 ? 'bg-gray-300 text-xs text-gray-500 font-bold py-2 px-4 rounded-lg cursor-not-allowed'
                 : 'bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600'
             }`}
@@ -1169,41 +1639,65 @@ export default function EditBillScreen() {
         </div>
       </div>
 
-      {/* Summary Modal */}
-      {showSummaryModal && (
-        <SummaryModal
-          customerName={customerName}
-          invoiceNo={invoiceNo}
-          totalAmount={totalAmount}
-          amountWithoutGST={amountWithoutGST}
-          salesmanName={salesmanName}
-          cgst={cgst}
-          sgst={sgst}
-          discount={discount}
-          setDiscount={setDiscount}
-          receivedAmount={receivedAmount}
-          setReceivedAmount={setReceivedAmount}
-          paymentMethod={paymentMethod}
-          setPaymentMethod={setPaymentMethod}
-          receivedDate={receivedDate}
-          setReceivedDate={setReceivedDate}
-          onClose={() => setShowSummaryModal(false)}
-          onSubmit={submitBillingData}
-          isSubmitting={isSubmitting}
-          totalProducts={products.length}
-        />
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <SuccessModal message="Item added successfully!" />
       )}
 
+      {/* Summary Modal */}
+      {/* Summary Modal */}
+{showSummaryModal && (
+  <SummaryModal
+    accounts={accounts}
+    customerName={customerName}
+    invoiceNo={invoiceNo}
+    totalAmount={totalAmount}
+    amountWithoutGST={amountWithoutGST}
+    salesmanName={salesmanName}
+    cgst={cgst}
+    sgst={sgst}
+    discount={discount}
+    setDiscount={setDiscount}
+    receivedAmount={receivedAmount}
+    setReceivedAmount={setReceivedAmount}
+    paymentMethod={paymentMethod}
+    setPaymentMethod={setPaymentMethod}
+    unloading={unloading}
+    setUnloading={setUnloading}
+    transportation={transportation}
+    setTransportation={setTransportation}
+    handling={handlingCharge}
+    setHandling={setHandlingCharge}
+    remark={remark}
+    setRemark={setRemark}
+    receivedDate={receivedDate}
+    setReceivedDate={setReceivedDate}
+    grandTotal={grandTotal}
+    onClose={() => setShowSummaryModal(false)}
+    onSubmit={submitBillingData} 
+    isSubmitting={isSubmitting}
+    totalProducts={products.length}
+  />
+)}
+
       {/* Out of Stock Modal */}
-      {showOutOfStockModal && outofStockProduct && (
+      {showOutOfStockModal && outOfStockProduct && (
         <OutOfStockModal
-          product={outofStockProduct}
-          onUpdate={handleStockproductUpdate}
+          product={outOfStockProduct}
+          onUpdate={(newQ) => {
+            handleEditProduct(
+              products.findIndex((p) => p.item_id === newQ.item_id),
+              'quantity',
+              newQ.countInStock
+            );
+            setShowOutOfStockModal(false);
+            setOutOfStockProduct(null);
+          }}
           onClose={() => {
-            setOutofstockProduct(null);
+            setOutOfStockProduct(null);
             setShowOutOfStockModal(false);
           }}
-          stockRef={outofStockRef}
+          stockRef={outOfStockRef}
         />
       )}
 

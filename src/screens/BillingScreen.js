@@ -27,8 +27,12 @@ export default function BillingScreen() {
   const [marketedBy, setMarketedBy] = useState('');
   const [discount, setDiscount] = useState(0);
   const [receivedAmount, setReceivedAmount] = useState(0);
+  const [unloading, setUnloading] = useState(0);
+  const [transportation, setTransportation] = useState(0);
+  const [handlingcharge, setHandlingCharge] = useState(0);
+  const [remark, setRemark] = useState('');
   const [receivedDate, setReceivedDate] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [lastBillId, setLastBillId] = useState(null);
 
   // Product Information States
@@ -53,6 +57,9 @@ export default function BillingScreen() {
   const [saveModal,setSaveModal] = useState(false);
   const [success,setSuccess] = useState(false);
   const [returnInvoice,setReturnInvoice] = useState('');
+  const [customerSuggestions,setCustomerSuggestions] = useState([]);
+  const [customerSuggesstionIndex,setCustomerSuggesstionIndex] = useState(-1);
+  const [accounts,setAccounts] = useState([]);
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
@@ -105,6 +112,32 @@ export default function BillingScreen() {
         console.error('Error fetching salesmen:', error);
       }
     };
+
+    const fetchAccounts = async () => {
+      setIsLoading(true); // Set loading state
+      try {
+        const response = await api.get('/api/accounts/allaccounts');
+        const getPaymentMethod = response.data.map((acc) => acc.accountId);
+    
+        // Check if there are any accounts and set the first account as the default
+        if (getPaymentMethod.length > 0) {
+          const firstAccountId = getPaymentMethod[0];
+          setPaymentMethod(firstAccountId); // Set the first account as default
+        } else {
+          setPaymentMethod(null); // Handle case where there are no accounts
+        }
+    
+        setAccounts(response.data); // Set the accounts in state
+      } catch (err) {
+        setError('Failed to fetch payment accounts.'); // Set error message
+        console.error(err);
+      } finally {
+        setIsLoading(false); // Stop loading
+      }
+    };
+    
+
+    fetchAccounts();
     fetchSalesmen();
   }, []);
 
@@ -174,7 +207,11 @@ export default function BillingScreen() {
       customerAddress,
       customerContactNumber,
       marketedBy,
-      discount
+      discount,
+      unloading,
+      transportation,
+      salesmanPhoneNumber,
+      handlingcharge
     };
   
     // Save the data to local storage as a JSON string
@@ -208,6 +245,10 @@ export default function BillingScreen() {
         setCustomerContactNumber(parsedData.customerContactNumber);
         setMarketedBy(parsedData.marketedBy);
         setDiscount(parsedData.discount);
+        setTransportation(parsedData.transportation);
+        setHandlingCharge(parsedData.handlingcharge);
+        setSalesmanPhoneNumber(parsedData.salesmanPhoneNumber);
+        setUnloading(parsedData.unloading);
       }
     };
   
@@ -490,12 +531,77 @@ export default function BillingScreen() {
     );
   };
 
+
+const [totalAmount, setTotalAmount] = useState(0);
+const [amountWithoutGST, setAmountWithoutGST] = useState(0);
+const [gstAmount, setGSTAmount] = useState(0);
+const [cgst, setCGST] = useState(0);
+const [sgst, setSGST] = useState(0);
+const [perItemDiscount, setPerItemDiscount] = useState(0);
+const [grandTotal,setGrandTotal] = useState(0);
+
+useEffect(() => {
+  // Ensure all numeric inputs are properly parsed to avoid errors
+  const parsedDiscount = parseFloat(discount || 0);
+  const parsedTransportation = parseFloat(transportation || 0);
+  const parsedUnloading = parseFloat(unloading || 0);
+  const handling = parseFloat(handlingcharge || 0); 
+
+  // Calculate total quantity of products
+  const totalQtyProducts = products.reduce(
+    (acc, product) => acc + parseFloat(product.quantity || 0),
+    0
+  );
+
+  // Calculate per-item discount
+  const calculatedPerItemDiscount =
+    totalQtyProducts > 0 ? parsedDiscount / totalQtyProducts : 0;
+
+  setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
+
+  // Calculate total amount after applying per-item discount
+  const totalProductAmount = products.reduce((acc, product) => {
+    const parsedQty = parseFloat(product.quantity || 0);
+    const parsedSellingPrice = parseFloat(product.sellingPriceinQty || 0);
+
+    // Total for each product after applying discount
+    const productTotal =
+      parsedQty * (parsedSellingPrice - calculatedPerItemDiscount);
+
+    return acc + (productTotal || 0);
+  }, 0);
+
+  // Add other charges (transportation and unloading)
+  const total = parseFloat(totalProductAmount);
+  const grandTotal = parseFloat(parseFloat(total) + parsedTransportation + parsedUnloading + handling).toFixed(2);
+
+  // Update total amount state
+  setTotalAmount(total.toFixed(2));
+
   // GST Calculations
-  const totalAmount = calculateTotalAmount();
-  const amountWithoutGST = totalAmount / 1.18;
-  const gstAmount = totalAmount - amountWithoutGST;
-  const cgst = gstAmount / 2;
-  const sgst = gstAmount / 2;
+  const amountExcludingGST = total / 1.18;
+  const calculatedGSTAmount = total - amountExcludingGST;
+  const calculatedCGST = calculatedGSTAmount / 2;
+  const calculatedSGST = calculatedGSTAmount / 2;
+
+  setAmountWithoutGST(amountExcludingGST.toFixed(2));
+  setGSTAmount(calculatedGSTAmount.toFixed(2));
+  setCGST(calculatedCGST.toFixed(2));
+  setSGST(calculatedSGST.toFixed(2));
+  setGrandTotal(parseFloat(grandTotal || 0).toFixed(2));
+
+  if(products.length <= 0){
+    setPerItemDiscount(0);
+    setDiscount(0);
+    setGrandTotal(0);
+    setTotalAmount(0);
+  }
+
+}, [discount, products, unloading, transportation, handlingcharge]);
+
+
+  
+
 
   // Handle Billing Submission
   const handleBillingSubmit = async () => {
@@ -533,6 +639,10 @@ export default function BillingScreen() {
       salesmanPhoneNumber,
       userId: userInfo._id,
       marketedBy,
+      unloading,
+      transportation,
+      handlingcharge,
+      remark,
       discount,
       products: products.map((product) => ({
         item_id: product.item_id,
@@ -572,7 +682,7 @@ export default function BillingScreen() {
       setDiscount(0);
       setReceivedAmount(0);
       setReceivedDate('');
-      setPaymentMethod('Cash');
+      setPaymentMethod();
       setShowSummaryModal(false);
       handleLocalClear();
 
@@ -603,7 +713,7 @@ export default function BillingScreen() {
       deliveryStatus,
       salesmanPhoneNumber,
       paymentStatus,
-      billingAmount: totalAmount - discount,
+      billingAmount: totalAmount,
       paymentAmount: receivedAmount,
       paymentMethod,
       paymentReceivedDate: receivedDate,
@@ -611,7 +721,10 @@ export default function BillingScreen() {
       customerAddress,
       customerContactNumber,
       marketedBy,
-      subTotal: totalAmount - (cgst + sgst),
+      subTotal: amountWithoutGST,
+      transportation,
+      unloading,
+      grandTotal: grandTotal,
       cgst,
       sgst,
       discount,
@@ -659,7 +772,7 @@ export default function BillingScreen() {
       deliveryStatus,
       salesmanPhoneNumber,
       paymentStatus,
-      billingAmount: totalAmount - discount,
+      billingAmount: totalAmount,
       paymentAmount: receivedAmount,
       paymentMethod,
       paymentReceivedDate: receivedDate,
@@ -667,7 +780,13 @@ export default function BillingScreen() {
       customerAddress,
       customerContactNumber,
       marketedBy,
-      subTotal: totalAmount - (cgst + sgst),
+      perItemDiscount,
+      subTotal: amountWithoutGST,
+      grandTotal,
+      transportation,
+      unloading,
+      handling: handlingcharge,
+      remark,
       cgst,
       sgst,
       discount,
@@ -685,7 +804,7 @@ export default function BillingScreen() {
       })),
     };
 
-    axios.post('https://kktrading-backend.vercel.app/generate-invoice-html', formData)
+    api.post('/api/print/generate-invoice-html', formData)
     .then(response => {
       const htmlContent = response.data; // Extract the HTML content
       const printWindow = window.open('', '', 'height=800,width=600');
@@ -750,10 +869,66 @@ export default function BillingScreen() {
     setSelectedSuggestionIndex(-1);
   }, [suggestions]);
 
+  useEffect(() => {
+    setCustomerSuggesstionIndex(-1);
+  }, [customerSuggestions]);
+
+  const handleCustomerNameChange = async (e) => {
+    const value = e.target.value;
+    setCustomerName(value);
+    
+    // If the input is empty, clear suggestions and exit
+    if (value.trim() === "") {
+      setCustomerSuggestions([]);
+      return;
+    }
+    
+    try {
+      // Make sure the endpoint path matches the updated router
+      const { data } = await api.get(
+        `/api/billing/customer/suggestions?suggestions=true&search=${encodeURIComponent(value)}`
+      );
+      
+      // Update the suggestions state with the received data
+      setCustomerSuggestions(data.suggestions);
+    } catch (err) {
+      console.error("Error fetching customer suggestions:", err);
+      setError("Error fetching customer suggestions");
+    }
+  };
+
+
+
+  const handlecustomerContactNumberChange = async (e) => {
+    const value = e.target.value;
+    setCustomerContactNumber(value);
+    
+    // If the input is empty, clear suggestions and exit
+    if (value.trim() === "") {
+      setCustomerSuggestions([]);
+      return;
+    }
+    
+    try {
+      // Make sure the endpoint path matches the updated router
+      const { data } = await api.get(
+        `/api/billing/customer/suggestions?suggestions=true&search=${encodeURIComponent(value)}`
+      );
+      
+      // Update the suggestions state with the received data
+      setCustomerSuggestions(data.suggestions);
+    } catch (err) {
+      console.error("Error fetching customer suggestions:", err);
+      setError("Error fetching customer suggestions");
+    }
+  };
+  
+
+
   
   
   return (
-    <div className="container mx-auto p-2">
+    <div className="mx-auto">
 
     {success && <BillingSuccess isAdmin={userInfo.isAdmin} estimationNo={returnInvoice} />}
 
@@ -790,14 +965,14 @@ export default function BillingScreen() {
 
       <div className="max-w-4xl mx-auto mt-5 bg-white shadow-lg rounded-lg p-4">
         {/* Header with Actions */}
-        <div className="flex justify-between mb-4">
-          <p className="text-sm font-bold mb-5 text-gray-500">
-            <i className="fa fa-list" /> Billing 
+        <div className="flex justify-between mb-8">
+          <p className="text-sm font-bold text-gray-500 mt-2">
+            <i className="fa fa-list" />  
           </p>
           <div className="text-right">
             <button
               onClick={generatePDF}
-              className={`mb-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg mr-2 ${
+              className={`mb-2 bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg mr-2 ${
                 products.length === 0 ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-600'
               }`}
               disabled={products.length === 0 || !userInfo.isAdmin}
@@ -807,7 +982,7 @@ export default function BillingScreen() {
 
             <button
               onClick={printInvoice}
-              className={`mb-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg mr-2 ${
+              className={`mb-2 bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg mr-2 ${
                 products.length === 0 ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-600'
               }`}
               disabled={products.length === 0 || !userInfo.isAdmin}
@@ -818,7 +993,7 @@ export default function BillingScreen() {
 
             <button
               onClick={() => setShowSummaryModal(true)}
-              className={`mb-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg ${
+              className={`mb-2 bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
                 products.length === 0 ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-600'
               }`}
               disabled={products.length === 0}
@@ -835,7 +1010,7 @@ export default function BillingScreen() {
         {step === 1 && (
           <div className="mb-6">
             <div className="flex justify-between">
-              <h2 className="text-md text-gray-500 font-bold mb-4">
+              <h2 className="text-sm text-gray-500 font-bold mb-4">
                 Customer Information
               </h2>
               <p className="italic text-xs text-gray-500">
@@ -850,7 +1025,7 @@ export default function BillingScreen() {
                 value={invoiceNo}
                 onChange={(e) => setInvoiceNo(e.target.value)}
                 onKeyDown={(e) => changeRef(e, customerNameRef)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                 placeholder="Enter Invoice No"
               />
             </div>
@@ -859,14 +1034,68 @@ export default function BillingScreen() {
                 Customer Name
               </label>
               <input
-                type="text"
-                ref={customerNameRef}
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                onKeyDown={(e) => changeRef(e, customerContactNumberRef)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-                placeholder="Enter Customer Name"
-              />
+  type="text"
+  ref={customerNameRef}
+  value={customerName}
+  autoComplete="off" 
+  onChange={handleCustomerNameChange}
+  onKeyDown={(e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCustomerSuggesstionIndex((prevIndex) =>
+        prevIndex < customerSuggestions.length - 1 ? prevIndex + 1 : prevIndex
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCustomerSuggesstionIndex((prevIndex) =>
+        prevIndex > 0 ? prevIndex - 1 : prevIndex
+      );
+    } else if (e.key === 'Enter') {
+      if (
+        customerSuggesstionIndex >= 0 &&
+        customerSuggesstionIndex < customerSuggestions.length
+      ) {
+        e.preventDefault();
+        const selectedCustomer = customerSuggestions[customerSuggesstionIndex];
+        setCustomerName(selectedCustomer.customerName);
+        setCustomerContactNumber(selectedCustomer.customerContactNumber);
+        setCustomerAddress(selectedCustomer.customerAddress);
+        customerAddressRef.current?.focus();
+        // Optionally, you can set other fields like customerContactNumber here
+        setCustomerSuggesstionIndex(-1); // Reset the index after selection
+        setCustomerSuggestions([]); // Clear suggestions after selection
+      }else{
+        customerContactNumberRef.current?.focus();
+      }
+    }
+  }}
+  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+  placeholder="Enter Customer Name"
+/>
+
+                {customerSuggestions.length > 0 && (
+                  <div className="mt-2 bg-white border rounded-md max-h-60 divide-y overflow-y-auto">
+                    {customerSuggestions.map((customer, index) => (
+                      <div
+                        key={index}
+                        onClick={() => {
+                          setCustomerName(customer.customerName);
+                          setCustomerContactNumber(customer.customerContactNumber);
+                          setCustomerAddress(customer.customerAddress);
+        customerAddressRef.current?.focus();
+        // Optionally, you can set other fields like customerContactNumber here
+        setCustomerSuggesstionIndex(-1); // Reset the index after selection
+        setCustomerSuggestions([]); // Clear suggestions after selection
+                        }}
+                        className={`p-4 text-xs cursor-pointer hover:bg-gray-100 ${
+                          index === customerSuggesstionIndex ? 'bg-gray-200' : ''
+                        }`}
+                      >
+                        {customer.customerName}
+                      </div>
+                    ))}
+                  </div>
+                )}
             </div>
             <div className="mb-4">
               <label className="block text-xs text-gray-700">
@@ -878,9 +1107,11 @@ export default function BillingScreen() {
                 ref={customerContactNumberRef}
                 value={customerContactNumber}
                 onKeyDown={(e) => changeRef(e, customerAddressRef)}
-                onChange={(e) => setCustomerContactNumber(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                autoComplete="off" 
+                onChange={(e)=> setCustomerContactNumber(e.target.value)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               />
+
             </div>
             <div className="mb-4">
               <label className="block text-xs text-gray-700">
@@ -891,7 +1122,7 @@ export default function BillingScreen() {
                 ref={customerAddressRef}
                 onChange={(e) => setCustomerAddress(e.target.value)}
                 onKeyDown={(e) => { changeRef(e, salesmanNameRef); }}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                 placeholder="Enter Customer Address"
               />
             </div>
@@ -907,7 +1138,7 @@ export default function BillingScreen() {
       ref={salesmanNameRef}
       onChange={handleSalesmanChange}
       onKeyDown={(e) => changeRef(e, invoiceDateRef)}
-      className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
     >
       <option value="">Select Salesman</option>
       {salesmen.map((salesman) => (
@@ -924,7 +1155,7 @@ export default function BillingScreen() {
           type="text"
           value={salesmanPhoneNumber}
           onChange={(e) => setSalesmanPhoneNumber(e.target.value)}
-          className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
           placeholder="Salesman Phone Number"
         />
       </div>
@@ -948,7 +1179,7 @@ export default function BillingScreen() {
                 value={invoiceDate}
                 onKeyDown={(e) => changeRef(e, expectedDeliveryDateRef)}
                 onChange={(e) => setInvoiceDate(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               />
             </div>
 
@@ -962,7 +1193,7 @@ export default function BillingScreen() {
                 value={expectedDeliveryDate}
                 onKeyDown={(e) => changeRef(e, marketedByRef)}
                 onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               />
             </div>
 
@@ -975,7 +1206,7 @@ export default function BillingScreen() {
                 value={marketedBy}
                 onChange={(e) => setMarketedBy(e.target.value)}
                 onKeyDown={(e) => changeRef(e, deliveryStatusRef)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                 placeholder="Marketed by"
               />
             </div>
@@ -989,7 +1220,7 @@ export default function BillingScreen() {
                 ref={deliveryStatusRef}
                 onKeyDown={(e) => changeRef(e, itemIdRef)}
                 onChange={(e) => setDeliveryStatus(e.target.value)}
-                className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               >
                 <option value="Pending">Pending</option>
                 <option value="Delivered">Delivered</option>
@@ -1009,15 +1240,15 @@ export default function BillingScreen() {
                 <p className='text-xs font-bold'></p>
                 </div>
               <h2 className="text-md font-bold text-gray-700">
-                 INR. {(totalAmount - discount).toFixed(2)}
+                 INR. {(parseFloat(grandTotal)).toFixed(2)}
                 <p className='font-bold' style={{fontSize: '9px'}}>Discount: {parseFloat(discount || 0)?.toFixed(2)}</p>
               </h2>
             </div>
 
             <div>
               {/* Item ID Input */}
-              <div className="mb-4">
-                <label className="block text-gray-700 text-xs font-bold ml-1">
+              <div className="mb-4 border-t pt-5">
+                <label className="block text-gray-700 text-xs mb-2">
                   Item ID
                 </label>
                 <input
@@ -1043,7 +1274,7 @@ export default function BillingScreen() {
                       }
                     }
                   }}
-                  className="w-full px-4 py-2 mt-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                   placeholder="Enter Item ID or Name"
                 />
                 {error && <p className="text-red-500 mt-1 text-xs">{error}</p>}
@@ -1121,12 +1352,12 @@ export default function BillingScreen() {
                             sellingPriceRef.current.focus();
                           }
                         }}
-                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-red-500 focus:ring-red-500"
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       />
                       <select
                         value={unit}
                         onChange={(e) => setUnit(e.target.value)}
-                        className="ml-2 px-3 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                        className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       >
                         <option value="SQFT">SQFT</option>
                         <option value="GSQFT">Granite SQFT</option>
@@ -1152,7 +1383,7 @@ export default function BillingScreen() {
                           handleAddProductWithQuantity();
                         }
                       }}
-                      className="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-red-500 focus:ring-red-500"
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       placeholder="Enter Selling Price"
                     />
                   </div>
@@ -1171,7 +1402,7 @@ export default function BillingScreen() {
                             setSuggestions([]);
                             setShowOutOfStockModal(true);
                             outofStockRef.current?.focus();
-                  } } className='text-xs cursor-pointer text-center italic my-3'>Update Stock</p>
+                  } } className='text-xs cursor-pointer text-gray-500 text-center font-bold my-5'>Update Stock</p>
                 </div>
               )}
 
@@ -1189,9 +1420,9 @@ export default function BillingScreen() {
                       placeholder="Filter by product name or ID"
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                      className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                     />
-                    <i className='fa fa-search bg-red-500 px-5 py-3 text-white rounded-lg ml-2 items-center' />
+                    <i className='fa fa-search bg-red-500 p-3 text-white rounded-lg ml-2 items-center' />
                   </div>
                   {products.filter(
                             (product) =>
@@ -1207,56 +1438,61 @@ export default function BillingScreen() {
                       className="mb-4 bg-white border border-gray-200 rounded-lg shadow-md flex flex-col space-y-2"
                     >
                       <div className="flex justify-between rounded-t-lg  bg-red-500 p-2 items-center">
-                        <p className="text-xs text-white font-bold truncate">{product.name} - {product.item_id}</p>
+                        <p className="text-xs text-white font-bold truncate">{product.name.slice(0,20)}... - {product.item_id}</p>
                         <button
                           onClick={() => {
                             if (window.confirm(`Are you sure you want to delete ${product.name} from the bill?`))
                               deleteProduct(index);
                           }}
-                          className="text-white font-bold hover:text-white"
+                          className="text-white text-xs font-bold hover:text-white"
                         >
                           <i className="fa fa-trash" aria-hidden="true"></i>
                         </button>
                       </div>
-                      <div className='flex justify-between p-4'>
-                      <div className="text-xs font-bold text-gray-700">
-                        <div className='flex justify-left'>
-                        <p className='px-2 text-xs mt-auto'>Quantity ( {product.unit} ):</p>
+                      <div className='p-2 max-w-sm'>
+                      <div className="text-xs grid w-60 grid-cols-2 gap-3 font-bold text-gray-700">
+                        <div className='justify-center space-y-1 items-center'>
+                        <p className='px-2 text-xs'>Qty: ({product.unit})</p>
                         <input
                           type="number"
                           value={product.enteredQty}
                           onChange={(e) => handleEditProduct(index, 'enteredQty', e.target.value)}
-                          className="text-center w-20 border-0 border-red-400  border-b-2 focus:border-red-600 focus:outline-none focus:ring-0"
+                          className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         />
+                        {/* <p className='mt-auto ml-2'>( {product.unit} )</p> */}
                         </div>
-                        <div className='flex justify-left'>
-                        <p className='px-2 mt-auto text-xs'>Selling Price {product.unit == 'NOS' ? '(NOS)' : '(SQFT)'}:</p>
+                        <div className='justify-center space-y-1 items-center'>
+                        <p className='px-2 text-xs'>Rate: {product.unit == 'NOS' ? '(NOS)' : '(SQFT)'} </p>
                         <input
                           type="number"
                           value={product.sellingPrice}
                           onChange={(e) => handleEditProduct(index, 'sellingPrice', e.target.value)}
-                          className="text-center w-20 border-0 border-b-2 border-red-400 focus:border-red-600 focus:outline-none focus:ring-0"
+                          className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         />
                         </div>
-                              <p className="px-2 mt-5 text-xs">
-                               Rate + Tax per (Nos) : ₹{(product.sellingPriceinQty).toFixed(2)}
-                              </p>
-                      <p className='px-2 py-2 text-sm'>Total Price: ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}</p>
                       </div>
 
 
-                          <div onClick={()=> navigate(`${product.image.length > 8 ? product.image : '#'}`)} className='items-center cursor-pointer my-auto'>
-                          <img
-          onError={() => setImageError(true)}
-          className={`object-cover rounded-md w-20 h-20 ${imageError ? 'hidden' : ''}`}
-          src={`${product.image}`}
-          alt={product.image}
-        />
-        {imageError && (
-          <div className="flex justify-center items-center w-20 h-20 bg-gray-200 rounded-md">
-            <p className="text-gray-500 text-sm">No image</p>
+                          <div onClick={()=> navigate(`${product.image.length > 8 ? `/${product.image}` : '#'}`)} className='items-center cursor-pointer flex justify-between px-4 py-3'>
+                          <div>
+      <img
+        // onError={() => setImageError(true)}
+        className={`object-cover flex justify-center items-center w-40 h-20 bg-gray-200 rounded-md ${
+          imageError ? 'hidden' : ''
+        }`}
+        src={product.image}
+      />
+      {imageError && (
+        <div className="flex justify-center items-center w-40 h-20 bg-gray-200 rounded-md">
+          <p className="text-gray-500 text-sm">No image</p>
+        </div>
+      )}
+    </div>
+        <div className='text-xs space-y-2 px-5 truncate'>
+          <p>{product.item_id}</p>
+          <p>{product.name}</p>
+          <p className='font-bold text-gray-400'>In Stock: {product.countInStock} NOS</p>
           </div>
-        )}
 
                             </div>
 
@@ -1278,9 +1514,9 @@ export default function BillingScreen() {
                       placeholder="search added products..."
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                     />
-                                        <i className='fa fa-search bg-red-500 px-5 py-3 text-white rounded-lg ml-2 items-center' />
+                                        <i className='fa fa-search bg-red-500 p-2 text-white rounded-lg ml-2 items-center' />
 
                   </div>
 
@@ -1298,6 +1534,8 @@ export default function BillingScreen() {
                           <th className="px-2 py-2 text-center">Quantity <br/> (per Nos)</th>
                           <th className="px-2 py-2 text-center">Rate+T <br/> (per Nos)</th>
                           <th className="px-2 py-2 text-left">Total</th>
+                          <th className="px-2 py-2 text-center">Discount</th>
+                          <th className="px-2 py-2 text-left">Net Total</th>
                           <th className="px-2 py-2 text-center">
                             <i className="fa fa-trash" aria-hidden="true"></i>
                           </th>
@@ -1366,6 +1604,12 @@ export default function BillingScreen() {
                                 ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}
                               </td>
                               <td className="px-2 py-2 text-xs text-center">
+                                {(product.quantity * perItemDiscount).toFixed(2)}
+                              </td>
+                              <td className="px-2 py-2 text-xs">
+                                ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * perItemDiscount)).toFixed(2)}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-center">
                                 <button
                                   onClick={() => {
                                     if (
@@ -1429,6 +1673,7 @@ export default function BillingScreen() {
       {/* Summary Modal */}
       {showSummaryModal && (
         <SummaryModal
+        accounts={accounts}
           customerName={customerName}
           invoiceNo={invoiceNo}
           totalAmount={totalAmount}
@@ -1442,8 +1687,17 @@ export default function BillingScreen() {
           setReceivedAmount={setReceivedAmount}
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
+          unloading={unloading}
+          setUnloading={setUnloading}
+          transportation={transportation}
+          setTransportation={setTransportation} 
+          handling={handlingcharge}
+          setHandling={setHandlingCharge}
+          remark={remark}
+          setRemark={setRemark}
           receivedDate={receivedDate}
           setReceivedDate={setReceivedDate}
+          grandTotal={grandTotal}
           onClose={() => setShowSummaryModal(false)}
           onSubmit={handleBillingSubmit}
           isSubmitting={isSubmitting}

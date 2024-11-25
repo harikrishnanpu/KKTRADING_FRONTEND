@@ -76,7 +76,7 @@ export default function HomeScreen() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <CardSection title="Billing">
-              <ActionButton href="/create-bill" title={`${userInfo.isAdmin ? 'Create Bill' : 'Create Estimate'}`} />
+              <ActionButton href="/create-bill" title={`${userInfo.isAdmin ? 'Create Bill' : 'Add Estimate'}`} />
               <ActionButton href="/bills" title="All Bills" />
             </CardSection>
 
@@ -110,6 +110,11 @@ export default function HomeScreen() {
             <ActionButton href="/purchase-payments" title="Purchase Transactions" />
             </CardSection>
 
+            <CardSection title="Purchase Paymets">
+            <ActionButton href="/purchase-payments" title="Purchase Transactions" />
+            <ActionButton href="/transport-payments" title="Transport Transactions" />
+            </CardSection>
+
             <CardSection title="Locations">
             <ActionButton href="/driver-tracker" title="Delivery Tracking" />
             <ActionButton href="#" title="All Trackings" />
@@ -121,10 +126,15 @@ export default function HomeScreen() {
             <ActionButton href="/daily-transactions" title="Daily Transactions" />
             </CardSection>
 
+            <CardSection title="Accounts">
+            <ActionButton href="/create-account" title="Create Account" />
+            <ActionButton href="/payment-accounts" title="Accounts" />
+            </CardSection>
+
            {userInfo.isAdmin && <CardSection title="Admin Panel">
               <ActionButton href={userInfo?.isAdmin ? '/support' : '/chat'} title="Inbox" />
               <ActionButton href="/dashboard" title="Dashboard" />
-              <ActionButton href="https://kktrading-backend.vercel.app/export" title="Export All" />
+              <ActionButton href="http://localhost:4000/export" title="Export All" />
             </CardSection> }
 
             <CardSection title="Edit Billings">

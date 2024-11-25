@@ -380,3 +380,46 @@ const LocationSender = () => {
 
 export default LocationSender;
 
+
+
+
+
+
+
+ <div className='flex justify-between'>
+            <div>
+          <p className='text-xs mt-2 text-gray-600'>
+            <strong>Customer Name:</strong> {customerName || "N/A"}
+          </p>
+          <p className='text-xs mt-2 text-gray-600'>
+            <strong>Salesman:</strong> {salesmanName || "N/A"}
+          </p>
+          <p className='text-xs mt-2 text-gray-600'>
+            <strong>Total Products:</strong> {totalProducts}
+          </p>
+          <p className='text-xs mt-4 text-gray-600'>
+            <strong>Sub Total:</strong> {amountWithoutGST.toFixed(2)}
+          </p>
+          <p className='text-xs mt-2 text-gray-600'>
+            <strong>CGST (9%):</strong> {cgst.toFixed(2)}
+          </p>
+          <p className='text-xs mt-2 text-gray-600'>
+            <strong>SGST (9%):</strong> {sgst.toFixed(2)}
+          </p>
+            </div>
+            <div>
+            <p className='text-xs mt-2 text-gray-600'>
+            <strong>Amount Paid:</strong> {fetchedReceivedAmount}
+          </p>
+            <p className='text-xs mt-2 font-bold text-gray-600'>
+            <strong>Remaining Amount:</strong> {fetchedRemainingAmount}
+          </p>
+          <p className='text-xs mt-2 text-gray-600'>
+            <strong>Payment Method:</strong> {paymentMethod}
+          </p>
+          <p className='text-xs mt-2 text-gray-600'>
+            <strong>Received Date:</strong> {new Date(receivedDate? receivedDate : new Date()).toLocaleDateString() || "N/A"}
+          </p>
+            </div>
+          </div>
+

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "./api";
+import { useSelector } from "react-redux";
 
 const EmployeePaymentExpensePage = () => {
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -16,7 +17,40 @@ const EmployeePaymentExpensePage = () => {
   const [activeSection, setActiveSection] = useState("Billing Details");
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [accounts,setAccounts] = useState([]);
   const navigate = useNavigate();
+
+
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
+
+
+  useEffect(()=>{
+    const fetchAccounts = async () => {
+      setIsLoading(true); // Set loading state
+      try {
+        const response = await api.get('/api/accounts/allaccounts');
+        const getPaymentMethod = response.data.map((acc) => acc.accountId);
+    
+        // Check if there are any accounts and set the first account as the default
+        if (getPaymentMethod.length > 0) {
+          const firstAccountId = getPaymentMethod[0];
+          setPaymentMethod(firstAccountId); // Set the first account as default
+        } else {
+          setPaymentMethod(null); // Handle case where there are no accounts
+        }
+    
+        setAccounts(response.data); // Set the accounts in state
+      } catch (err) {
+        setError('Failed to fetch payment accounts.'); // Set error message
+        console.error(err);
+      } finally {
+        setIsLoading(false); // Stop loading
+      }
+    };
+
+    fetchAccounts()
+  },[])
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -79,6 +113,7 @@ const EmployeePaymentExpensePage = () => {
         paymentAmount,
         paymentMethod,
         paymentStatus: updatedPaymentStatus,
+        userId: userInfo._id
       });
       handleFetchBilling(billingDetails._id);
       setPaymentAmount("");
@@ -118,6 +153,8 @@ const EmployeePaymentExpensePage = () => {
       await api.post(`/api/billing/billing/${billingDetails._id}/addExpenses`, {
         fuelCharge: fuelCharge || 0, // default to 0 if not provided
         otherExpenses: validOtherExpenses,
+        userId: userInfo._id,
+        paymentMethod,
       });
       
       // Refetch updated billing details after adding expenses
@@ -378,21 +415,22 @@ const EmployeePaymentExpensePage = () => {
                         type="number"
                         value={paymentAmount}
                         onChange={(e) => setPaymentAmount(Math.min(Number(e.target.value), remainingAmount))}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1">Payment Method</label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
-                      >
-                        <option value="Cash">Cash</option>
-                        <option value="Card">Card</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
-                        <option value="Online">Online</option>
-                      </select>
+                    <label className="block text-xs">Payment Method</label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            >
+      {accounts.map((acc) => (
+        <option key={acc.accountId} value={acc.accountId}>
+          {acc.accountName}
+        </option>
+      ))}
+            </select>
                     </div>
                     <button
                       className="bg-red-500 text-white font-bold text-xs px-4 py-3 rounded-lg mt-4"
@@ -417,11 +455,28 @@ const EmployeePaymentExpensePage = () => {
                         type="number"
                         value={fuelCharge}
                         onChange={(e) => setFuelCharge(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       />
                     </div>
+
+                    <div>
+                    <label className="block text-xs">Payment Method</label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            >
+      {accounts.map((acc) => (
+        <option key={acc.accountId} value={acc.accountId}>
+          {acc.accountName}
+        </option>
+      ))}
+            </select>
+                    </div>
+
                     <div className="mt-4">
                 <h3 className="text-xs font-bold text-gray-500 mb-1">Add Other Expenses</h3>
+
                 {otherExpenses?.map((expense, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <input
@@ -429,14 +484,14 @@ const EmployeePaymentExpensePage = () => {
                       value={expense.amount}
                       onChange={(e) => handleOtherExpensesChange(index, "amount", e.target.value)}
                       placeholder="Amount"
-                      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                     />
                     <input
                       type="text"
                       value={expense.remark}
                       onChange={(e) => handleOtherExpensesChange(index, "remark", e.target.value)}
                       placeholder="Remark"
-                      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                     />
                   </div>
                 ))}

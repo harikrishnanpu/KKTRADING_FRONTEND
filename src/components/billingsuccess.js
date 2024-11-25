@@ -24,7 +24,7 @@ const BillingSuccess = ({estimationNo, isAdmin}) => {
 
   return (
     <div className="fixed z-20 w-full top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-gray-100 p-6">
-      <div className="bg-white rounded-lg shadow-xl  w-full py-40 flex flex-col items-center">
+      <div className="bg-white animate-slide-up rounded-lg shadow-xl  w-full py-40 flex flex-col items-center">
         {/* Animated Checkmark */}
         <div className="checkmark-container mb-6">
           <i className="fa fa-check checkmark"></i>

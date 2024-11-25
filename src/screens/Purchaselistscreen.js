@@ -1,3 +1,4 @@
+// src/screens/PurchaseList.jsx
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -16,6 +17,11 @@ const PurchaseList = () => {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  // Filter states
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [sellerNameFilter, setSellerNameFilter] = useState('');
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
@@ -38,46 +44,103 @@ const PurchaseList = () => {
     fetchPurchases();
   }, []);
 
-  // Pagination logic
+  // Apply filters
+  const filteredPurchases = purchases.filter((purchase) => {
+    const purchaseDate = new Date(purchase.billingDate || purchase.invoiceDate);
+    if (startDate && purchaseDate < new Date(startDate)) {
+      return false;
+    }
+    if (endDate && purchaseDate > new Date(endDate)) {
+      return false;
+    }
+    if (
+      sellerNameFilter &&
+      !purchase.sellerName.toLowerCase().includes(sellerNameFilter.toLowerCase())
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.ceil(filteredPurchases.length / itemsPerPage);
+
   const paginatePurchases = () => {
     const start = (currentPage - 1) * itemsPerPage;
-    return purchases.slice(start, start + itemsPerPage);
+    return filteredPurchases.slice(start, start + itemsPerPage);
   };
 
-  const totalPages = Math.ceil(purchases.length / itemsPerPage);
-
-  // PDF Generation
-  const generatePDF = async (purchase) => {
+  // PDF Generation for filtered purchases
+  const handleGeneratePDF = () => {
     setPdfLoading(true);
 
-    const formData = {
-      invoiceNo: purchase.invoiceNo,
-      sellerName: purchase.sellerName,
-      invoiceDate: purchase.createdAt,
-      items: purchase.items,
-      totalAmount: purchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0),
-    };
+    const purchasesToPrint = filteredPurchases;
 
-    try {
-      const response = await api.post(
-        'https://kktrading-backend.vercel.app/generate-pdf-purchase', // Ensure this endpoint exists on your backend
-        formData,
-        {
-          responseType: 'blob',
-        }
-      );
+    // Prepare data for PDF
+    const doc = new jsPDF();
 
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `Purchase_Invoice_${purchase.invoiceNo}.pdf`;
-      link.click();
-    } catch (error) {
-      console.error('Error generating purchase invoice:', error);
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setPdfLoading(false);
-    }
+    doc.text('Purchase Report', 14, 16);
+    doc.setFontSize(10);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 22);
+
+    const tableColumn = ['Invoice No', 'Invoice Date', 'Supplier Name', 'Total Items', 'Total Amount'];
+    const tableRows = [];
+
+    purchasesToPrint.forEach((purchase) => {
+      const purchaseData = [
+        purchase.invoiceNo,
+        new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString(),
+        purchase.sellerName,
+        purchase.items.length,
+        '₹' + purchase.totals.totalPurchaseAmount.toFixed(2),
+      ];
+      tableRows.push(purchaseData);
+    });
+
+    doc.autoTable(tableColumn, tableRows, { startY: 30 });
+    doc.save('Purchase_Report.pdf');
+
+    setPdfLoading(false);
+  };
+
+  // Generate PDF for a single purchase
+  const handleGenerateSinglePDF = (purchase) => {
+    setPdfLoading(true);
+
+    // Prepare data for PDF
+    const doc = new jsPDF();
+
+    doc.text(`Purchase Invoice: ${purchase.invoiceNo}`, 14, 16);
+    doc.setFontSize(10);
+    doc.text(`Date: ${new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString()}`, 14, 22);
+    doc.text(`Supplier: ${purchase.sellerName}`, 14, 28);
+
+    const tableColumn = ['Item ID', 'Name', 'Quantity', 'Unit', 'Bill Price', 'Cash Price', 'Total'];
+    const tableRows = [];
+
+    purchase.items.forEach((item) => {
+      const itemData = [
+        item.itemId,
+        item.name,
+        item.quantity,
+        item.pUnit,
+        '₹' + item.billPartPrice.toFixed(2),
+        '₹' + item.cashPartPrice.toFixed(2),
+        '₹' + (item.quantity * (item.billPartPrice + item.cashPartPrice)).toFixed(2),
+      ];
+      tableRows.push(itemData);
+    });
+
+    doc.autoTable(tableColumn, tableRows, { startY: 35 });
+
+    doc.text(
+      `Total Purchase Amount: ₹${purchase.totals.totalPurchaseAmount.toFixed(2)}`,
+      14,
+      doc.autoTable.previous.finalY + 10
+    );
+
+    doc.save(`Purchase_Invoice_${purchase.invoiceNo}.pdf`);
+
+    setPdfLoading(false);
   };
 
   // Handle Remove Purchase
@@ -103,26 +166,11 @@ const PurchaseList = () => {
     setSelectedPurchase(null);
   };
 
-  // Render Status Indicator (if needed, adjust based on purchase status)
-  const renderStatusIndicator = (purchase) => {
-    const { paymentStatus } = purchase;
-    let color = 'red';
-    if (paymentStatus === 'Completed') {
-      color = 'green';
-    } else if (paymentStatus === 'Partial') {
-      color = 'yellow';
+  // Handle Page Change
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
-
-    return (
-      <span className="relative flex h-3 w-3 mx-auto">
-        <span
-          className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-${color}-400 opacity-75`}
-        ></span>
-        <span
-          className={`relative inline-flex rounded-full h-3 w-3 bg-${color}-500`}
-        ></span>
-      </span>
-    );
   };
 
   // Render Purchase Card for Mobile
@@ -138,20 +186,17 @@ const PurchaseList = () => {
         >
           {purchase.invoiceNo}
         </p>
-        <div className="flex items-center">
-          {renderStatusIndicator(purchase)}
-        </div>
       </div>
       <p className="text-gray-600 text-xs mt-2">Supplier: {purchase.sellerName}</p>
       <p className="text-gray-600 text-xs mt-1">
-        Invoice Date: {new Date(purchase.createdAt).toLocaleDateString()}
+        Invoice Date: {new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString()}
       </p>
       <p className="text-gray-600 text-xs mt-1">
         Total Items: {purchase.items.length}
       </p>
       <div className="flex justify-between">
         <p className="text-gray-600 text-xs font-bold mt-1">
-          Total Amount: Rs. {purchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0).toFixed(2)}
+          Total Amount: ₹{purchase.totals.totalPurchaseAmount.toFixed(2)}
         </p>
         <p className="text-gray-400 italic text-xs mt-1">
           Last Edited: {new Date(purchase.updatedAt ? purchase.updatedAt : purchase.createdAt).toLocaleDateString()}
@@ -168,7 +213,7 @@ const PurchaseList = () => {
         )}
         {userInfo.isAdmin && (
           <button
-            onClick={() => generatePDF(purchase)}
+            onClick={() => handleGenerateSinglePDF(purchase)}
             className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center"
           >
             <i className="fa fa-file-pdf-o mr-2"></i> PDF
@@ -180,12 +225,14 @@ const PurchaseList = () => {
         >
           <i className="fa fa-eye mr-2"></i> View
         </button>
-        <button
-          onClick={() => handleRemove(purchase._id)}
-          className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center"
-        >
-          <i className="fa fa-trash mr-2"></i> Delete
-        </button>
+        {userInfo.isAdmin && (
+          <button
+            onClick={() => handleRemove(purchase._id)}
+            className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center"
+          >
+            <i className="fa fa-trash mr-2"></i> Delete
+          </button>
+        )}
       </div>
     </div>
   );
@@ -197,7 +244,6 @@ const PurchaseList = () => {
       <table className="w-full text-sm text-gray-500 bg-white shadow-md rounded-lg overflow-hidden">
         <thead className="bg-gray-200">
           <tr className="divide-y text-xs">
-            <th className="px-4 py-2 text-left">Status</th>
             <th className="px-2 py-2">Invoice No</th>
             <th className="px-2 py-2">Invoice Date</th>
             <th className="px-2 py-2">Supplier Name</th>
@@ -209,9 +255,6 @@ const PurchaseList = () => {
         <tbody>
           {skeletonRows.map((row) => (
             <tr key={row} className="hover:bg-gray-100 divide-y divide-x">
-              <td className="px-4 py-2 text-center">
-                <Skeleton circle={true} height={12} width={12} />
-              </td>
               <td className="px-2 py-2">
                 <Skeleton height={10} />
               </td>
@@ -247,7 +290,6 @@ const PurchaseList = () => {
       >
         <div className="flex justify-between items-center">
           <Skeleton height={20} width={`60%`} />
-          <Skeleton circle={true} height={12} width={12} />
         </div>
         <p className="text-gray-600 text-xs mt-2">
           <Skeleton height={10} width={`80%`} />
@@ -276,13 +318,6 @@ const PurchaseList = () => {
     ));
   };
 
-  // Handle Page Change
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
   return (
     <>
       {/* Header */}
@@ -293,10 +328,50 @@ const PurchaseList = () => {
         >
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
           <p className="text-gray-400 text-xs font-bold">
-            All Purchases Information And Updation
+            All Purchases Information and Updation
           </p>
         </div>
         <i className="fa fa-list text-gray-500" />
+      </div>
+
+      {/* Filter Options */}
+      <div className="flex flex-wrap items-center mb-4">
+        <div className="mr-4 mb-2">
+          <label className="text-xs font-bold text-gray-700 mr-2">Start Date:</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1 text-xs"
+          />
+        </div>
+        <div className="mr-4 mb-2">
+          <label className="text-xs font-bold text-gray-700 mr-2">End Date:</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1 text-xs"
+          />
+        </div>
+        <div className="mr-4 mb-2">
+          <label className="text-xs font-bold text-gray-700 mr-2">Seller Name:</label>
+          <input
+            type="text"
+            value={sellerNameFilter}
+            onChange={(e) => setSellerNameFilter(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1 text-xs"
+            placeholder="Enter seller name"
+          />
+        </div>
+        <div className="mb-2">
+          <button
+            onClick={handleGeneratePDF}
+            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-xs"
+          >
+            <i className="fa fa-file-pdf-o mr-1"></i> Generate PDF Report
+          </button>
+        </div>
       </div>
 
       {/* PDF Loading Spinner */}
@@ -329,7 +404,7 @@ const PurchaseList = () => {
       ) : (
         <>
           {/* Purchases List */}
-          {purchases.length === 0 ? (
+          {filteredPurchases.length === 0 ? (
             <p className="text-center text-gray-500 text-xs">
               No purchases available.
             </p>
@@ -340,7 +415,6 @@ const PurchaseList = () => {
                 <table className="w-full text-xs text-gray-500 bg-white shadow-md rounded-lg overflow-hidden">
                   <thead className="bg-red-600 text-xs text-white">
                     <tr className="divide-y">
-                      <th className="px-4 py-2 text-left">Status</th>
                       <th className="px-2 py-2">Invoice No</th>
                       <th className="px-2 py-2">Invoice Date</th>
                       <th className="px-2 py-2">Supplier Name</th>
@@ -355,9 +429,6 @@ const PurchaseList = () => {
                         key={purchase.invoiceNo}
                         className="hover:bg-gray-100 divide-y divide-x"
                       >
-                        <td className="px-4 py-2 text-center">
-                          {renderStatusIndicator(purchase)}
-                        </td>
                         <td
                           onClick={() => navigate(`/purchase/${purchase._id}`)}
                           className={`px-2 cursor-pointer flex text-xs font-bold py-2 text-red-600`}
@@ -365,7 +436,7 @@ const PurchaseList = () => {
                           {purchase.invoiceNo}
                         </td>
                         <td className="px-2 text-xs py-2">
-                          {new Date(purchase.createdAt).toLocaleDateString()}
+                          {new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString()}
                         </td>
                         <td className="px-2 text-xs py-2">
                           {purchase.sellerName}
@@ -374,7 +445,7 @@ const PurchaseList = () => {
                           {purchase.items.length}
                         </td>
                         <td className="px-2 text-xs py-2">
-                          Rs. {purchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0).toFixed(2)}
+                          ₹{purchase.totals.totalPurchaseAmount.toFixed(2)}
                         </td>
                         <td className="px-2 text-xs py-2">
                           <div className="flex mt-2 text-xs space-x-1">
@@ -388,7 +459,7 @@ const PurchaseList = () => {
                             )}
                             {userInfo.isAdmin && (
                               <button
-                                onClick={() => generatePDF(purchase)}
+                                onClick={() => handleGenerateSinglePDF(purchase)}
                                 className="bg-red-500 text-white px-2 font-bold py-1 rounded hover:bg-red-600 flex items-center"
                               >
                                 <i className="fa fa-file-pdf-o mr-1"></i> PDF
@@ -400,12 +471,14 @@ const PurchaseList = () => {
                             >
                               <i className="fa fa-eye mr-1"></i> View
                             </button>
-                            <button
-                              onClick={() => handleRemove(purchase._id)}
-                              className="bg-red-500 text-white px-2 font-bold py-1 rounded hover:bg-red-600 flex items-center"
-                            >
-                              <i className="fa fa-trash mr-1"></i> Delete
-                            </button>
+                            {userInfo.isAdmin && (
+                              <button
+                                onClick={() => handleRemove(purchase._id)}
+                                className="bg-red-500 text-white px-2 font-bold py-1 rounded hover:bg-red-600 flex items-center"
+                              >
+                                <i className="fa fa-trash mr-1"></i> Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -475,30 +548,16 @@ const PurchaseList = () => {
                 <p className="text-xs mb-1">
                   Invoice Date:{' '}
                   <span className="text-gray-700">
-                    {new Date(selectedPurchase.createdAt).toLocaleDateString()}
+                    {new Date(selectedPurchase.billingDate || selectedPurchase.invoiceDate).toLocaleDateString()}
                   </span>
                 </p>
               </div>
 
               <div className="flex justify-between">
                 <p className="text-xs mb-1">
-                  Payment Status:{' '}
-                  <span
-                    className={`${
-                      selectedPurchase.paymentStatus === 'Completed'
-                        ? 'text-green-500'
-                        : selectedPurchase.paymentStatus === 'Pending'
-                        ? 'text-yellow-500'
-                        : 'text-red-500'
-                    } font-bold`}
-                  >
-                    {selectedPurchase.paymentStatus}
-                  </span>
-                </p>
-                <p className="text-xs mb-1">
-                  Total Amount:{' '}
+                  Total Purchase Amount:{' '}
                   <span className="text-gray-700">
-                    Rs. {selectedPurchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0).toFixed(2)}
+                    ₹{selectedPurchase.totals.totalPurchaseAmount.toFixed(2)}
                   </span>
                 </p>
               </div>
@@ -524,7 +583,10 @@ const PurchaseList = () => {
                           Qty
                         </th>
                         <th scope="col" className="px-2 py-3">
-                          Price
+                          Bill Price
+                        </th>
+                        <th scope="col" className="px-2 py-3">
+                          Cash Price
                         </th>
                         <th scope="col" className="px-2 py-3">
                           Total
@@ -549,16 +611,19 @@ const PurchaseList = () => {
                               : item.name}
                           </td>
                           <td className="px-2 py-4 text-xs text-center">
-                            {item.item_id || 'N/A'}
+                            {item.itemId || 'N/A'}
                           </td>
                           <td className="px-2 py-4 text-xs">
                             {item.quantity}
                           </td>
                           <td className="px-2 py-4 text-xs">
-                            Rs. {item.price.toFixed(2)}
+                            ₹{item.billPartPrice.toFixed(2)}
                           </td>
                           <td className="px-2 py-4 text-xs">
-                            Rs. {(item.price * item.quantity).toFixed(2)}
+                            ₹{item.cashPartPrice.toFixed(2)}
+                          </td>
+                          <td className="px-2 py-4 text-xs">
+                            ₹{(item.quantity * (item.billPartPrice + item.cashPartPrice)).toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -567,33 +632,27 @@ const PurchaseList = () => {
 
                   <div className="mt-10 text-right mr-2">
                     <p className="text-xs mb-1">
-                      Sub Total:{' '}
+                      Bill Part Total:{' '}
                       <span className="text-gray-600">
-                        Rs. {selectedPurchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0).toFixed(2)}
+                        ₹{selectedPurchase.totals.billPartTotal.toFixed(2)}
                       </span>
                     </p>
                     <p className="text-xs mb-1">
-                      GST (18%):{' '}
+                      Cash Part Total:{' '}
                       <span className="text-gray-600">
-                        Rs. {(selectedPurchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0) * 0.18).toFixed(2)}
+                        ₹{selectedPurchase.totals.cashPartTotal.toFixed(2)}
                       </span>
                     </p>
                     <p className="text-xs mb-1">
-                      Discount:{' '}
+                      Transportation Charges:{' '}
                       <span className="text-gray-600">
-                        Rs. {parseFloat(selectedPurchase.discount || 0).toFixed(2)}
+                        ₹{selectedPurchase.totals.transportationCharges.toFixed(2)}
                       </span>
                     </p>
                     <p className="text-sm font-bold mb-1">
-                      Total Amount:{' '}
+                      Total Purchase Amount:{' '}
                       <span className="text-gray-600">
-                        Rs. {(selectedPurchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0) + (selectedPurchase.items.reduce((sum, item) => sum + (item.price * item.quantity || 0), 0) * 0.18) - parseFloat(selectedPurchase.discount || 0)).toFixed(2)}
-                      </span>
-                    </p>
-                    <p className="text-xs mb-1">
-                      Amount Received:{' '}
-                      <span className="text-green-500 font-bold">
-                        Rs. {parseFloat(selectedPurchase.amountReceived || 0).toFixed(2)}
+                        ₹{selectedPurchase.totals.totalPurchaseAmount.toFixed(2)}
                       </span>
                     </p>
                   </div>

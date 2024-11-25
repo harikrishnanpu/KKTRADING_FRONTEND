@@ -1,5 +1,5 @@
 // src/components/SummaryModal.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useSelector } from 'react-redux';
 
@@ -23,9 +23,19 @@ export default function SummaryModal({
   isSubmitting,
   salesmanName,
   totalProducts,
-  handleLocalSave
+  handleLocalSave,
+  unloading,
+  setUnloading,
+  transportation,
+  setTransportation,
+  handling,
+  setHandling,
+  remark,
+  setRemark,
+  grandTotal,
+  accounts
 }) {
-  const remainingAmount = (parseFloat(totalAmount - discount) - parseFloat(receivedAmount)).toFixed(2);
+  const remainingAmount = (parseFloat(parseFloat(totalAmount) - discount) - parseFloat(receivedAmount)).toFixed(2);
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
@@ -34,79 +44,55 @@ export default function SummaryModal({
 
   useEffect(()=>{
     setFetchedReceivedAmount(receivedAmount);
-    setFetchedRemainingAmount((parseFloat(totalAmount - discount) - parseFloat(receivedAmount)).toFixed(2));
+    setFetchedRemainingAmount((parseFloat(parseFloat(totalAmount) - discount) - parseFloat(receivedAmount)).toFixed(2));
   },[discount])
+
+  const mainRef = useRef();
 
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 max-h-full overflow-y-auto">
+    <div className="fixed inset-0 flex justify-center z-50 bg-black bg-opacity-50">
+      <div ref={mainRef} className="bg-white rounded-lg mt-auto shadow-lg max-w-4xl h-3/4 w-full overflow-y-auto animate-slide-up">
         <div className="p-6">
             <div className='flex justify-between items-center mb-5'>
-          <h2 className="text-xs text-red-500 font-bold">Billing Summary</h2>
-          <p onClick={onClose} className='font-bold text-gray-500 cursor-pointer bg-gray-300 px-2 rounded-md'>X</p>
-            </div>
-          <p className='text-md font-bold mt-2 text-gray-600'>
+            <p className='text-sm font-bold mt-2 text-red-600'>
             <strong>Invoice No:</strong> {invoiceNo || "N/A"}
           </p>
-          <div className='flex justify-between'>
-            <div>
-          <p className='text-xs mt-2 text-gray-600'>
-            <strong>Customer Name:</strong> {customerName || "N/A"}
-          </p>
-          <p className='text-xs mt-2 text-gray-600'>
-            <strong>Salesman:</strong> {salesmanName || "N/A"}
-          </p>
-          <p className='text-xs mt-2 text-gray-600'>
-            <strong>Total Products:</strong> {totalProducts}
-          </p>
-          <p className='text-xs mt-4 text-gray-600'>
-            <strong>Sub Total:</strong> {amountWithoutGST.toFixed(2)}
-          </p>
-          <p className='text-xs mt-2 text-gray-600'>
-            <strong>CGST (9%):</strong> {cgst.toFixed(2)}
-          </p>
-          <p className='text-xs mt-2 text-gray-600'>
-            <strong>SGST (9%):</strong> {sgst.toFixed(2)}
-          </p>
+          <p  onClick={() => {
+            mainRef.current.classList.remove('animate-slide-up');
+            mainRef.current.classList.add('animate-slide-down');
+            setTimeout(() => {
+              mainRef.current.classList.remove('animate-slide-down');
+              onClose();
+            }, 200);
+          }} className='font-bold text-gray-500 cursor-pointer bg-gray-300 px-2 rounded-md'>X</p>
             </div>
-            <div>
-            <p className='text-xs mt-2 text-gray-600'>
-            <strong>Amount Paid:</strong> {fetchedReceivedAmount}
-          </p>
-            <p className='text-xs mt-2 font-bold text-gray-600'>
-            <strong>Remaining Amount:</strong> {fetchedRemainingAmount}
-          </p>
-          <p className='text-xs mt-2 text-gray-600'>
-            <strong>Payment Method:</strong> {paymentMethod}
-          </p>
-          <p className='text-xs mt-2 text-gray-600'>
-            <strong>Received Date:</strong> {new Date(receivedDate? receivedDate : new Date()).toLocaleDateString() || "N/A"}
-          </p>
-          <div>
-          </div>
-            </div>
-          </div>
-          <p className='text-xs font-bold mt-2 text-gray-600'>
-            <strong>Bill Amount:</strong> ₹{totalAmount.toFixed(2)}
-          </p>
           <p className='text-xs font-bold mt-2 text-gray-600'>
             <strong>Discount:</strong> {(discount).toFixed(2)}
           </p>
-          <p className='text-md font-bold mt-2 text-gray-600'>
-            <strong>Total Amount:</strong> ₹{(totalAmount - discount).toFixed(2)}
+          <p className='text-xs font-bold mt-2 text-gray-600'>
+            <strong>Bill Amount:</strong> ₹{parseFloat(totalAmount).toFixed(2)}
+          </p>
+          <p className='text-sm font-bold mt-2 text-gray-600'>
+            <strong>Total Amount:</strong> ₹{(parseFloat(grandTotal)).toFixed(2)}
           </p>
 
           {/* Payment Details */}
-         {userInfo.isAdmin && <div className="mt-4">
+         {userInfo.isAdmin && 
+         
+         <div className="mt-4 grid grid-cols-2 gap-2">
+          <div>
             <label className="block text-xs">Discount</label>
             <input
               type="number"
               value={discount || 0}
               onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-              className="w-full mb-2 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               placeholder="Enter Discount"
             />
+            </div>
+
+            <div>
 
             <label className="block text-xs">Received Amount</label>
             <input
@@ -116,28 +102,95 @@ export default function SummaryModal({
               onChange={(e) =>
                 setReceivedAmount(Math.min(parseFloat(e.target.value) || 0, parseFloat(fetchedRemainingAmount)))
               }
-              className="w-full mb-2 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             />
+            </div>
+
+            <div>
 
             <label className="block text-xs">Payment Method</label>
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full px-4 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             >
-              <option value="Cash">Cash</option>
-              <option value="Card">Card</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-              <option value="Online">Online</option>
+      {accounts.map((acc) => (
+        <option key={acc.accountId} value={acc.accountId}>
+          {acc.accountName}
+        </option>
+      ))}
             </select>
+
+            </div>
+            <div>
 
             <label className="block text-xs">Received Date</label>
             <input
               type="date"
               value={receivedDate}
               onChange={(e) => setReceivedDate(e.target.value)}
-              className="w-full border-gray-300 px-4 py-2 mb-4 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             />
+
+            </div>
+
+            <div>
+
+<label className="block text-xs">Unloading Charge</label>
+<input
+  type="number"
+  placeholder="Enter Unloading Charge"
+  value={unloading || 0}
+  onChange={(e) =>
+    setUnloading(parseFloat(e.target.value))
+  }
+  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+/>
+</div>
+
+<div>
+
+<label className="block text-xs">Transportation Charge</label>
+<input
+  type="number"
+  placeholder="Enter Received Amount"
+  value={transportation || 0}
+  onChange={(e) =>
+    setTransportation(parseFloat(e.target.value))
+  }
+  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+/>
+</div>
+
+
+
+<div>
+
+<label className="block text-xs">Handling / Other Charges</label>
+<input
+  type="number"
+  placeholder="Enter Handling Charge"
+  value={handling || 0}
+  onChange={(e) =>
+    setHandling(parseFloat(e.target.value))
+  }
+  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+/>
+</div>
+
+<div>
+
+<label className="block text-xs">Bill Remark</label>
+<textarea
+  type="text"
+  placeholder="Enter Remark"
+  value={remark}
+  onChange={(e) =>
+    setRemark(e.target.value)
+  }
+  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+/>
+</div>
           </div> }
 
           {/* Modal Actions */}
