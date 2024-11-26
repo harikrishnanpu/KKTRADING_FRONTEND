@@ -1,42 +1,49 @@
 // src/components/VerifyBill.jsx
+
 import React, { useState } from 'react';
 import QrScanner from 'react-qr-scanner';
-import './VerifyBill.css'; // Minimal styles for animations
+import './VerifyBill.css'; // For animations
 import api from './api';
 
 const VerifyBill = () => {
-  const [scanResult, setScanResult] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState(null); // 'success' or 'error'
-  const [purchaseDetails, setPurchaseDetails] = useState(null);
+  const [verificationStatus, setVerificationStatus] = useState(null); // 'verified' or 'not_verified'
+  const [billId, setBillId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [scannedText, setScannedText] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [facingMode, setFacingMode] = useState('environment'); // 'user' or 'environment'
+  const [scanEnabled, setScanEnabled] = useState(true);
 
   // Handler when QR code is scanned
   const handleScan = async (data) => {
-    if (data) {
-      setScanResult(data.text);
+    if (data && scanEnabled && !isVerifying) {
+      const qrcodeId = data.text; // In react-qr-scanner, data is the scanned text
+
       setIsVerifying(true);
+      setScannedText(qrcodeId);
 
       try {
-        const response = await api.post('/api/print/verify-qr-code', { qrcodeId: data.text });
-
+        const response = await api.post('/api/print/verify-qr-code', { qrcodeId });
         const result = response.data;
 
         if (response.status === 200 && result.verified) {
-          setVerificationStatus('success');
-          setPurchaseDetails(result.purchase);
+          alert("verified")
+          setVerificationStatus('verified');
+          setBillId(result.billId);
         } else {
-          setVerificationStatus('error');
+          alert("not verified")
+          setVerificationStatus('not_verified');
           setErrorMessage(result.message || 'Verification failed.');
         }
       } catch (error) {
         console.error('Error verifying QR Code:', error);
-        setVerificationStatus('error');
+        setVerificationStatus('not_verified');
         setErrorMessage('An unexpected error occurred during verification.');
       } finally {
         setIsVerifying(false);
         setShowModal(true);
+        setScanEnabled(false); // Stop scanning after first scan
       }
     }
   };
@@ -44,22 +51,29 @@ const VerifyBill = () => {
   // Handler for scan errors
   const handleError = (err) => {
     console.error('QR Scanner Error:', err);
-    setVerificationStatus('error');
+    setVerificationStatus('not_verified');
     setErrorMessage('Camera error. Please ensure camera permissions are granted.');
     setShowModal(true);
+    setScanEnabled(false); // Stop scanning
   };
 
   // Close the modal
   const closeModal = () => {
     setShowModal(false);
     setVerificationStatus(null);
-    setPurchaseDetails(null);
+    setBillId('');
     setErrorMessage('');
-    setScanResult('');
+    setScannedText('');
+    setScanEnabled(true); // Restart scanning
+  };
+
+  // Toggle camera facing mode
+  const toggleCamera = () => {
+    setFacingMode((prevMode) => (prevMode === 'environment' ? 'user' : 'environment'));
   };
 
   // QR Scanner delay (in ms)
-  const delay = 300;
+  const delay = 500;
 
   // QR Scanner preview style
   const previewStyle = {
@@ -69,17 +83,43 @@ const VerifyBill = () => {
 
   return (
     <div className="verify-bill-container flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <h2 className="title text-2xl font-bold text-red-600 mb-6">Verify Purchase Bill</h2>
-      <div className="qr-scanner-wrapper mb-4 shadow-lg rounded overflow-hidden">
-        <QrScanner
-          delay={delay}
-          style={previewStyle}
-          onError={handleError}
-          onScan={handleScan}
-          facingMode="environment" // Use rear camera if available
-        />
+      <h2 className="title text-2xl font-bold text-red-600 mb-6">Verify Bill</h2>
+      <div className="qr-scanner-wrapper mb-4 shadow-lg rounded overflow-hidden relative">
+        {scanEnabled ? (
+          <QrScanner
+  delay={delay}
+  style={previewStyle}
+  onError={handleError}
+  onScan={handleScan}
+  constraints={{
+    video: {
+      facingMode: facingMode, // Use the current facing mode ('user' or 'environment')
+      width: { ideal: 1280 }, // Ideal resolution
+      height: { ideal: 720 },
+    },
+  }}
+/>
+
+        ) : (
+          <div className="flex items-center justify-center h-64 w-full bg-gray-200">
+            <p className="text-gray-500">Scanning Paused</p>
+          </div>
+        )}
+        <button
+          onClick={toggleCamera}
+          className="absolute top-2 right-2 bg-white bg-opacity-50 p-2 rounded-full"
+        >
+          <i className="fa fa-refresh text-xl text-gray-700"></i> {/* Font Awesome 4 icon */}
+        </button>
       </div>
       {isVerifying && <p className="verifying text-gray-700">Verifying QR Code...</p>}
+
+      {/* Display scanned text */}
+      {scannedText && (
+        <p className="scanned-text text-gray-700 mb-4">
+          Scanned QR Code: <span className="font-bold">{scannedText}</span>
+        </p>
+      )}
 
       {/* Modal */}
       {showModal && (
@@ -87,21 +127,18 @@ const VerifyBill = () => {
           <div
             className={`modal rounded-lg p-6 w-11/12 max-w-md bg-white shadow-xl transform transition-all animate-slideUp`}
           >
-            {verificationStatus === 'success' ? (
+            {verificationStatus === 'verified' ? (
               <div className="flex flex-col items-center">
                 <i className="fa fa-check-circle text-green-500 text-6xl mb-4"></i>
-                <h3 className="text-xl font-semibold text-green-600 mb-2">QR Code Verified Successfully!</h3>
-                <div className="purchase-details w-full text-left mb-4">
-                  <p><strong>Invoice No:</strong> {purchaseDetails.invoiceNo}</p>
-                  <p><strong>Purchase ID:</strong> {purchaseDetails.purchaseId}</p>
-                  <p><strong>Supplier Name:</strong> {purchaseDetails.sellerName}</p>
-                  <p><strong>Billing Date:</strong> {new Date(purchaseDetails.billingDate).toLocaleDateString()}</p>
-                  <p><strong>Grand Total:</strong> ₹{purchaseDetails.totals.grandTotalPurchaseAmount.toFixed(2)}</p>
-                  {/* Add more details as needed */}
+                <h3 className="text-xl font-semibold text-green-600 mb-2">Bill Verified</h3>
+                <div className="bill-details w-full text-left mb-4">
+                  <p>
+                    <strong>Bill ID:</strong> {billId ? billId : 'N/A'}
+                  </p>
                 </div>
                 <button
                   onClick={closeModal}
-                  className="close-button mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-200"
+                  className="close-button mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition duration-200"
                 >
                   Close
                 </button>
@@ -110,7 +147,7 @@ const VerifyBill = () => {
               <div className="flex flex-col items-center">
                 <i className="fa fa-times-circle text-red-500 text-6xl mb-4"></i>
                 <h3 className="text-xl font-semibold text-red-600 mb-2">Verification Failed</h3>
-                <p className="text-gray-700 mb-4">{errorMessage}</p>
+                <p className="text-gray-700 mb-4">{errorMessage ? errorMessage : 'N/A'}</p>
                 <button
                   onClick={closeModal}
                   className="close-button mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-200"

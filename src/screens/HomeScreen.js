@@ -107,7 +107,7 @@ export default function HomeScreen() {
 
             <CardSection title="Payments">
             <ActionButton href="/bills/payment" title="Billing Transactions" />
-            <ActionButton href="/purchase-payments" title="Purchase Transactions" />
+            <ActionButton href="/verify" title="Verify Bills" />
             </CardSection>
 
             <CardSection title="Purchase Paymets">
