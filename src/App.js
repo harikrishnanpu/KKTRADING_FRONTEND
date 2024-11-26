@@ -57,6 +57,8 @@ import EditPurchasePaymentPage from './screens/updatePurchasePyaments';
 import PaymentAccountForm from './screens/createAccount';
 import PaymentAccountsList from './screens/AccountsListScreen';
 import EditTransportPaymentPage from './screens/EditTransportpaymentsPage';
+import VerifyBill from './screens/verifyBills';
+import PurchaseInfo from './screens/purchaseInfo';
 
 
 function App() {
@@ -160,6 +162,9 @@ useEffect(() => {
             <Route path="/create-account" element={<PaymentAccountForm />}></Route>
             <Route path="/payment-accounts" element={<PaymentAccountsList />}></Route>
             <Route path="/transport-payments" element={<EditTransportPaymentPage />}></Route>
+            <Route path="/purchases" element={<PurchaseInfo />}></Route>
+            <Route path="/purchases/:id" element={<PurchaseInfo />}></Route>
+            <Route path="/verify" element={<VerifyBill />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}

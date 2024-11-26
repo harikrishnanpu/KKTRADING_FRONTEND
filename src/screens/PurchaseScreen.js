@@ -56,6 +56,9 @@ export default function PurchasePage() {
   const [localCompanyGst, setLocalCompanyGst] = useState("");
   const [localAmount, setLocalAmount] = useState("");
   const [localRemark, setLocalRemark] = useState("");
+  const [unloadingCharge, setUnloadCharge] = useState("");
+  const [insurance, setInsurance] = useState("");
+  const [damagePrice, setDamagePrice] = useState("");
   const [transportCompanies, setTransportCompanies] = useState([]);
 
   // Other States
@@ -100,27 +103,26 @@ export default function PurchasePage() {
     }
   }, [message, error]);
 
-
-    // Fetch Last Bill ID on Mount
-    useEffect(() => {
-      const fetchLastBill = async () => {
-        setLoading(true);
-        try {
-          const { data } = await api.get('/api/purchases/lastOrder/id');
-          const nextInvoiceNo =  "KP" + parseInt(parseInt(data.slice(2), 10) + 1);
-          if(data){
-            setLastBillId(data);
-            setPurchaseId(nextInvoiceNo)
-          }
-          } catch (error) {
-          console.error('Error fetching last bill:', error);
-          setError('Failed to fetch last billing information.');
-        } finally {
-          setLoading(false);
+  // Fetch Last Bill ID on Mount
+  useEffect(() => {
+    const fetchLastBill = async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get("/api/purchases/lastOrder/id");
+        const nextInvoiceNo = "KP" + parseInt(parseInt(data.slice(2), 10) + 1);
+        if (data) {
+          setLastBillId(data);
+          setPurchaseId(nextInvoiceNo);
         }
-      };
-      fetchLastBill();
-    }, []);
+      } catch (error) {
+        console.error("Error fetching last bill:", error);
+        setError("Failed to fetch last billing information.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLastBill();
+  }, []);
 
   // Effect to focus on the first input of each step
   useEffect(() => {
@@ -193,7 +195,8 @@ export default function PurchasePage() {
   // Function to generate a new seller ID
   const generateSellerId = async () => {
     try {
-      const lastId = 'KKSELLER' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      const lastId =
+        "KKSELLER" + Math.random().toString(36).substr(2, 9).toUpperCase();
       setSellerId(lastId);
     } catch (err) {
       setError("Error generating seller ID");
@@ -264,6 +267,17 @@ export default function PurchasePage() {
       return;
     }
 
+    // Calculate quantities and prices in numbers
+    let quantityInNumbers = parsedQuantity;
+    let billPriceInNumbers = parsedBillPrice;
+    let cashPriceInNumbers = parsedCashPrice;
+
+    if (itemUnit === "BOX") {
+      quantityInNumbers = parsedQuantity * productPsRatio;
+      billPriceInNumbers = parsedBillPrice / productPsRatio;
+      cashPriceInNumbers = parsedCashPrice / productPsRatio;
+    }
+
     const newItem = {
       itemId,
       name: itemName,
@@ -278,6 +292,9 @@ export default function PurchasePage() {
       length: productLength,
       breadth: productBreadth,
       size: productSize,
+      quantityInNumbers,
+      billPriceInNumbers,
+      cashPriceInNumbers,
     };
 
     setItems([newItem, ...items]);
@@ -359,14 +376,44 @@ export default function PurchasePage() {
     }
   };
 
+  // Function to handle editing item fields
+  const handleItemFieldChange = (index, field, value) => {
+    const updatedItems = [...items];
+    updatedItems[index][field] = value;
+
+    // Recalculate quantities and prices in numbers if necessary
+    if (["quantity", "billPrice", "cashPrice"].includes(field)) {
+      const parsedQuantity = parseFloat(updatedItems[index].quantity);
+      const parsedBillPrice = parseFloat(updatedItems[index].billPrice);
+      const parsedCashPrice = parseFloat(updatedItems[index].cashPrice);
+      const psRatio = parseFloat(updatedItems[index].psRatio);
+
+      let quantityInNumbers = parsedQuantity;
+      let billPriceInNumbers = parsedBillPrice;
+      let cashPriceInNumbers = parsedCashPrice;
+
+      if (updatedItems[index].unit === "BOX") {
+        quantityInNumbers = parsedQuantity * psRatio;
+        billPriceInNumbers = parsedBillPrice / psRatio;
+        cashPriceInNumbers = parsedCashPrice / psRatio;
+      }
+
+      updatedItems[index].quantityInNumbers = quantityInNumbers;
+      updatedItems[index].billPriceInNumbers = billPriceInNumbers;
+      updatedItems[index].cashPriceInNumbers = cashPriceInNumbers;
+    }
+
+    setItems(updatedItems);
+  };
+
   // Calculate Total Amounts
   const calculateTotals = () => {
     let billPartTotal = 0;
     let cashPartTotal = 0;
 
     items.forEach((item) => {
-      billPartTotal += item.quantity * item.billPrice;
-      cashPartTotal += item.quantity * item.cashPrice;
+      billPartTotal += item.quantityInNumbers * item.billPriceInNumbers;
+      cashPartTotal += item.quantityInNumbers * item.cashPriceInNumbers;
     });
 
     // GST rate for items is 18%
@@ -387,11 +434,32 @@ export default function PurchasePage() {
 
     const amountWithoutGSTTransport =
       totalTransportationCharges / (1 + gstRateTransport);
-    const gstAmountTransport = totalTransportationCharges - amountWithoutGSTTransport;
+    const gstAmountTransport =
+      totalTransportationCharges - amountWithoutGSTTransport;
     const cgstTransport = gstAmountTransport / 2;
     const sgstTransport = gstAmountTransport / 2;
 
+    // Parse other expenses
+    const unloadingChargeValue = parseFloat(unloadingCharge || 0);
+    const insuranceValue = parseFloat(insurance || 0);
+    const damagePriceValue = parseFloat(damagePrice || 0);
+
+    const totalOtherExpenses =
+      totalTransportationCharges +
+      unloadingChargeValue +
+      insuranceValue +
+      damagePriceValue;
+
+    const totalItems = items.reduce(
+      (acc, item) => acc + parseFloat(item.quantityInNumbers),
+      0
+    );
+
+    const perItemOtherExpense = totalOtherExpenses / totalItems;
+
     const totalPurchaseAmount = billPartTotal + cashPartTotal;
+
+    const grandTotalPurchaseAmount = totalPurchaseAmount + totalOtherExpenses;
 
     return {
       billPartTotal,
@@ -405,7 +473,10 @@ export default function PurchasePage() {
       gstAmountTransport,
       cgstTransport,
       sgstTransport,
+      totalOtherExpenses,
+      perItemOtherExpense,
       totalPurchaseAmount,
+      grandTotalPurchaseAmount,
     };
   };
 
@@ -421,7 +492,10 @@ export default function PurchasePage() {
     gstAmountTransport,
     cgstTransport,
     sgstTransport,
+    totalOtherExpenses,
+    perItemOtherExpense,
     totalPurchaseAmount,
+    grandTotalPurchaseAmount,
   } = calculateTotals();
 
   // Handle Form Submission
@@ -450,6 +524,7 @@ export default function PurchasePage() {
         brand: item.brand,
         category: item.category,
         quantity: item.quantity,
+        quantityInNumbers: item.quantityInNumbers,
         pUnit: item.unit,
         sUnit: item.sUnit,
         psRatio: item.psRatio,
@@ -457,7 +532,11 @@ export default function PurchasePage() {
         breadth: item.breadth,
         size: item.size,
         billPartPrice: item.billPrice,
-        cashPartPrice: item.cashPrice
+        cashPartPrice: item.cashPrice,
+        billPartPriceInNumbers: item.billPriceInNumbers,
+        cashPartPriceInNumbers: item.cashPriceInNumbers,
+        allocatedOtherExpense: perItemOtherExpense * item.quantityInNumbers,
+        totalPriceInNumbers:  item.billPriceInNumbers + item.cashPriceInNumbers + perItemOtherExpense
       })),
       totals: {
         billPartTotal,
@@ -470,7 +549,12 @@ export default function PurchasePage() {
         gstAmountTransport,
         cgstTransport,
         sgstTransport,
+        unloadingCharge,
+        insurance,
+        damagePrice,
         totalPurchaseAmount,
+        totalOtherExpenses,
+        grandTotalPurchaseAmount,
         transportationCharges: totalTransportationCharges,
       },
       transportationDetails: {
@@ -500,7 +584,7 @@ export default function PurchasePage() {
       await dispatch(createPurchase(purchaseData));
       alert("Purchase submitted successfully!");
       // Reset form fields
-      setCurrentStep(1);
+      setCurrentStep(1); 
       setSellerId("");
       setSellerName("");
       setSellerAddress("");
@@ -516,6 +600,10 @@ export default function PurchasePage() {
       setLocalCompany("");
       setLocalAmount("");
       setLocalRemark("");
+      setUnloadCharge("");
+      setInsurance("");
+      setDamagePrice("");
+      navigate("/")
     } catch (error) {
       setError("Error submitting purchase. Please try again.");
       setShowErrorModal(true);
@@ -544,12 +632,9 @@ export default function PurchasePage() {
       )}
 
       {/* Error Modal */}
-      {showErrorModal && ( 
-        <ErrorModal
-          message={error}
-          onClose={() => setShowErrorModal(false)}
-        />
-      )} 
+      {showErrorModal && (
+        <ErrorModal message={error} onClose={() => setShowErrorModal(false)} />
+      )}
 
       {/* Top Banner */}
       <div
@@ -604,7 +689,7 @@ export default function PurchasePage() {
         </div>
 
         {/* Total Amount Display */}
-        {currentStep === 3 && (
+        {(currentStep === 3 || currentStep === 4) && (
           <div className="bg-gray-100 p-4 rounded-lg shadow-inner mb-4">
             <div className="flex justify-between">
               <p className="text-xs font-bold">Bill Part Total:</p>
@@ -629,7 +714,17 @@ export default function PurchasePage() {
             <div className="flex justify-between mt-2">
               <p className="text-sm font-bold">Total Purchase Amount:</p>
               <p className="text-xs font-bold">
-                ₹{(billPartTotal + cashPartTotal).toFixed(2)}
+                ₹{totalPurchaseAmount.toFixed(2)}
+              </p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-sm font-bold">Total Other Expenses:</p>
+              <p className="text-xs">₹{totalOtherExpenses.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-sm font-bold">Grand Total:</p>
+              <p className="text-xs font-bold">
+                ₹{grandTotalPurchaseAmount.toFixed(2)}
               </p>
             </div>
           </div>
@@ -647,7 +742,10 @@ export default function PurchasePage() {
                 <div className="mt-4 space-y-4">
                   <div className="flex flex-col">
                     <label className="text-xs flex justify-between mb-1 text-gray-700">
-                      Purchase ID <p className="text-xs italic text-gray-400">Last Billed: {lastBillId}</p>
+                      Purchase ID{" "}
+                      <p className="text-xs italic text-gray-400">
+                        Last Billed: {lastBillId}
+                      </p>
                     </label>
                     <input
                       type="text"
@@ -676,7 +774,7 @@ export default function PurchasePage() {
                           if (!sellerId) {
                             generateSellerId();
                           }
-                         changeRef(e, invoiceNoRef)
+                          changeRef(e, invoiceNoRef);
                         }
                       }}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
@@ -729,7 +827,9 @@ export default function PurchasePage() {
                       value={invoiceNo}
                       placeholder="Enter invoice number"
                       onChange={(e) => setInvoiceNo(e.target.value)}
-                      onKeyDown={(e)=> {if(e.key === "Enter") setCurrentStep(2)  }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") setCurrentStep(2);
+                      }}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       required
                     />
@@ -829,6 +929,15 @@ export default function PurchasePage() {
                             <th className="px-4 py-2 text-left">
                               Cash Price (₹)
                             </th>
+                            <th className="px-4 py-2 text-left">
+                              Quantity (NOS)
+                            </th>
+                            <th className="px-4 py-2 text-left">
+                              Bill Price per NOS (₹)
+                            </th>
+                            <th className="px-4 py-2 text-left">
+                              Cash Price per NOS (₹)
+                            </th>
                             <th className="px-4 py-2 text-left">Total (₹)</th>
                             <th className="px-4 py-2 text-center">Actions</th>
                           </tr>
@@ -845,18 +954,70 @@ export default function PurchasePage() {
                               <td className="px-4 py-2">{item.name}</td>
                               <td className="px-4 py-2">{item.brand}</td>
                               <td className="px-4 py-2">{item.category}</td>
-                              <td className="px-4 py-2">{item.quantity}</td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="number"
+                                  value={item.quantity}
+                                  min="1"
+                                  step="0.01"
+                                  onChange={(e) =>
+                                    handleItemFieldChange(
+                                      index,
+                                      "quantity",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                                />
+                              </td>
                               <td className="px-4 py-2">{item.unit}</td>
                               <td className="px-4 py-2">
-                                {item.billPrice.toFixed(2)}
+                                <input
+                                  type="number"
+                                  value={item.billPrice}
+                                  min="0"
+                                  step="0.01"
+                                  onChange={(e) =>
+                                    handleItemFieldChange(
+                                      index,
+                                      "billPrice",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                                />
                               </td>
                               <td className="px-4 py-2">
-                                {item.cashPrice.toFixed(2)}
+                                <input
+                                  type="number"
+                                  value={item.cashPrice}
+                                  min="0"
+                                  step="0.01"
+                                  onChange={(e) =>
+                                    handleItemFieldChange(
+                                      index,
+                                      "cashPrice",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                {item.quantityInNumbers.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2">
+                                {item.billPriceInNumbers.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2">
+                                {item.cashPriceInNumbers.toFixed(2)}
                               </td>
                               <td className="px-4 py-2">
                                 {(
-                                  item.quantity *
-                                  (item.billPrice + item.cashPrice)
+                                  item.quantityInNumbers *
+                                  (item.billPriceInNumbers +
+                                    item.cashPriceInNumbers +
+                                    perItemOtherExpense)
                                 ).toFixed(2)}
                               </td>
                               <td className="px-4 py-2 text-center">
@@ -899,21 +1060,80 @@ export default function PurchasePage() {
                               </button>
                             </div>
                             <p className="text-xs">Brand: {item.brand}</p>
-                            <p className="text-xs">Category: {item.category}</p>
                             <p className="text-xs">
-                              Quantity: {item.quantity} {item.unit}
+                              Category: {item.category}
                             </p>
                             <p className="text-xs">
-                              Bill Price: ₹{item.billPrice.toFixed(2)}
+                              Quantity:{" "}
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                min="1"
+                                step="0.01"
+                                onChange={(e) =>
+                                  handleItemFieldChange(
+                                    index,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                              />{" "}
+                              {item.unit}
                             </p>
                             <p className="text-xs">
-                              Cash Price: ₹{item.cashPrice.toFixed(2)}
+                              Bill Price:{" "}
+                              <input
+                                type="number"
+                                value={item.billPrice}
+                                min="0"
+                                step="0.01"
+                                onChange={(e) =>
+                                  handleItemFieldChange(
+                                    index,
+                                    "billPrice",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                              />
+                            </p>
+                            <p className="text-xs">
+                              Cash Price:{" "}
+                              <input
+                                type="number"
+                                value={item.cashPrice}
+                                min="0"
+                                step="0.01"
+                                onChange={(e) =>
+                                  handleItemFieldChange(
+                                    index,
+                                    "cashPrice",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                              />
+                            </p>
+                            <p className="text-xs">
+                              Quantity (NOS):{" "}
+                              {item.quantityInNumbers.toFixed(2)}
+                            </p>
+                            <p className="text-xs">
+                              Bill Price per NOS: ₹
+                              {item.billPriceInNumbers.toFixed(2)}
+                            </p>
+                            <p className="text-xs">
+                              Cash Price per NOS: ₹
+                              {item.cashPriceInNumbers.toFixed(2)}
                             </p>
                             <p className="text-xs">
                               Total: ₹
                               {(
-                                item.quantity *
-                                (item.billPrice + item.cashPrice)
+                                item.quantityInNumbers *
+                                (item.billPriceInNumbers +
+                                  item.cashPriceInNumbers +
+                                  perItemOtherExpense)
                               ).toFixed(2)}
                             </p>
                           </div>
@@ -1194,6 +1414,57 @@ export default function PurchasePage() {
             {currentStep === 4 && (
               <div>
                 <h2 className="text-sm font-bold text-gray-900">
+                  Other Expenses
+                </h2>
+
+                <div className="flex justify-between mt-2 space-x-2 mb-5">
+                  <div className="w-full">
+                    <label className="text-xs text-gray-700 mb-1">
+                      Unloading Charge
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter Unloading Charge"
+                      value={unloadingCharge}
+                      onChange={(e) => setUnloadCharge(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div className="w-full">
+                    <label className="text-xs text-gray-700 mb-1">
+                      Insurance
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter Insurance Amount"
+                      value={insurance}
+                      onChange={(e) => setInsurance(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div className="w-full">
+                    <label className="text-xs text-gray-700 mb-1">
+                      Damage Price
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter Damage Price"
+                      value={damagePrice}
+                      onChange={(e) => setDamagePrice(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <h2 className="text-sm font-bold text-gray-900">
                   Transportation Details
                 </h2>
                 <div className="mt-4 space-y-6">
@@ -1203,38 +1474,45 @@ export default function PurchasePage() {
                       Logistic Transportation (National)
                     </h3>
                     <div className="flex flex-col md:flex-row gap-2">
-        <div className="flex flex-col flex-1">
-  <label className="text-xs text-gray-700 mb-1">Company</label>
-  <select
-    value={logisticCompany}
-    ref={logisticCompanyRef}
-    onChange={(e) => {
-      if (e.target.value === "add-custom") {
-        const customCompany = prompt("Enter custom company name:");
-        if (customCompany) {
-          setTransportCompanies((prev) => [...prev, customCompany]); // Add to the list
-          setLogisticCompany(customCompany); // Set as selected value
-        }
-      } else {
-        setLogisticCompany(e.target.value);
-      }
-    }}
-    onKeyDown={(e) => changeRef(e, logisticAmountRef)}
-    className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-  >
-    <option value="" disabled>
-      Select Company
-    </option>
-    {transportCompanies.map((company, index) => (
-      <option key={index} value={company}>
-        {company}
-      </option>
-    ))}
-    <option value="add-custom" className="text-red-500">
-      Add Custom Company
-    </option>
-  </select>
-</div>
+                      <div className="flex flex-col flex-1">
+                        <label className="text-xs text-gray-700 mb-1">
+                          Company
+                        </label>
+                        <select
+                          value={logisticCompany}
+                          ref={logisticCompanyRef}
+                          onChange={(e) => {
+                            if (e.target.value === "add-custom") {
+                              const customCompany = prompt(
+                                "Enter custom company name:"
+                              );
+                              if (customCompany) {
+                                setTransportCompanies((prev) => [
+                                  ...prev,
+                                  customCompany,
+                                ]); // Add to the list
+                                setLogisticCompany(customCompany); // Set as selected value
+                              }
+                            } else {
+                              setLogisticCompany(e.target.value);
+                            }
+                          }}
+                          onKeyDown={(e) => changeRef(e, logisticAmountRef)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        >
+                          <option value="" disabled>
+                            Select Company
+                          </option>
+                          {transportCompanies.map((company, index) => (
+                            <option key={index} value={company}>
+                              {company}
+                            </option>
+                          ))}
+                          <option value="add-custom" className="text-red-500">
+                            Add Custom Company
+                          </option>
+                        </select>
+                      </div>
 
                       <div className="flex flex-col flex-1">
                         <label className="text-xs text-gray-700 mb-1">
@@ -1255,43 +1533,42 @@ export default function PurchasePage() {
                     </div>
                     <div className="flex justify-between mt-2 space-x-2">
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        GSTIN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={logisticCompanyGst}
-                        onChange={(e) => setLogisticCompanyGst(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          GSTIN
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter GSTIN"
+                          value={logisticCompanyGst}
+                          onChange={(e) => setLogisticCompanyGst(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Bill Id
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={logisticBillId}
-                        onChange={(e) => setLogisticBillId(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Bill Id
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Bill Id"
+                          value={logisticBillId}
+                          onChange={(e) => setLogisticBillId(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
-
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Remark
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={logisticRemark}
-                        onChange={(e) => setLogisticRemark(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Remark
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Remark"
+                          value={logisticRemark}
+                          onChange={(e) => setLogisticRemark(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1302,38 +1579,45 @@ export default function PurchasePage() {
                       Local Transportation (In-State)
                     </h3>
                     <div className="flex flex-col md:flex-row gap-2">
-                    <div className="flex flex-col flex-1">
-  <label className="text-xs text-gray-700 mb-1">Company</label>
-  <select
-    value={localCompany}
-    ref={localCompanyRef}
-    onChange={(e) => {
-      if (e.target.value === "add-custom") {
-        const customCompany = prompt("Enter custom company name:");
-        if (customCompany) {
-          setTransportCompanies((prev) => [...prev, customCompany]); // Add to the list
-          setLocalCompany(customCompany); // Set as selected value
-        }
-      } else {
-        setLocalCompany(e.target.value);
-      }
-    }}
-    onKeyDown={(e) => changeRef(e, localAmountRef)}
-    className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-  >
-    <option value="" disabled>
-      Select Company
-    </option>
-    {transportCompanies.map((company, index) => (
-      <option key={index} value={company}>
-        {company}
-      </option>
-    ))}
-    <option value="add-custom" className="text-red-500">
-      Add Custom Company
-    </option>
-  </select>
-</div>
+                      <div className="flex flex-col flex-1">
+                        <label className="text-xs text-gray-700 mb-1">
+                          Company
+                        </label>
+                        <select
+                          value={localCompany}
+                          ref={localCompanyRef}
+                          onChange={(e) => {
+                            if (e.target.value === "add-custom") {
+                              const customCompany = prompt(
+                                "Enter custom company name:"
+                              );
+                              if (customCompany) {
+                                setTransportCompanies((prev) => [
+                                  ...prev,
+                                  customCompany,
+                                ]); // Add to the list
+                                setLocalCompany(customCompany); // Set as selected value
+                              }
+                            } else {
+                              setLocalCompany(e.target.value);
+                            }
+                          }}
+                          onKeyDown={(e) => changeRef(e, localAmountRef)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        >
+                          <option value="" disabled>
+                            Select Company
+                          </option>
+                          {transportCompanies.map((company, index) => (
+                            <option key={index} value={company}>
+                              {company}
+                            </option>
+                          ))}
+                          <option value="add-custom" className="text-red-500">
+                            Add Custom Company
+                          </option>
+                        </select>
+                      </div>
 
                       <div className="flex flex-col flex-1">
                         <label className="text-xs text-gray-700 mb-1">
@@ -1354,43 +1638,42 @@ export default function PurchasePage() {
                     </div>
                     <div className="flex justify-between mt-2 space-x-2">
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        GSTIN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={localCompanyGst}
-                        onChange={(e) => setLocalCompanyGst(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          GSTIN
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter GSTIN"
+                          value={localCompanyGst}
+                          onChange={(e) => setLocalCompanyGst(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Bill Id
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={localBillId}
-                        onChange={(e) => setLocalBillId(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Bill Id
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Bill Id"
+                          value={localBillId}
+                          onChange={(e) => setLocalBillId(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
-
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Remark
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={localRemark}
-                        onChange={(e) => setLocalRemark(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Remark
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Remark"
+                          value={localRemark}
+                          onChange={(e) => setLocalRemark(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1410,7 +1693,9 @@ export default function PurchasePage() {
                 </div>
                 <div className="flex justify-between">
                   <p className="text-xs">Subtotal (without GST):</p>
-                  <p className="text-xs">₹{amountWithoutGSTItems.toFixed(2)}</p>
+                  <p className="text-xs">
+                    ₹{amountWithoutGSTItems.toFixed(2)}
+                  </p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-xs">CGST (9%):</p>
@@ -1425,24 +1710,25 @@ export default function PurchasePage() {
                   <p className="text-xs">₹{cashPartTotal.toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between mt-2">
-                  <p className="text-sm font-bold">
-                    Transportation Charges:
-                  </p>
+                  <p className="text-sm font-bold">Transportation Charges:</p>
                   <p className="text-xs">
-                    ₹
-                    {(
-                      parseFloat(logisticAmount || 0) +
-                      parseFloat(localAmount || 0)
-                    ).toFixed(2)}
+                    ₹{totalTransportationCharges.toFixed(2)}
                   </p>
                 </div>
                 <div className="flex justify-between mt-2">
-                  <p className="text-sm font-bold">Total Purchase Amount:</p>
+                  <p className="text-sm font-bold">Other Expenses Total:</p>
+                  <p className="text-xs">₹{totalOtherExpenses.toFixed(2)}</p>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <p className="text-sm font-bold">Purchase Amount:</p>
                   <p className="text-xs font-bold">
-                    ₹
-                    {(
-                      totalPurchaseAmount
-                    ).toFixed(2)}
+                    ₹{totalPurchaseAmount.toFixed(2)}
+                  </p>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <p className="text-sm font-bold">Grand Total:</p>
+                  <p className="text-xs font-bold">
+                    ₹{grandTotalPurchaseAmount.toFixed(2)}
                   </p>
                 </div>
               </div>

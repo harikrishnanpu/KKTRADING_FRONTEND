@@ -3,8 +3,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "./api";
 import ErrorModal from "../components/ErrorModal";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
 
 export default function EditPurchaseScreen() {
   const { id } = useParams(); // Purchase ID from URL
@@ -28,14 +26,15 @@ export default function EditPurchaseScreen() {
 
   // Item Information
   const [items, setItems] = useState([]);
+  const [itemLoading, setItemLoading] = useState(false);
   const [itemId, setItemId] = useState("");
   const [itemName, setItemName] = useState("");
   const [itemQuantity, setItemQuantity] = useState("");
   const [itemUnit, setItemUnit] = useState("");
   const [itemBrand, setItemBrand] = useState("");
   const [itemCategory, setItemCategory] = useState("");
-  const [itembillPartPrice, setItembillPartPrice] = useState("");
-  const [itemcashPartPrice, setItemcashPartPrice] = useState("");
+  const [itemBillPrice, setItemBillPrice] = useState("");
+  const [itemCashPrice, setItemCashPrice] = useState("");
   const [categories, setCategories] = useState([]);
 
   // Item Additional Information
@@ -47,22 +46,24 @@ export default function EditPurchaseScreen() {
 
   // Transportation Information
   const [logisticCompany, setLogisticCompany] = useState("");
+  const [logisticBillId, setLogisticBillId] = useState("");
+  const [logisticCompanyGst, setLogisticCompanyGst] = useState("");
   const [logisticAmount, setLogisticAmount] = useState("");
   const [logisticRemark, setLogisticRemark] = useState("");
   const [localCompany, setLocalCompany] = useState("");
+  const [localBillId, setLocalBillId] = useState("");
+  const [localCompanyGst, setLocalCompanyGst] = useState("");
   const [localAmount, setLocalAmount] = useState("");
   const [localRemark, setLocalRemark] = useState("");
+  const [unloadingCharge, setUnloadCharge] = useState("");
+  const [insurance, setInsurance] = useState("");
+  const [damagePrice, setDamagePrice] = useState("");
   const [transportCompanies, setTransportCompanies] = useState([]);
   const [isCustomCompany, setIsCustomCompany] = useState(false);
-  const [localGst, setLocalGst] = useState("");
-  const [logisticGst, setLogisticGst] = useState("");
-  const [localBillId, setLocalBillId] = useState("");
-  const [logisticBillId, setLogisticBillId] = useState("");
 
   // Other States
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [itemLoading, setItemLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -80,8 +81,8 @@ export default function EditPurchaseScreen() {
   const itemNameRef = useRef();
   const itemBrandRef = useRef();
   const itemCategoryRef = useRef();
-  const itembillPartPriceRef = useRef();
-  const itemcashPartPriceRef = useRef();
+  const itemBillPriceRef = useRef();
+  const itemCashPriceRef = useRef();
   const itemUnitRef = useRef();
   const itemQuantityRef = useRef();
   const logisticCompanyRef = useRef();
@@ -149,23 +150,55 @@ export default function EditPurchaseScreen() {
         setPurchaseId(data.purchaseId);
         setBillingDate(data.billingDate ? data.billingDate.substring(0, 10) : "");
         setInvoiceDate(data.invoiceDate ? data.invoiceDate.substring(0, 10) : "");
-        setItems(data.items || []);
+
+        // Map items to include calculated fields
+        const mappedItems = data.items.map((item) => {
+          const parsedQuantity = parseFloat(item.quantity);
+          const parsedBillPrice = parseFloat(item.billPartPrice);
+          const parsedCashPrice = parseFloat(item.cashPartPrice);
+          const psRatio = parseFloat(item.psRatio);
+          let quantityInNumbers = parsedQuantity;
+          let billPriceInNumbers = parsedBillPrice;
+          let cashPriceInNumbers = parsedCashPrice;
+
+          if (item.pUnit === "BOX") {
+            quantityInNumbers = parsedQuantity * psRatio;
+            billPriceInNumbers = parsedBillPrice / psRatio;
+            cashPriceInNumbers = parsedCashPrice / psRatio;
+          }
+
+          return {
+            ...item,
+            quantity: parsedQuantity,
+            billPrice: parsedBillPrice,
+            cashPrice: parsedCashPrice,
+            quantityInNumbers,
+            billPriceInNumbers,
+            cashPriceInNumbers,
+          };
+        });
+
+        setItems(mappedItems);
+
         if (data.purchaseId) {
           try {
             const response = await api.get(`/api/orders/transport/${data.purchaseId}`);
-            const transportData = response.data; // Assuming response.data is the array provided
+            const transportData = response.data;
 
             // Initialize variables for logistic and local transport
             let logisticCompany = "";
             let logisticAmount = 0;
             let logisticRemark = "";
+            let logisticCompanyGst = "";
+            let logisticBillId = "";
             let localCompany = "";
             let localAmount = 0;
             let localRemark = "";
-            let localGst = "";
-            let logisticGst = "";
+            let localCompanyGst = "";
             let localBillId = "";
-            let logisticBillId = "";
+            let unloadingCharge = "";
+            let insurance = "";
+            let damagePrice = "";
 
             // Process the transport data
             transportData.forEach((item) => {
@@ -173,30 +206,40 @@ export default function EditPurchaseScreen() {
                 logisticCompany = item.transportCompanyName || "";
                 logisticAmount = item.transportationCharges || 0;
                 logisticRemark = item.remarks || "";
+                logisticCompanyGst = item.companyGst || "";
                 logisticBillId = item.billId || "";
-                logisticGst = item.companyGst || "";
               } else if (item.transportType === "local") {
                 localCompany = item.transportCompanyName || "";
                 localAmount = item.transportationCharges || 0;
                 localRemark = item.remarks || "";
+                localCompanyGst = item.companyGst || "";
                 localBillId = item.billId || "";
-                localGst = item.companyGst || "";
+              } else if (item.transportType === "other") {
+                unloadingCharge = item.unloadingCharge || "";
+                insurance = item.insurance || "";
+                damagePrice = item.damagePrice || "";
               }
             });
 
-            console.log(transportData) ;
-
-            // Set the state with the parsed data
             setLogisticCompany(logisticCompany);
             setLogisticAmount(logisticAmount);
+            setLogisticRemark(logisticRemark);
+            setLogisticCompanyGst(logisticCompanyGst);
+            setLogisticBillId(logisticBillId);
+
             setLocalCompany(localCompany);
             setLocalAmount(localAmount);
-            setLogisticRemark(logisticRemark);
             setLocalRemark(localRemark);
+            setLocalCompanyGst(localCompanyGst);
             setLocalBillId(localBillId);
-            setLogisticBillId(logisticBillId);
-            setLocalGst(localGst);
-            setLogisticGst(logisticGst);
+
+
+            console.log("--------------------------------");
+            console.log(data.totals);
+
+            setUnloadCharge(data.totals.unloadingCharge);
+            setInsurance(data.totals.insurance);
+            setDamagePrice(data.totals.damagePrice);
           } catch (err) {
             console.error("Error fetching transport details:", err);
           }
@@ -236,10 +279,10 @@ export default function EditPurchaseScreen() {
 
   // Function to handle selecting a seller from suggestions
   const handleSelectSeller = (seller) => {
-    setSellerName(seller.name);
-    setSellerId(seller.id);
-    setSellerAddress(seller.address || "");
-    setSellerGst(seller.gstin || "");
+    setSellerName(seller.sellerName);
+    setSellerId(seller.sellerId);
+    setSellerAddress(seller.sellerAddress || "");
+    setSellerGst(seller.sellerGst || "");
     setSellerSuggestions([]);
     invoiceNoRef.current?.focus();
   };
@@ -263,8 +306,8 @@ export default function EditPurchaseScreen() {
       !itemName ||
       !itemBrand ||
       !itemCategory ||
-      itembillPartPrice === "" ||
-      itemcashPartPrice === "" ||
+      itemBillPrice === "" ||
+      itemCashPrice === "" ||
       !itemUnit ||
       itemQuantity === "" ||
       sUnit === "" ||
@@ -280,8 +323,8 @@ export default function EditPurchaseScreen() {
 
     // Parse numerical inputs
     const parsedQuantity = parseFloat(itemQuantity);
-    const parsedbillPartPrice = parseFloat(itembillPartPrice);
-    const parsedcashPartPrice = parseFloat(itemcashPartPrice);
+    const parsedBillPrice = parseFloat(itemBillPrice);
+    const parsedCashPrice = parseFloat(itemCashPrice);
     const productLength = parseFloat(length);
     const productBreadth = parseFloat(breadth);
     const productSize = parseFloat(size);
@@ -291,10 +334,10 @@ export default function EditPurchaseScreen() {
     if (
       isNaN(parsedQuantity) ||
       parsedQuantity <= 0 ||
-      isNaN(parsedbillPartPrice) ||
-      parsedbillPartPrice < 0 ||
-      isNaN(parsedcashPartPrice) ||
-      parsedcashPartPrice < 0 ||
+      isNaN(parsedBillPrice) ||
+      parsedBillPrice < 0 ||
+      isNaN(parsedCashPrice) ||
+      parsedCashPrice < 0 ||
       isNaN(productLength) ||
       productLength <= 0 ||
       isNaN(productBreadth) ||
@@ -318,20 +361,34 @@ export default function EditPurchaseScreen() {
       return;
     }
 
+    // Calculate quantities and prices in numbers
+    let quantityInNumbers = parsedQuantity;
+    let billPriceInNumbers = parsedBillPrice;
+    let cashPriceInNumbers = parsedCashPrice;
+
+    if (itemUnit === "BOX") {
+      quantityInNumbers = parsedQuantity * productPsRatio;
+      billPriceInNumbers = parsedBillPrice / productPsRatio;
+      cashPriceInNumbers = parsedCashPrice / productPsRatio;
+    }
+
     const newItem = {
       itemId,
       name: itemName,
       brand: itemBrand,
       category: itemCategory,
       quantity: parsedQuantity,
-      pUnit: itemUnit,
-      billPartPrice: parsedbillPartPrice,
-      cashPartPrice: parsedcashPartPrice,
+      unit: itemUnit,
+      billPrice: parsedBillPrice,
+      cashPrice: parsedCashPrice,
       sUnit,
       psRatio: productPsRatio,
       length: productLength,
       breadth: productBreadth,
       size: productSize,
+      quantityInNumbers,
+      billPriceInNumbers,
+      cashPriceInNumbers,
     };
 
     setItems([newItem, ...items]);
@@ -345,8 +402,8 @@ export default function EditPurchaseScreen() {
     setItemName("");
     setItemBrand("");
     setItemCategory("");
-    setItembillPartPrice("");
-    setItemcashPartPrice("");
+    setItemBillPrice("");
+    setItemCashPrice("");
     setItemUnit("");
     setItemQuantity("");
     setSUnit("");
@@ -371,8 +428,8 @@ export default function EditPurchaseScreen() {
         setItemName(data.name);
         setItemBrand(data.brand);
         setItemCategory(data.category);
-        setItembillPartPrice(data.billPartPrice);
-        setItemcashPartPrice(data.cashPartPrice);
+        setItemBillPrice(data.billPrice);
+        setItemCashPrice(data.cashPrice);
         setBreadth(data.breadth);
         setLength(data.length);
         setPsRatio(data.psRatio);
@@ -412,14 +469,44 @@ export default function EditPurchaseScreen() {
     }
   };
 
+  // Function to handle editing item fields
+  const handleItemFieldChange = (index, field, value) => {
+    const updatedItems = [...items];
+    updatedItems[index][field] = value;
+
+    // Recalculate quantities and prices in numbers if necessary
+    if (["quantity", "billPrice", "cashPrice"].includes(field)) {
+      const parsedQuantity = parseFloat(updatedItems[index].quantity);
+      const parsedBillPrice = parseFloat(updatedItems[index].billPrice);
+      const parsedCashPrice = parseFloat(updatedItems[index].cashPrice);
+      const psRatio = parseFloat(updatedItems[index].psRatio);
+
+      let quantityInNumbers = parsedQuantity;
+      let billPriceInNumbers = parsedBillPrice;
+      let cashPriceInNumbers = parsedCashPrice;
+
+      if (updatedItems[index].unit === "BOX") {
+        quantityInNumbers = parsedQuantity * psRatio;
+        billPriceInNumbers = parsedBillPrice / psRatio;
+        cashPriceInNumbers = parsedCashPrice / psRatio;
+      }
+
+      updatedItems[index].quantityInNumbers = quantityInNumbers;
+      updatedItems[index].billPriceInNumbers = billPriceInNumbers;
+      updatedItems[index].cashPriceInNumbers = cashPriceInNumbers;
+    }
+
+    setItems(updatedItems);
+  };
+
   // Calculate Total Amounts
   const calculateTotals = () => {
     let billPartTotal = 0;
     let cashPartTotal = 0;
 
     items.forEach((item) => {
-      billPartTotal += item.quantity * item.billPartPrice;
-      cashPartTotal += item.quantity * item.cashPartPrice;
+      billPartTotal += item.quantityInNumbers * item.billPriceInNumbers;
+      cashPartTotal += item.quantityInNumbers * item.cashPriceInNumbers;
     });
 
     // GST rate for items is 18%
@@ -445,9 +532,27 @@ export default function EditPurchaseScreen() {
     const cgstTransport = gstAmountTransport / 2;
     const sgstTransport = gstAmountTransport / 2;
 
-    const totalPurchaseAmount =
-      billPartTotal +
-      cashPartTotal;
+    // Parse other expenses
+    const unloadingChargeValue = parseFloat(unloadingCharge || 0);
+    const insuranceValue = parseFloat(insurance || 0);
+    const damagePriceValue = parseFloat(damagePrice || 0);
+
+    const totalOtherExpenses =
+      totalTransportationCharges +
+      unloadingChargeValue +
+      insuranceValue +
+      damagePriceValue;
+
+    const totalItems = items.reduce(
+      (acc, item) => acc + parseFloat(item.quantityInNumbers),
+      0
+    );
+
+    const perItemOtherExpense = totalOtherExpenses / totalItems;
+
+    const totalPurchaseAmount = billPartTotal + cashPartTotal;
+
+    const grandTotalPurchaseAmount = totalPurchaseAmount + totalOtherExpenses;
 
     return {
       billPartTotal,
@@ -461,7 +566,10 @@ export default function EditPurchaseScreen() {
       gstAmountTransport,
       cgstTransport,
       sgstTransport,
+      totalOtherExpenses,
+      perItemOtherExpense,
       totalPurchaseAmount,
+      grandTotalPurchaseAmount,
     };
   };
 
@@ -477,19 +585,22 @@ export default function EditPurchaseScreen() {
     gstAmountTransport,
     cgstTransport,
     sgstTransport,
+    totalOtherExpenses,
+    perItemOtherExpense,
     totalPurchaseAmount,
+    grandTotalPurchaseAmount,
   } = calculateTotals();
 
   // Handle Form Submission
   const submitHandler = async () => {
     setError("");
 
-    if (!sellerName || !invoiceNo || items.length === 0 || !localBillId || !logisticBillId) {
+    if (!sellerName || !invoiceNo || items.length === 0) {
       setError("All fields are required before submission.");
       setShowErrorModal(true);
       return;
     }
- 
+
     // Prepare purchase data
     const purchaseData = {
       sellerId,
@@ -506,14 +617,19 @@ export default function EditPurchaseScreen() {
         brand: item.brand,
         category: item.category,
         quantity: item.quantity,
-        pUnit: item.pUnit,
+        quantityInNumbers: item.quantityInNumbers,
+        pUnit: item.unit,
         sUnit: item.sUnit,
         psRatio: item.psRatio,
         length: item.length,
         breadth: item.breadth,
         size: item.size,
-        billPartPrice: item.billPartPrice,
-        cashPartPrice: item.cashPartPrice,
+        billPartPrice: item.billPrice,
+        cashPartPrice: item.cashPrice,
+        billPartPriceInNumbers: item.billPriceInNumbers,
+        cashPartPriceInNumbers: item.cashPriceInNumbers,
+        allocatedOtherExpense: perItemOtherExpense * item.quantityInNumbers,
+        totalPriceInNumbers:  item.billPriceInNumbers + item.cashPriceInNumbers + perItemOtherExpense
       })),
       totals: {
         billPartTotal,
@@ -526,7 +642,12 @@ export default function EditPurchaseScreen() {
         gstAmountTransport,
         cgstTransport,
         sgstTransport,
+        unloadingCharge,
+        insurance,
+        damagePrice,
         totalPurchaseAmount,
+        totalOtherExpenses,
+        grandTotalPurchaseAmount,
         transportationCharges: totalTransportationCharges,
       },
       transportationDetails: {
@@ -534,7 +655,7 @@ export default function EditPurchaseScreen() {
           purchaseId: purchaseId,
           invoiceNo: invoiceNo,
           billId: logisticBillId,
-          companyGst: logisticGst,
+          companyGst: logisticCompanyGst,
           transportCompanyName: logisticCompany,
           transportationCharges: logisticAmount,
           remark: logisticRemark,
@@ -543,11 +664,11 @@ export default function EditPurchaseScreen() {
           purchaseId: purchaseId,
           invoiceNo: invoiceNo,
           billId: localBillId,
-          companyGst: localGst,
+          companyGst: localCompanyGst,
           transportCompanyName: localCompany,
           transportationCharges: localAmount,
           remark: localRemark,
-        },
+        }
       },
     };
 
@@ -651,7 +772,7 @@ export default function EditPurchaseScreen() {
         </div>
 
         {/* Total Amount Display */}
-        {currentStep === 3 && (
+        {(currentStep === 3 || currentStep === 4) && (
           <div className="bg-gray-100 p-4 rounded-lg shadow-inner mb-4">
             <div className="flex justify-between">
               <p className="text-xs font-bold">Bill Part Total:</p>
@@ -679,6 +800,16 @@ export default function EditPurchaseScreen() {
                 ₹{totalPurchaseAmount.toFixed(2)}
               </p>
             </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-sm font-bold">Total Other Expenses:</p>
+              <p className="text-xs">₹{totalOtherExpenses.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-sm font-bold">Grand Total:</p>
+              <p className="text-xs font-bold">
+                ₹{grandTotalPurchaseAmount.toFixed(2)}
+              </p>
+            </div>
           </div>
         )}
 
@@ -703,9 +834,9 @@ export default function EditPurchaseScreen() {
                       ref={purchaseIdRef}
                       onChange={(e) => setPurchaseId(e.target.value)}
                       onKeyDown={(e) => changeRef(e, sellerNameRef)}
-                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100 focus:outline-none text-xs"
                       required
-                      disabled // Purchase ID should typically be non-editable
+                      disabled
                     />
                   </div>
 
@@ -729,14 +860,14 @@ export default function EditPurchaseScreen() {
                         {sellerSuggestions.map((suggestion, index) => (
                           <li
                             key={index}
-                            className={`p-2 cursor-pointer hover:bg-gray-100 ${
+                            className={`p-3 text-xs border-t cursor-pointer hover:bg-gray-100 ${
                               selectedSuggestionIndex === index
                                 ? "bg-gray-200"
                                 : ""
                             }`}
                             onClick={() => handleSelectSeller(suggestion)}
                           >
-                            {suggestion.name}
+                            {suggestion.sellerName}
                           </li>
                         ))}
                       </ul>
@@ -771,9 +902,7 @@ export default function EditPurchaseScreen() {
                       placeholder="Enter invoice number"
                       onChange={(e) => setInvoiceNo(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          setCurrentStep(2);
-                        }
+                        if (e.key === "Enter") setCurrentStep(2);
                       }}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       required
@@ -874,6 +1003,15 @@ export default function EditPurchaseScreen() {
                             <th className="px-4 py-2 text-left">
                               Cash Price (₹)
                             </th>
+                            <th className="px-4 py-2 text-left">
+                              Quantity (NOS)
+                            </th>
+                            <th className="px-4 py-2 text-left">
+                              Bill Price per NOS (₹)
+                            </th>
+                            <th className="px-4 py-2 text-left">
+                              Cash Price per NOS (₹)
+                            </th>
                             <th className="px-4 py-2 text-left">Total (₹)</th>
                             <th className="px-4 py-2 text-center">Actions</th>
                           </tr>
@@ -895,66 +1033,65 @@ export default function EditPurchaseScreen() {
                                   type="number"
                                   value={item.quantity}
                                   min="1"
+                                  step="0.01"
                                   onChange={(e) =>
-                                    setItems((prevItems) =>
-                                      prevItems.map((itm, idx) =>
-                                        idx === index
-                                          ? {
-                                              ...itm,
-                                              quantity: parseFloat(e.target.value),
-                                            }
-                                          : itm
-                                      )
+                                    handleItemFieldChange(
+                                      index,
+                                      "quantity",
+                                      e.target.value
                                     )
                                   }
-                                  className="border px-2 py-1 rounded w-16 text-xs"
+                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                 />
                               </td>
-                              <td className="px-4 py-2">{item.pUnit}</td>
+                              <td className="px-4 py-2">{item.unit}</td>
                               <td className="px-4 py-2">
                                 <input
                                   type="number"
-                                  value={item.billPartPrice}
+                                  value={item.billPrice}
                                   min="0"
+                                  step="0.01"
                                   onChange={(e) =>
-                                    setItems((prevItems) =>
-                                      prevItems.map((itm, idx) =>
-                                        idx === index
-                                          ? {
-                                              ...itm,
-                                              billPartPrice: parseFloat(e.target.value),
-                                            }
-                                          : itm
-                                      )
+                                    handleItemFieldChange(
+                                      index,
+                                      "billPrice",
+                                      e.target.value
                                     )
                                   }
-                                  className="border px-2 py-1 rounded w-16 text-xs"
+                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                 />
                               </td>
                               <td className="px-4 py-2">
                                 <input
                                   type="number"
-                                  value={item.cashPartPrice}
+                                  value={item.cashPrice}
                                   min="0"
+                                  step="0.01"
                                   onChange={(e) =>
-                                    setItems((prevItems) =>
-                                      prevItems.map((itm, idx) =>
-                                        idx === index
-                                          ? {
-                                              ...itm,
-                                              cashPartPrice: parseFloat(e.target.value),
-                                            }
-                                          : itm
-                                      )
+                                    handleItemFieldChange(
+                                      index,
+                                      "cashPrice",
+                                      e.target.value
                                     )
                                   }
-                                  className="border px-2 py-1 rounded w-16 text-xs"
+                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                 />
+                              </td>
+                              <td className="px-4 py-2">
+                                {item.quantityInNumbers.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2">
+                                {item.billPriceInNumbers.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2">
+                                {item.cashPriceInNumbers.toFixed(2)}
                               </td>
                               <td className="px-4 py-2">
                                 {(
-                                  item.quantity *
-                                  (item.billPartPrice + item.cashPartPrice)
+                                  item.quantityInNumbers *
+                                  (item.billPriceInNumbers +
+                                    item.cashPriceInNumbers +
+                                    perItemOtherExpense)
                                 ).toFixed(2)}
                               </td>
                               <td className="px-4 py-2 text-center">
@@ -962,7 +1099,10 @@ export default function EditPurchaseScreen() {
                                   onClick={() => removeItem(index)}
                                   className="text-red-600 hover:text-red-800 text-xs"
                                 >
-                                  <i className="fa fa-trash" aria-hidden="true"></i>
+                                  <i
+                                    className="fa fa-trash"
+                                    aria-hidden="true"
+                                  ></i>
                                 </button>
                               </td>
                             </tr>
@@ -987,80 +1127,87 @@ export default function EditPurchaseScreen() {
                                 onClick={() => removeItem(index)}
                                 className="text-red-600 hover:text-red-800 text-xs"
                               >
-                                <i className="fa fa-trash" aria-hidden="true"></i>
+                                <i
+                                  className="fa fa-trash"
+                                  aria-hidden="true"
+                                ></i>
                               </button>
                             </div>
                             <p className="text-xs">Brand: {item.brand}</p>
-                            <p className="text-xs">Category: {item.category}</p>
+                            <p className="text-xs">
+                              Category: {item.category}
+                            </p>
                             <p className="text-xs">
                               Quantity:{" "}
                               <input
                                 type="number"
                                 value={item.quantity}
                                 min="1"
+                                step="0.01"
                                 onChange={(e) =>
-                                  setItems((prevItems) =>
-                                    prevItems.map((itm, idx) =>
-                                      idx === index
-                                        ? {
-                                            ...itm,
-                                            quantity: parseFloat(e.target.value),
-                                          }
-                                        : itm
-                                    )
+                                  handleItemFieldChange(
+                                    index,
+                                    "quantity",
+                                    e.target.value
                                   )
                                 }
-                                className="border px-1 py-0.5 rounded w-12 text-xs"
+                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                               />{" "}
-                              {item.pUnit}
+                              {item.unit}
                             </p>
                             <p className="text-xs">
-                              Bill Price: ₹
+                              Bill Price:{" "}
                               <input
                                 type="number"
-                                value={item.billPartPrice}
+                                value={item.billPrice}
                                 min="0"
+                                step="0.01"
                                 onChange={(e) =>
-                                  setItems((prevItems) =>
-                                    prevItems.map((itm, idx) =>
-                                      idx === index
-                                        ? {
-                                            ...itm,
-                                            billPartPrice: parseFloat(e.target.value),
-                                          }
-                                        : itm
-                                    )
+                                  handleItemFieldChange(
+                                    index,
+                                    "billPrice",
+                                    e.target.value
                                   )
                                 }
-                                className="border px-1 py-0.5 rounded w-16 text-xs"
+                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                               />
                             </p>
                             <p className="text-xs">
-                              Cash Price: ₹
+                              Cash Price:{" "}
                               <input
                                 type="number"
-                                value={item.cashPartPrice}
+                                value={item.cashPrice}
                                 min="0"
+                                step="0.01"
                                 onChange={(e) =>
-                                  setItems((prevItems) =>
-                                    prevItems.map((itm, idx) =>
-                                      idx === index
-                                        ? {
-                                            ...itm,
-                                            cashPartPrice: parseFloat(e.target.value),
-                                          }
-                                        : itm
-                                    )
+                                  handleItemFieldChange(
+                                    index,
+                                    "cashPrice",
+                                    e.target.value
                                   )
                                 }
-                                className="border px-1 py-0.5 rounded w-16 text-xs"
+                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                               />
+                            </p>
+                            <p className="text-xs">
+                              Quantity (NOS):{" "}
+                              {item.quantityInNumbers.toFixed(2)}
+                            </p>
+                            <p className="text-xs">
+                              Bill Price per NOS: ₹
+                              {item.billPriceInNumbers.toFixed(2)}
+                            </p>
+                            <p className="text-xs">
+                              Cash Price per NOS: ₹
+                              {item.cashPriceInNumbers.toFixed(2)}
                             </p>
                             <p className="text-xs">
                               Total: ₹
                               {(
-                                item.quantity *
-                                (item.billPartPrice + item.cashPartPrice)
+                                item.quantityInNumbers *
+                                (item.billPriceInNumbers +
+                                  item.cashPriceInNumbers +
+                                  perItemOtherExpense)
                               ).toFixed(2)}
                             </p>
                           </div>
@@ -1143,7 +1290,7 @@ export default function EditPurchaseScreen() {
                         value={itemCategory}
                         ref={itemCategoryRef}
                         onChange={(e) => setItemCategory(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itembillPartPriceRef)}
+                        onKeyDown={(e) => changeRef(e, itemBillPriceRef)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         required
                       >
@@ -1177,10 +1324,10 @@ export default function EditPurchaseScreen() {
                       <input
                         type="number"
                         placeholder="Enter Bill Part Price"
-                        value={itembillPartPrice}
-                        ref={itembillPartPriceRef}
-                        onChange={(e) => setItembillPartPrice(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemcashPartPriceRef)}
+                        value={itemBillPrice}
+                        ref={itemBillPriceRef}
+                        onChange={(e) => setItemBillPrice(e.target.value)}
+                        onKeyDown={(e) => changeRef(e, itemCashPriceRef)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         min="0"
                         step="0.01"
@@ -1194,9 +1341,9 @@ export default function EditPurchaseScreen() {
                       <input
                         type="number"
                         placeholder="Enter Cash Part Price"
-                        value={itemcashPartPrice}
-                        ref={itemcashPartPriceRef}
-                        onChange={(e) => setItemcashPartPrice(e.target.value)}
+                        value={itemCashPrice}
+                        ref={itemCashPriceRef}
+                        onChange={(e) => setItemCashPrice(e.target.value)}
                         onKeyDown={(e) => changeRef(e, itemUnitRef)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         min="0"
@@ -1342,6 +1489,57 @@ export default function EditPurchaseScreen() {
             {currentStep === 4 && (
               <div>
                 <h2 className="text-sm font-bold text-gray-900">
+                  Other Expenses
+                </h2>
+
+                <div className="flex justify-between mt-2 space-x-2 mb-5">
+                  <div className="w-full">
+                    <label className="text-xs text-gray-700 mb-1">
+                      Unloading Charge
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter Unloading Charge"
+                      value={unloadingCharge}
+                      onChange={(e) => setUnloadCharge(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div className="w-full">
+                    <label className="text-xs text-gray-700 mb-1">
+                      Insurance
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter Insurance Amount"
+                      value={insurance}
+                      onChange={(e) => setInsurance(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div className="w-full">
+                    <label className="text-xs text-gray-700 mb-1">
+                      Damage Price
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter Damage Price"
+                      value={damagePrice}
+                      onChange={(e) => setDamagePrice(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <h2 className="text-sm font-bold text-gray-900">
                   Transportation Details
                 </h2>
                 <div className="mt-4 space-y-6">
@@ -1356,16 +1554,22 @@ export default function EditPurchaseScreen() {
                           Company
                         </label>
                         <select
-                          value={isCustomCompany ? "custom" : logisticCompany}
+                          value={logisticCompany}
                           ref={logisticCompanyRef}
                           onChange={(e) => {
-                            const selectedValue = e.target.value;
-                            if (selectedValue === "custom") {
-                              setIsCustomCompany(true);
-                              setLogisticCompany("");
+                            if (e.target.value === "add-custom") {
+                              const customCompany = prompt(
+                                "Enter custom company name:"
+                              );
+                              if (customCompany) {
+                                setTransportCompanies((prev) => [
+                                  ...prev,
+                                  customCompany,
+                                ]); // Add to the list
+                                setLogisticCompany(customCompany); // Set as selected value
+                              }
                             } else {
-                              setIsCustomCompany(false);
-                              setLogisticCompany(selectedValue);
+                              setLogisticCompany(e.target.value);
                             }
                           }}
                           onKeyDown={(e) => changeRef(e, logisticAmountRef)}
@@ -1379,19 +1583,10 @@ export default function EditPurchaseScreen() {
                               {company}
                             </option>
                           ))}
-                          <option value="custom">Add Custom Company</option>
+                          <option value="add-custom" className="text-red-500">
+                            Add Custom Company
+                          </option>
                         </select>
-
-                        {/* Conditional Custom Company Input */}
-                        {isCustomCompany && (
-                          <input
-                            type="text"
-                            placeholder="Enter custom company name"
-                            value={logisticCompany}
-                            onChange={(e) => setLogisticCompany(e.target.value)}
-                            className="mt-2 w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                          />
-                        )}
                       </div>
 
                       <div className="flex flex-col flex-1">
@@ -1413,43 +1608,42 @@ export default function EditPurchaseScreen() {
                     </div>
                     <div className="flex justify-between mt-2 space-x-2">
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        GSTIN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={logisticGst}
-                        onChange={(e) => setLogisticGst(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          GSTIN
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter GSTIN"
+                          value={logisticCompanyGst}
+                          onChange={(e) => setLogisticCompanyGst(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Bill Id
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={logisticBillId}
-                        onChange={(e) => setLogisticBillId(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Bill Id
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Bill Id"
+                          value={logisticBillId}
+                          onChange={(e) => setLogisticBillId(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
-
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Remark
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={logisticRemark}
-                        onChange={(e) => setLogisticRemark(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Remark
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Remark"
+                          value={logisticRemark}
+                          onChange={(e) => setLogisticRemark(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1467,7 +1661,22 @@ export default function EditPurchaseScreen() {
                         <select
                           value={localCompany}
                           ref={localCompanyRef}
-                          onChange={(e) => setLocalCompany(e.target.value)}
+                          onChange={(e) => {
+                            if (e.target.value === "add-custom") {
+                              const customCompany = prompt(
+                                "Enter custom company name:"
+                              );
+                              if (customCompany) {
+                                setTransportCompanies((prev) => [
+                                  ...prev,
+                                  customCompany,
+                                ]); // Add to the list
+                                setLocalCompany(customCompany); // Set as selected value
+                              }
+                            } else {
+                              setLocalCompany(e.target.value);
+                            }
+                          }}
                           onKeyDown={(e) => changeRef(e, localAmountRef)}
                           className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         >
@@ -1479,8 +1688,12 @@ export default function EditPurchaseScreen() {
                               {company}
                             </option>
                           ))}
+                          <option value="add-custom" className="text-red-500">
+                            Add Custom Company
+                          </option>
                         </select>
                       </div>
+
                       <div className="flex flex-col flex-1">
                         <label className="text-xs text-gray-700 mb-1">
                           Amount (with GST)
@@ -1500,43 +1713,42 @@ export default function EditPurchaseScreen() {
                     </div>
                     <div className="flex justify-between mt-2 space-x-2">
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        GSTIN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={localGst}
-                        onChange={(e) => setLocalGst(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          GSTIN
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter GSTIN"
+                          value={localCompanyGst}
+                          onChange={(e) => setLocalCompanyGst(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Bill Id
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={localBillId}
-                        onChange={(e) => setLocalBillId(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Bill Id
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Bill Id"
+                          value={localBillId}
+                          onChange={(e) => setLocalBillId(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
 
-
                       <div className="w-full">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Remark
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Remark"
-                        value={localRemark}
-                        onChange={(e) => setLocalRemark(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
+                        <label className="text-xs text-gray-700 mb-1">
+                          Remark
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Remark"
+                          value={localRemark}
+                          onChange={(e) => setLocalRemark(e.target.value)}
+                          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1553,7 +1765,9 @@ export default function EditPurchaseScreen() {
                   </div>
                   <div className="flex justify-between">
                     <p className="text-xs">Subtotal (without GST):</p>
-                    <p className="text-xs">₹{amountWithoutGSTItems.toFixed(2)}</p>
+                    <p className="text-xs">
+                      ₹{amountWithoutGSTItems.toFixed(2)}
+                    </p>
                   </div>
                   <div className="flex justify-between">
                     <p className="text-xs">CGST (9%):</p>
@@ -1568,19 +1782,25 @@ export default function EditPurchaseScreen() {
                     <p className="text-xs">₹{cashPartTotal.toFixed(2)}</p>
                   </div>
                   <div className="flex justify-between mt-2">
-                    <p className="text-sm font-bold">
-                      Transportation Charges:
-                    </p>
+                    <p className="text-sm font-bold">Transportation Charges:</p>
                     <p className="text-xs">
-                      ₹
-                      {totalTransportationCharges.toFixed(2)}
+                      ₹{totalTransportationCharges.toFixed(2)}
                     </p>
                   </div>
                   <div className="flex justify-between mt-2">
-                    <p className="text-sm font-bold">Total Purchase Amount:</p>
+                    <p className="text-sm font-bold">Other Expenses Total:</p>
+                    <p className="text-xs">₹{totalOtherExpenses.toFixed(2)}</p>
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <p className="text-sm font-bold">Purchase Amount:</p>
                     <p className="text-xs font-bold">
-                      ₹
-                      {totalPurchaseAmount.toFixed(2)}
+                      ₹{totalPurchaseAmount.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <p className="text-sm font-bold">Grand Total:</p>
+                    <p className="text-xs font-bold">
+                      ₹{grandTotalPurchaseAmount.toFixed(2)}
                     </p>
                   </div>
                 </div>

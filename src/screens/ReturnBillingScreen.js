@@ -125,14 +125,14 @@ export default function ReturnBillingScreen() {
 
     if (isGstEnabled) {
       // Calculate CGST and SGST as 9% each of the amount
-      const calculatedCgst = parseFloat((amount * 0.09).toFixed(2));
-      const calculatedSgst = parseFloat((amount * 0.09).toFixed(2));
+      const calculatedCgst =  parseFloat((amount - (amount/1.18)) / 2);
+      const calculatedSgst = parseFloat((amount - (amount/1.18)) / 2);
       setCgst(calculatedCgst);
       setSgst(calculatedSgst);
       setTotalTax(calculatedCgst + calculatedSgst);
 
       // Net Return Amount is amount + total tax
-      setNetReturnAmount(parseFloat((amount + calculatedCgst + calculatedSgst).toFixed(2)));
+      setNetReturnAmount(parseFloat((amount - (calculatedCgst + calculatedSgst)).toFixed(2)));
     } else {
       // If GST is not enabled
       setCgst(0);

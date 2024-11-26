@@ -27,7 +27,13 @@ const PaymentAccountsList = () => {
     setLoading(true);
     try {
       const response = await api.get('/api/accounts/allaccounts');
-      setAccounts(response.data);
+      // Ensure paymentsIn and paymentsOut are arrays
+      const formattedAccounts = response.data.map(account => ({
+        ...account,
+        paymentsIn: account.paymentsIn || [],
+        paymentsOut: account.paymentsOut || [],
+      }));
+      setAccounts(formattedAccounts);
     } catch (err) {
       setError('Failed to fetch payment accounts.');
       console.error(err);
@@ -243,7 +249,7 @@ const PaymentAccountsList = () => {
                         {account.accountName}
                       </td>
                       <td className="px-2 py-2 text-xs">
-                        {account.balanceAmount.toFixed(2)}
+                        ₹{account.balanceAmount.toFixed(2)}
                       </td>
                       <td className="px-2 py-2 text-xs">
                         {new Date(account.createdAt).toLocaleDateString()}
@@ -310,113 +316,103 @@ const PaymentAccountsList = () => {
 
       {/* Modal for Viewing Account Transactions */}
       {selectedAccount && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 overflow-auto">
-          <div className="bg-white rounded-lg p-5 w-full max-w-4xl relative">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 overflow-y-auto">
+          <div className="bg-white top-1/2 rounded-lg p-6 w-full max-w-4xl mx-4 my-8 relative shadow-lg transform transition-transform duration-300 ease-out animate-slide-up">
+            {/* Close Button */}
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl"
               onClick={closeModal}
+              aria-label="Close Modal"
             >
-              <i className="fa fa-times"></i>
+              &times;
             </button>
-            <div className="mt-2 p-2">
-              <p className="text-sm text-gray-600 font-bold mb-2 text-red-600">
+
+            {/* Modal Content */}
+            <div className="mt-4">
+              <h2 className="text-lg font-bold text-red-600 mb-4">
                 Transactions for Account ID: {selectedAccount.accountId}
-              </p>
+              </h2>
 
               {/* Payments In */}
-              <h3 className="text-sm font-bold text-red-600 mt-5">
-                Payments In
-              </h3>
-              <div className="relative overflow-x-auto mb-6">
-                <table className="w-full text-sm text-left text-gray-500">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-4 py-3">#</th>
-                      <th scope="col" className="px-4 py-3">Amount</th>
-                      <th scope="col" className="px-4 py-3">Method</th>
-                      <th scope="col" className="px-4 py-3">Remark</th>
-                      <th scope="col" className="px-4 py-3">Submitted By</th>
-                      <th scope="col" className="px-4 py-3">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedAccount.paymentsIn.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="text-center text-xs py-2">
-                          No payments in.
-                        </td>
-                      </tr>
-                    ) : (
-                      selectedAccount.paymentsIn.map((payment, index) => (
-                        <tr
-                          key={index}
-                          className="bg-white border-b hover:bg-gray-50"
-                        >
-                          <td className="px-4 py-2 text-xs">{index + 1}</td>
-                          <td className="px-4 py-2 text-xs">{payment.amount.toFixed(2)}</td>
-                          <td className="px-4 py-2 text-xs">{payment.method}</td>
-                          <td className="px-4 py-2 text-xs">{payment.remark || '-'}</td>
-                          <td className="px-4 py-2 text-xs">{payment.submittedBy}</td>
-                          <td className="px-4 py-2 text-xs">
-                            {new Date(payment.date).toLocaleDateString()}
-                          </td>
+              <section className="mb-6">
+                <h3 className="text-md font-semibold text-red-600 mb-2">Payments In</h3>
+                {selectedAccount.paymentsIn && selectedAccount.paymentsIn.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm text-left text-gray-500">
+                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2">#</th>
+                          <th className="px-4 py-2">Amount</th>
+                          <th className="px-4 py-2">Method</th>
+                          <th className="px-4 py-2">Remark</th>
+                          <th className="px-4 py-2">Submitted By</th>
+                          <th className="px-4 py-2">Date</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {selectedAccount.paymentsIn.map((payment, index) => (
+                          <tr key={index} className="bg-white border-b hover:bg-gray-100">
+                            <td className="px-4 py-2 text-xs">{index + 1}</td>
+                            <td className="px-4 py-2 text-xs">₹{payment.amount.toFixed(2)}</td>
+                            <td className="px-4 py-2 text-xs">{payment.method}</td>
+                            <td className="px-4 py-2 text-xs">{payment.remark || '-'}</td>
+                            <td className="px-4 py-2 text-xs">{payment.submittedBy}</td>
+                            <td className="px-4 py-2 text-xs">
+                              {new Date(payment.date).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">No payments in.</p>
+                )}
+              </section>
 
               {/* Payments Out */}
-              <h3 className="text-sm font-bold text-red-600 mt-5">
-                Payments Out
-              </h3>
-              <div className="relative overflow-x-auto mb-6">
-                <table className="w-full text-sm text-left text-gray-500">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-4 py-3">#</th>
-                      <th scope="col" className="px-4 py-3">Amount</th>
-                      <th scope="col" className="px-4 py-3">Method</th>
-                      <th scope="col" className="px-4 py-3">Remark</th>
-                      <th scope="col" className="px-4 py-3">Submitted By</th>
-                      <th scope="col" className="px-4 py-3">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedAccount.paymentsOut.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="text-center text-xs py-2">
-                          No payments out.
-                        </td>
-                      </tr>
-                    ) : (
-                      selectedAccount.paymentsOut.map((payment, index) => (
-                        <tr
-                          key={index}
-                          className="bg-white border-b hover:bg-gray-50"
-                        >
-                          <td className="px-4 py-2 text-xs">{index + 1}</td>
-                          <td className="px-4 py-2 text-xs">{payment.amount.toFixed(2)}</td>
-                          <td className="px-4 py-2 text-xs">{payment.method}</td>
-                          <td className="px-4 py-2 text-xs">{payment.remark || '-'}</td>
-                          <td className="px-4 py-2 text-xs">{payment.submittedBy}</td>
-                          <td className="px-4 py-2 text-xs">
-                            {new Date(payment.date).toLocaleDateString()}
-                          </td>
+              <section className="mb-6">
+                <h3 className="text-md font-semibold text-red-600 mb-2">Payments Out</h3>
+                {selectedAccount.paymentsOut && selectedAccount.paymentsOut.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm text-left text-gray-500">
+                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2">#</th>
+                          <th className="px-4 py-2">Amount</th>
+                          <th className="px-4 py-2">Method</th>
+                          <th className="px-4 py-2">Remark</th>
+                          <th className="px-4 py-2">Submitted By</th>
+                          <th className="px-4 py-2">Date</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {selectedAccount.paymentsOut.map((payment, index) => (
+                          <tr key={index} className="bg-white border-b hover:bg-gray-100">
+                            <td className="px-4 py-2 text-xs">{index + 1}</td>
+                            <td className="px-4 py-2 text-xs">₹{payment.amount.toFixed(2)}</td>
+                            <td className="px-4 py-2 text-xs">{payment.method}</td>
+                            <td className="px-4 py-2 text-xs">{payment.remark || '-'}</td>
+                            <td className="px-4 py-2 text-xs">{payment.submittedBy}</td>
+                            <td className="px-4 py-2 text-xs">
+                              {new Date(payment.date).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">No payments out.</p>
+                )}
+              </section>
 
               {/* Balance Amount */}
-              <div className="mt-4 text-right mr-2">
-                <p className="text-xs mb-1">
+              <div className="mt-4 text-right">
+                <p className="text-sm font-semibold">
                   Balance Amount:{' '}
-                  <span className="text-gray-600 font-bold">
-                    Rs. {selectedAccount.balanceAmount.toFixed(2)}
+                  <span className="text-gray-600">
+                    ₹{selectedAccount.balanceAmount.toFixed(2)}
                   </span>
                 </p>
               </div>

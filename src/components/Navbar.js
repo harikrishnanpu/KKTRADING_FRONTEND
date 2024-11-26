@@ -131,7 +131,7 @@ function Navbar() {
             {userInfo && (
               <li className="menu-item text-sm bg-gray-200 py-1 px-3 rounded-lg transition">
                 <a href="/profile" onClick={sidebarClose} ref={menuLink} className="menu-link">
-                  Hi, {userInfo?.name}
+                  Hi, {userInfo?.name.slice(0,5)}..
           <i className="fa fa-user-circle text-xl ml-2"></i>
 
                 </a>

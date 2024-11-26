@@ -30,6 +30,7 @@ const DailyTransactions = () => {
   const [totalOut, setTotalOut] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('in');
+  const [isAddingCategory, setIsAddingCategory] = useState(false); 
   const [transactionData, setTransactionData] = useState({
     date: selectedDate,
     amount: '',
@@ -43,10 +44,11 @@ const DailyTransactions = () => {
     transportId: '',
   });
 
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
-
-  const paymentMethods = ['Cash', 'Bank', 'UPI', 'Online'];
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -54,7 +56,7 @@ const DailyTransactions = () => {
     try {
       const [transRes, billingRes, purchaseRes, transportRes, catRes, accRes] = await Promise.all([
         api.get(`/api/daily/transactions`, { params: { date: selectedDate } }),
-        api.get(`/api/daily/billing`, { params: { date: selectedDate } }),
+        api.get(`/api/daily/allbill/payments`, { params: { date: selectedDate } }),
         api.get(`/api/sellerPayments/daily/payments`, { params: { date: selectedDate } }),
         api.get(`/api/transportpayments/daily/payments`, { params: { date: selectedDate } }),
         api.get('/api/daily/transactions/categories'),
@@ -67,6 +69,8 @@ const DailyTransactions = () => {
       setTransportPayments(transportRes.data.flatMap((transport) => transport.payments || []));
       setCategories(catRes.data);
       setAccounts(accRes.data);
+
+      console.log(purchaseRes.data)
 
       calculateTotals(
         transRes.data,
@@ -85,7 +89,8 @@ const DailyTransactions = () => {
   const calculateTotals = (transactionsData, billingsData, purchasePaymentsData, transportPaymentsData) => {
     let totalInAmount = 0;
     let totalOutAmount = 0;
-
+  
+    // Transactions (direct in/out)
     transactionsData.forEach((trans) => {
       const amount = parseFloat(trans.amount) || 0;
       if (trans.type === 'in') {
@@ -94,29 +99,34 @@ const DailyTransactions = () => {
         totalOutAmount += amount;
       }
     });
-
+  
+    // Billings (billing received counts as "in", expenses as "out")
     billingsData.forEach((billing) => {
       const billingReceived = parseFloat(billing.billingAmountReceived) || 0;
       totalInAmount += billingReceived;
-
+  
       if (billing.otherExpenses) {
         billing.otherExpenses.forEach((expense) => {
           totalOutAmount += parseFloat(expense.amount) || 0;
         });
       }
     });
-
+  
+    // Purchase Payments (all "out")
     purchasePaymentsData.forEach((payment) => {
       totalOutAmount += parseFloat(payment.amount) || 0;
     });
-
+  
+    // Transport Payments (all "out")
     transportPaymentsData.forEach((payment) => {
       totalOutAmount += parseFloat(payment.amount) || 0;
     });
-
+  
+    // Set totals with two decimal places
     setTotalIn(Number(totalInAmount.toFixed(2)));
     setTotalOut(Number(totalOutAmount.toFixed(2)));
   };
+  
 
   useEffect(() => {
     fetchTransactions();
@@ -140,6 +150,8 @@ const DailyTransactions = () => {
       purchaseId: '',
       transportId: '',
     });
+    setNewCategoryName('');
+    setShowAddCategory(false);
     setError('');
     setIsModalOpen(true);
   };
@@ -153,18 +165,19 @@ const DailyTransactions = () => {
     e.preventDefault();
     setError('');
 
+    // Input validation
     if (isNaN(transactionData.amount) || parseFloat(transactionData.amount) <= 0) {
       setError('Please enter a valid amount.');
       return;
     }
 
     if (modalType === 'in' && !transactionData.paymentFrom.trim()) {
-      setError('Please select a payment source.');
+      setError('Please enter a payment source.');
       return;
     }
 
     if (modalType === 'out' && !transactionData.paymentTo.trim()) {
-      setError('Please select a payment destination.');
+      setError('Please enter a payment destination.');
       return;
     }
 
@@ -179,8 +192,8 @@ const DailyTransactions = () => {
       }
     }
 
-    if (!transactionData.category.trim()) {
-      setError('Please select a category.');
+    if (!transactionData.category.trim() && !newCategoryName.trim()) {
+      setError('Please select or enter a category.');
       return;
     }
 
@@ -190,6 +203,22 @@ const DailyTransactions = () => {
     }
 
     try {
+      // Handle adding new category
+      if (showAddCategory) {
+        if (!newCategoryName.trim()) {
+          setError('Please enter a new category name.');
+          return;
+        }
+        // Add the new category to the database
+        const categoryRes = await api.post('/api/daily/transactions/categories', {
+          name: newCategoryName.trim(),
+        });
+        // Update the categories list
+        setCategories([...categories, categoryRes.data]);
+        // Set the transactionData.category to the new category
+        transactionData.category = newCategoryName.trim();
+      }
+
       const payload = {
         ...transactionData,
         type: modalType,
@@ -220,12 +249,13 @@ const DailyTransactions = () => {
       if (activeTab === 'out') return trans.type === 'out';
       return true;
     });
-
+  
+    // Include billing payments (type "in")
     if (activeTab === 'in' || activeTab === 'all') {
       billings.forEach((billing) => {
         if (billing.billingAmountReceived > 0) {
           filtered.push({
-            _id: billing._id,
+            _id: `billing-${billing._id}`,
             date: billing.invoiceDate,
             amount: billing.billingAmountReceived,
             paymentFrom: billing.customerName,
@@ -237,13 +267,14 @@ const DailyTransactions = () => {
         }
       });
     }
-
+  
+    // Include billing expenses (type "out")
     if (activeTab === 'out' || activeTab === 'all') {
       billings.forEach((billing) => {
         if (billing.otherExpenses) {
           billing.otherExpenses.forEach((expense) => {
             filtered.push({
-              _id: expense._id,
+              _id: `expense-${expense._id}`,
               date: expense.date,
               amount: expense.amount,
               paymentTo: expense.paidTo || 'Expense',
@@ -255,10 +286,11 @@ const DailyTransactions = () => {
           });
         }
       });
-
+  
+      // Include purchase payments (type "out")
       purchasePayments.forEach((payment) => {
         filtered.push({
-          _id: payment._id,
+          _id: `purchase-${payment._id}`,
           date: payment.date,
           amount: payment.amount,
           paymentTo: payment.paidTo || 'Vendor',
@@ -268,10 +300,11 @@ const DailyTransactions = () => {
           type: 'out',
         });
       });
-
+  
+      // Include transport payments (type "out")
       transportPayments.forEach((payment) => {
         filtered.push({
-          _id: payment._id,
+          _id: `transport-${payment._id}`,
           date: payment.date,
           amount: payment.amount,
           paymentTo: payment.paidTo || 'Transporter',
@@ -282,10 +315,40 @@ const DailyTransactions = () => {
         });
       });
     }
-
+  
+    // Sort by date in descending order
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+  
     return filtered;
   }, [transactions, billings, purchasePayments, transportPayments, activeTab]);
+  
+
+
+  const handleAddNewCategory = async () => {
+    const newCategoryName = prompt("Enter new category name:");
+    if (newCategoryName) {
+      try {
+        // Post the new category to the backend
+        const response = await api.post("/api/daily/transactions/categories", {
+          name: newCategoryName,
+        });
+        const newCategory = response.data;
+
+        // Update categories list and set new category as selected
+        setCategories([...categories, newCategory]);
+        setTransactionData({ ...transactionData, category: newCategory.name });
+
+        alert("Category added successfully!");
+      } catch (error) {
+        console.error("Error adding category:", error);
+        alert(
+          error.response?.data?.message || "Failed to add category. Try again."
+        );
+      }
+    }
+  };
+
+
 
   return (
     <>
@@ -458,133 +521,114 @@ const DailyTransactions = () => {
                   required
                 />
               </div>
-              <div className="mb-2">
-                {modalType === 'in' ? (
-                  <>
-                    <label className="block text-xs font-bold mb-1">
-                      Payment From
-                    </label>
-                    <select
-                      value={transactionData.paymentFrom}
-                      onChange={(e) =>
-                        setTransactionData({
-                          ...transactionData,
-                          paymentFrom: e.target.value,
-                        })
-                      }
-                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-                      required
-                    >
-                      <option value="">Select Account</option>
-                      {accounts.map((account) => (
-                        <option key={account._id} value={account.accountId}>
-                          {account.accountName}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                ) : modalType === 'out' ? (
-                  <>
-                    <label className="block text-xs font-bold mb-1">
-                      Payment To
-                    </label>
-                    <select
-                      value={transactionData.paymentTo}
-                      onChange={(e) =>
-                        setTransactionData({
-                          ...transactionData,
-                          paymentTo: e.target.value,
-                        })
-                      }
-                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-                      required
-                    >
-                      <option value="">Select Account</option>
-                      {accounts.map((account) => (
-                        <option key={account._id} value={account.accountId}>
-                          {account.accountName}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                ) : (
-                  <>
-                    <label className="block text-xs font-bold mb-1">
-                      Payment From
-                    </label>
-                    <select
-                      value={transactionData.paymentFrom}
-                      onChange={(e) =>
-                        setTransactionData({
-                          ...transactionData,
-                          paymentFrom: e.target.value,
-                        })
-                      }
-                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-                      required
-                    >
-                      <option value="">Select Account</option>
-                      {accounts.map((account) => (
-                        <option key={account._id} value={account.accountId}>
-                          {account.accountName}
-                        </option>
-                      ))}
-                    </select>
+              {modalType === 'in' && (
+                <div className="mb-2">
+                  <label className="block text-xs font-bold mb-1">Payment From</label>
+                  <input
+                    type="text"
+                    value={transactionData.paymentFrom}
+                    onChange={(e) =>
+                      setTransactionData({
+                        ...transactionData,
+                        paymentFrom: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                    required
+                  />
+                </div>
+              )}
+              {modalType === 'out' && (
+                <div className="mb-2">
+                  <label className="block text-xs font-bold mb-1">Payment To</label>
+                  <input
+                    type="text"
+                    value={transactionData.paymentTo}
+                    onChange={(e) =>
+                      setTransactionData({
+                        ...transactionData,
+                        paymentTo: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                    required
+                  />
+                </div>
+              )}
+              {modalType === 'transfer' && (
+                <>
+                  <label className="block text-xs font-bold mb-1">
+                    Payment From
+                  </label>
+                  <select
+                    value={transactionData.paymentFrom}
+                    onChange={(e) =>
+                      setTransactionData({
+                        ...transactionData,
+                        paymentFrom: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                    required
+                  >
+                    <option value="">Select Account</option>
+                    {accounts.map((account) => (
+                      <option key={account._id} value={account.accountId}>
+                        {account.accountName}
+                      </option>
+                    ))}
+                  </select>
 
-                    <label className="block text-xs font-bold mb-1 mt-2">
-                      Payment To
-                    </label>
-                    <select
-                      value={transactionData.paymentTo}
-                      onChange={(e) =>
-                        setTransactionData({
-                          ...transactionData,
-                          paymentTo: e.target.value,
-                        })
-                      }
-                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-                      required
-                    >
-                      <option value="">Select Account</option>
-                      {accounts.map((account) => (
-                        <option key={account._id} value={account.accountId}>
-                          {account.accountName}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                )}
-              </div>
-              <div className="mb-2">
-                <label className="block text-xs font-bold mb-1">Category</label>
-                <select
-                  value={transactionData.category}
-                  onChange={(e) =>
-                    setTransactionData({
-                      ...transactionData,
-                      category: e.target.value,
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-                  required
-                >
-                  <option value="">Select Category</option>
-                  {modalType === 'out' && (
-                    <>
-                      <option value="Purchase Payment">Purchase Payment</option>
-                      <option value="Transport Payment">Transport Payment</option>
-                    </>
-                  )}
-                  {categories.map((cat) => (
-                    <option key={cat._id} value={cat.name}>
-                      {cat.name}
-                    </option>
-                  ))}
-                  {modalType === 'transfer' && (
-                    <option value="Account Transfer">Account Transfer</option>
-                  )}
-                </select>
-              </div>
+                  <label className="block text-xs font-bold mb-1 mt-2">
+                    Payment To
+                  </label>
+                  <select
+                    value={transactionData.paymentTo}
+                    onChange={(e) =>
+                      setTransactionData({
+                        ...transactionData,
+                        paymentTo: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                    required
+                  >
+                    <option value="">Select Account</option>
+                    {accounts.map((account) => (
+                      <option key={account._id} value={account.accountId}>
+                        {account.accountName}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+       <div className="mb-2">
+      <label className="block text-xs font-bold mb-1">Category</label>
+      <select
+        value={transactionData.category}
+        onChange={(e) => {
+          if (e.target.value === "add_new_category") {
+            handleAddNewCategory();
+          } else {
+            setTransactionData({
+              ...transactionData,
+              category: e.target.value,
+            });
+          }
+        }}
+        className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+        required
+      >
+        <option value="">Select Category</option>
+        {categories.map((cat) => (
+          <option key={cat._id} value={cat.name}>
+            {cat.name}
+          </option>
+        ))}
+        <option value="add_new_category">Add New Category</option>
+      </select>
+    </div>
+
               {modalType === 'out' && transactionData.category === 'Purchase Payment' && (
                 <div className="mb-2">
                   <label className="block text-xs font-bold mb-1">Purchase</label>
@@ -663,20 +707,11 @@ const DailyTransactions = () => {
                   required
                 >
                   <option value="">Select Method</option>
-                  <optgroup label="Predefined Methods">
-                    {paymentMethods.map((method) => (
-                      <option key={method} value={method}>
-                        {method}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Accounts">
-                    {accounts.map((account) => (
-                      <option key={account._id} value={account.accountId}>
-                        {account.accountName}
-                      </option>
-                    ))}
-                  </optgroup>
+                  {accounts.map((account) => (
+                    <option key={account._id} value={account.accountId}>
+                      {account.accountName}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="mb-2">

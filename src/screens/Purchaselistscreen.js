@@ -82,7 +82,18 @@ const PurchaseList = () => {
     doc.setFontSize(10);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 22);
 
-    const tableColumn = ['Invoice No', 'Invoice Date', 'Supplier Name', 'Total Items', 'Total Amount'];
+    const tableColumn = [
+      'Invoice No',
+      'Invoice Date',
+      'Supplier Name',
+      'Seller ID',
+      'Purchase ID',
+      'Seller GST',
+      'Total Items',
+      'Total Amount',
+      'Grand Total',
+      'Transportation Charges',
+    ];
     const tableRows = [];
 
     purchasesToPrint.forEach((purchase) => {
@@ -90,58 +101,113 @@ const PurchaseList = () => {
         purchase.invoiceNo,
         new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString(),
         purchase.sellerName,
+        purchase.sellerId,
+        purchase.purchaseId,
+        purchase.sellerGst || 'N/A',
         purchase.items.length,
-        '₹' + purchase.totals.totalPurchaseAmount.toFixed(2),
+        '₹' + purchase.totals.totalPurchaseAmount?.toFixed(2),
+        '₹' + purchase.totals.grandTotalPurchaseAmount?.toFixed(2),
+        '₹' + (purchase.totals.transportationCharges || 0)?.toFixed(2),
       ];
       tableRows.push(purchaseData);
     });
 
-    doc.autoTable(tableColumn, tableRows, { startY: 30 });
+    doc.autoTable(tableColumn, tableRows, { startY: 30, styles: { fontSize: 8 }, headStyles: { fillColor: [220, 53, 69] } });
     doc.save('Purchase_Report.pdf');
 
     setPdfLoading(false);
   };
 
-  // Generate PDF for a single purchase
-  const handleGenerateSinglePDF = (purchase) => {
-    setPdfLoading(true);
 
-    // Prepare data for PDF
-    const doc = new jsPDF();
+  // Handle Generate Single Print (Purchase Invoice)
+  const handleGenerateSinglePrint = (purchase) => {
+    const formData = {
+      sellerId: purchase.sellerId || '',
+      sellerName: purchase.sellerName || '',
+      sellerAddress: purchase.sellerAddress || '',
+      sellerGst: purchase.sellerGst || '',
+      invoiceNo: purchase.invoiceNo || '',
+      purchaseId: purchase.purchaseId || '',
+      billingDate: purchase.billingDate || '',
+      invoiceDate: purchase.invoiceDate || '',
+      items: purchase.items.map((item) => ({
+        itemId: item.itemId || '',
+        name: item.name || '',
+        brand: item.brand || '',
+        category: item.category || '',
+        quantity: item.quantity || 0,
+        quantityInNumbers: item.quantityInNumbers || 0,
+        pUnit: item.pUnit || '',
+        sUnit: item.sUnit || '',
+        psRatio: item.psRatio || 0,
+        length: item.length || 0,
+        breadth: item.breadth || 0,
+        size: item.size || 0,
+        billPartPrice: parseFloat(item.billPartPrice) || 0,
+        cashPartPrice: parseFloat(item.cashPartPrice) || 0,
+        billPartPriceInNumbers: parseFloat(item.billPartPriceInNumbers) || 0,
+        cashPartPriceInNumbers: parseFloat(item.cashPartPriceInNumbers) || 0,
+        allocatedOtherExpense: parseFloat(item.allocatedOtherExpense) || 0,
+      })),
+      totals: {
+        billPartTotal: parseFloat(purchase.totals.billPartTotal) || 0,
+        cashPartTotal: parseFloat(purchase.totals.cashPartTotal) || 0,
+        amountWithoutGSTItems: parseFloat(purchase.totals.amountWithoutGSTItems) || 0,
+        gstAmountItems: parseFloat(purchase.totals.gstAmountItems) || 0,
+        cgstItems: parseFloat(purchase.totals.cgstItems) || 0,
+        sgstItems: parseFloat(purchase.totals.sgstItems) || 0,
+        amountWithoutGSTTransport: parseFloat(purchase.totals.amountWithoutGSTTransport) || 0,
+        gstAmountTransport: parseFloat(purchase.totals.gstAmountTransport) || 0,
+        cgstTransport: parseFloat(purchase.totals.cgstTransport) || 0,
+        sgstTransport: parseFloat(purchase.totals.sgstTransport) || 0,
+        unloadingCharge: parseFloat(purchase.totals.unloadingCharge) || 0,
+        insurance: parseFloat(purchase.totals.insurance) || 0,
+        damagePrice: parseFloat(purchase.totals.damagePrice) || 0,
+        totalPurchaseAmount: parseFloat(purchase.totals.totalPurchaseAmount) || 0,
+        totalOtherExpenses: parseFloat(purchase.totals.totalOtherExpenses) || 0,
+        grandTotalPurchaseAmount: parseFloat(purchase.totals.grandTotalPurchaseAmount) || 0,
+        transportationCharges: parseFloat(purchase.totals.transportationCharges) || 0,
+      },
+      transportationDetails: {
+        logistic: {
+          purchaseId: purchase.transportationDetails?.logistic?.purchaseId || '',
+          invoiceNo: purchase.transportationDetails?.logistic?.invoiceNo || '',
+          billId: purchase.transportationDetails?.logistic?.billId || '',
+          companyGst: purchase.transportationDetails?.logistic?.companyGst || '',
+          transportCompanyName:
+            purchase.transportationDetails?.logistic?.transportCompanyName || '',
+          transportationCharges:
+            parseFloat(purchase.transportationDetails?.logistic?.transportationCharges) || 0,
+          remark: purchase.transportationDetails?.logistic?.remark || '',
+        },
+        local: {
+          purchaseId: purchase.transportationDetails?.local?.purchaseId || '',
+          invoiceNo: purchase.transportationDetails?.local?.invoiceNo || '',
+          billId: purchase.transportationDetails?.local?.billId || '',
+          companyGst: purchase.transportationDetails?.local?.companyGst || '',
+          transportCompanyName:
+            purchase.transportationDetails?.local?.transportCompanyName || '',
+          transportationCharges:
+            parseFloat(purchase.transportationDetails?.local?.transportationCharges) || 0,
+          remark: purchase.transportationDetails?.local?.remark || '',
+        },
+      },
+    };
 
-    doc.text(`Purchase Invoice: ${purchase.invoiceNo}`, 14, 16);
-    doc.setFontSize(10);
-    doc.text(`Date: ${new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString()}`, 14, 22);
-    doc.text(`Supplier: ${purchase.sellerName}`, 14, 28);
-
-    const tableColumn = ['Item ID', 'Name', 'Quantity', 'Unit', 'Bill Price', 'Cash Price', 'Total'];
-    const tableRows = [];
-
-    purchase.items.forEach((item) => {
-      const itemData = [
-        item.itemId,
-        item.name,
-        item.quantity,
-        item.pUnit,
-        '₹' + item.billPartPrice.toFixed(2),
-        '₹' + item.cashPartPrice.toFixed(2),
-        '₹' + (item.quantity * (item.billPartPrice + item.cashPartPrice)).toFixed(2),
-      ];
-      tableRows.push(itemData);
-    });
-
-    doc.autoTable(tableColumn, tableRows, { startY: 35 });
-
-    doc.text(
-      `Total Purchase Amount: ₹${purchase.totals.totalPurchaseAmount.toFixed(2)}`,
-      14,
-      doc.autoTable.previous.finalY + 10
-    );
-
-    doc.save(`Purchase_Invoice_${purchase.invoiceNo}.pdf`);
-
-    setPdfLoading(false);
+    api
+      .post('/api/print/generate-purchase-invoice-html', formData)
+      .then((response) => {
+        const htmlContent = response.data; // Extract the HTML content
+        const printWindow = window.open('', '', 'height=800,width=1200');
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        alert('Failed to generate purchase invoice. Please try again.');
+      });
   };
+
 
   // Handle Remove Purchase
   const handleRemove = async (id) => {
@@ -177,26 +243,35 @@ const PurchaseList = () => {
   const renderCard = (purchase) => (
     <div
       key={purchase.invoiceNo}
-      className="bg-white rounded-lg shadow-md p-6 mb-4 transition-transform transform hover:scale-100 duration-200"
+      className="bg-white rounded-lg shadow-md p-6 mb-4 transition-transform transform hover:scale-105 duration-200"
     >
       <div className="flex justify-between items-center">
         <p
-          onClick={() => navigate(`/purchase/${purchase._id}`)}
+          onClick={() => navigate(`/purchases/${purchase._id}`)}
           className={`text-md flex cursor-pointer font-bold text-red-600`}
         >
           {purchase.invoiceNo}
         </p>
+        <p className="text-gray-600 text-xs">Purchase ID: {purchase.purchaseId}</p>
       </div>
       <p className="text-gray-600 text-xs mt-2">Supplier: {purchase.sellerName}</p>
+      <p className="text-gray-600 text-xs mt-1">Seller ID: {purchase.sellerId}</p>
+      <p className="text-gray-600 text-xs mt-1">Seller GST: {purchase.sellerGst || 'N/A'}</p>
       <p className="text-gray-600 text-xs mt-1">
         Invoice Date: {new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString()}
       </p>
-      <p className="text-gray-600 text-xs mt-1">
-        Total Items: {purchase.items.length}
-      </p>
+      <p className="text-gray-600 text-xs mt-1">Total Items: {purchase.items.length}</p>
       <div className="flex justify-between">
         <p className="text-gray-600 text-xs font-bold mt-1">
-          Total Amount: ₹{purchase.totals.totalPurchaseAmount.toFixed(2)}
+          Total Amount: ₹{purchase.totals.totalPurchaseAmount?.toFixed(2)}
+        </p>
+        <p className="text-gray-400 italic text-xs mt-1">
+          Grand Total: ₹{purchase.totals.grandTotalPurchaseAmount?.toFixed(2)}
+        </p>
+      </div>
+      <div className="flex justify-between">
+        <p className="text-gray-600 text-xs font-bold mt-1">
+          Transportation Charges: ₹{purchase.totals.transportationCharges || 0}
         </p>
         <p className="text-gray-400 italic text-xs mt-1">
           Last Edited: {new Date(purchase.updatedAt ? purchase.updatedAt : purchase.createdAt).toLocaleDateString()}
@@ -213,10 +288,10 @@ const PurchaseList = () => {
         )}
         {userInfo.isAdmin && (
           <button
-            onClick={() => handleGenerateSinglePDF(purchase)}
+            onClick={() => handleGenerateSinglePrint(purchase)}
             className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center"
           >
-            <i className="fa fa-file-pdf-o mr-2"></i> PDF
+            <i className="fa fa-print mr-2"></i> 
           </button>
         )}
         <button
@@ -245,16 +320,36 @@ const PurchaseList = () => {
         <thead className="bg-gray-200">
           <tr className="divide-y text-xs">
             <th className="px-2 py-2">Invoice No</th>
+            <th className="px-2 py-2">Purchase ID</th>
             <th className="px-2 py-2">Invoice Date</th>
             <th className="px-2 py-2">Supplier Name</th>
+            <th className="px-2 py-2">Seller ID</th>
+            <th className="px-2 py-2">Seller GST</th>
             <th className="px-2 py-2">Total Items</th>
             <th className="px-2 py-2">Total Amount</th>
+            <th className="px-2 py-2">Grand Total</th>
+            <th className="px-2 py-2">Transportation Charges</th>
             <th className="px-2 py-2">Actions</th>
           </tr>
         </thead>
         <tbody>
           {skeletonRows.map((row) => (
             <tr key={row} className="hover:bg-gray-100 divide-y divide-x">
+              <td className="px-2 py-2">
+                <Skeleton height={10} />
+              </td>
+              <td className="px-2 py-2">
+                <Skeleton height={10} />
+              </td>
+              <td className="px-2 py-2">
+                <Skeleton height={10} />
+              </td>
+              <td className="px-2 py-2">
+                <Skeleton height={10} />
+              </td>
+              <td className="px-2 py-2">
+                <Skeleton height={10} />
+              </td>
               <td className="px-2 py-2">
                 <Skeleton height={10} />
               </td>
@@ -290,19 +385,31 @@ const PurchaseList = () => {
       >
         <div className="flex justify-between items-center">
           <Skeleton height={20} width={`60%`} />
+          <Skeleton height={15} width={`30%`} />
         </div>
         <p className="text-gray-600 text-xs mt-2">
           <Skeleton height={10} width={`80%`} />
         </p>
         <p className="text-gray-600 text-xs mt-1">
-          <Skeleton height={10} width={`70%`} />
+          <Skeleton height={10} width={`60%`} />
         </p>
         <p className="text-gray-600 text-xs mt-1">
           <Skeleton height={10} width={`50%`} />
         </p>
+        <p className="text-gray-600 text-xs mt-1">
+          <Skeleton height={10} width={`70%`} />
+        </p>
         <div className="flex justify-between">
           <p className="text-gray-600 text-xs font-bold mt-1">
             <Skeleton height={10} width={`40%`} />
+          </p>
+          <p className="text-gray-400 italic text-xs mt-1">
+            <Skeleton height={10} width={`30%`} />
+          </p>
+        </div>
+        <div className="flex justify-between">
+          <p className="text-gray-600 text-xs font-bold mt-1">
+            <Skeleton height={10} width={`50%`} />
           </p>
           <p className="text-gray-400 italic text-xs mt-1">
             <Skeleton height={10} width={`30%`} />
@@ -367,7 +474,7 @@ const PurchaseList = () => {
         <div className="mb-2">
           <button
             onClick={handleGeneratePDF}
-            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-xs"
+            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-xs flex items-center"
           >
             <i className="fa fa-file-pdf-o mr-1"></i> Generate PDF Report
           </button>
@@ -379,7 +486,7 @@ const PurchaseList = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="flex flex-col items-center">
             <i className="fa fa-spinner fa-spin text-white text-4xl mb-4"></i>
-            <p className="text-white text-xs">Generating PDF...</p>
+            <p className="text-white text-xs">Generating...</p>
           </div>
         </div>
       )}
@@ -411,15 +518,20 @@ const PurchaseList = () => {
           ) : (
             <>
               {/* Table for Large Screens */}
-              <div className="hidden md:block">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-xs text-gray-500 bg-white shadow-md rounded-lg overflow-hidden">
                   <thead className="bg-red-600 text-xs text-white">
                     <tr className="divide-y">
                       <th className="px-2 py-2">Invoice No</th>
+                      <th className="px-2 py-2">Purchase ID</th>
                       <th className="px-2 py-2">Invoice Date</th>
                       <th className="px-2 py-2">Supplier Name</th>
+                      <th className="px-2 py-2">Seller ID</th>
+                      <th className="px-2 py-2">Seller GST</th>
                       <th className="px-2 py-2">Total Items</th>
                       <th className="px-2 py-2">Total Amount</th>
+                      <th className="px-2 py-2">Grand Total</th>
+                      <th className="px-2 py-2">Transportation Charges</th>
                       <th className="px-2 py-2">Actions</th>
                     </tr>
                   </thead>
@@ -430,10 +542,13 @@ const PurchaseList = () => {
                         className="hover:bg-gray-100 divide-y divide-x"
                       >
                         <td
-                          onClick={() => navigate(`/purchase/${purchase._id}`)}
+                          onClick={() => navigate(`/purchases/${purchase._id}`)}
                           className={`px-2 cursor-pointer flex text-xs font-bold py-2 text-red-600`}
                         >
                           {purchase.invoiceNo}
+                        </td>
+                        <td className="px-2 text-xs py-2">
+                          {purchase.purchaseId}
                         </td>
                         <td className="px-2 text-xs py-2">
                           {new Date(purchase.billingDate || purchase.invoiceDate).toLocaleDateString()}
@@ -442,10 +557,22 @@ const PurchaseList = () => {
                           {purchase.sellerName}
                         </td>
                         <td className="px-2 text-xs py-2">
+                          {purchase.sellerId}
+                        </td>
+                        <td className="px-2 text-xs py-2">
+                          {purchase.sellerGst || 'N/A'}
+                        </td>
+                        <td className="px-2 text-xs py-2">
                           {purchase.items.length}
                         </td>
                         <td className="px-2 text-xs py-2">
-                          ₹{purchase.totals.totalPurchaseAmount.toFixed(2)}
+                          ₹{purchase.totals.totalPurchaseAmount?.toFixed(2)}
+                        </td>
+                        <td className="px-2 text-xs py-2">
+                          ₹{purchase.totals.grandTotalPurchaseAmount?.toFixed(2)}
+                        </td>
+                        <td className="px-2 text-xs py-2">
+                          ₹{purchase.totals.transportationCharges || 0}
                         </td>
                         <td className="px-2 text-xs py-2">
                           <div className="flex mt-2 text-xs space-x-1">
@@ -459,10 +586,10 @@ const PurchaseList = () => {
                             )}
                             {userInfo.isAdmin && (
                               <button
-                                onClick={() => handleGenerateSinglePDF(purchase)}
+                                onClick={() => handleGenerateSinglePrint(purchase)}
                                 className="bg-red-500 text-white px-2 font-bold py-1 rounded hover:bg-red-600 flex items-center"
                               >
-                                <i className="fa fa-file-pdf-o mr-1"></i> PDF
+                                <i className="fa fa-print mr-1"></i>
                               </button>
                             )}
                             <button
@@ -528,7 +655,7 @@ const PurchaseList = () => {
       {/* Modal for Viewing Purchase Details */}
       {selectedPurchase && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 overflow-auto">
-          <div className="bg-white rounded-lg p-5 w-full max-w-md relative">
+          <div className="bg-white rounded-lg p-5 w-full max-w-3xl relative">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={closeModal}
@@ -540,10 +667,18 @@ const PurchaseList = () => {
                 Details for Invoice No. {selectedPurchase.invoiceNo}
               </p>
 
-              <div className="flex justify-between">
+              <div className="flex flex-wrap justify-between">
                 <p className="text-xs mb-1">
                   Supplier Name:{' '}
                   <span className="text-gray-700">{selectedPurchase.sellerName}</span>
+                </p>
+                <p className="text-xs mb-1">
+                  Seller ID:{' '}
+                  <span className="text-gray-700">{selectedPurchase.sellerId}</span>
+                </p>
+                <p className="text-xs mb-1">
+                  Seller GST:{' '}
+                  <span className="text-gray-700">{selectedPurchase.sellerGst || 'N/A'}</span>
                 </p>
                 <p className="text-xs mb-1">
                   Invoice Date:{' '}
@@ -551,13 +686,57 @@ const PurchaseList = () => {
                     {new Date(selectedPurchase.billingDate || selectedPurchase.invoiceDate).toLocaleDateString()}
                   </span>
                 </p>
+                <p className="text-xs mb-1">
+                  Purchase ID:{' '}
+                  <span onClick={()=> navigate(`/purchases/${selectedPurchase._id}`)} className="text-gray-700">{selectedPurchase.purchaseId}</span>
+                </p>
+                <p className="text-xs mb-1">
+                  Seller Address:{' '}
+                  <span className="text-gray-700">{selectedPurchase.sellerAddress || 'N/A'}</span>
+                </p>
               </div>
 
-              <div className="flex justify-between">
+              <div className="flex flex-wrap justify-between mt-2">
                 <p className="text-xs mb-1">
                   Total Purchase Amount:{' '}
                   <span className="text-gray-700">
-                    ₹{selectedPurchase.totals.totalPurchaseAmount.toFixed(2)}
+                    ₹{selectedPurchase.totals.totalPurchaseAmount?.toFixed(2)}
+                  </span>
+                </p>
+                <p className="text-xs mb-1">
+                  Grand Total Purchase Amount:{' '}
+                  <span className="text-gray-700">
+                    ₹{selectedPurchase.totals.grandTotalPurchaseAmount?.toFixed(2)}
+                  </span>
+                </p>
+                <p className="text-xs mb-1">
+                  Transportation Charges:{' '}
+                  <span className="text-gray-700">
+                    ₹{selectedPurchase.totals.transportationCharges || 0}
+                  </span>
+                </p>
+                <p className="text-xs mb-1">
+                  Unloading Charge:{' '}
+                  <span className="text-gray-700">
+                    ₹{selectedPurchase.totals.unloadingCharge || 0}
+                  </span>
+                </p>
+                <p className="text-xs mb-1">
+                  Insurance:{' '}
+                  <span className="text-gray-700">
+                    ₹{selectedPurchase.totals.insurance || 0}
+                  </span>
+                </p>
+                <p className="text-xs mb-1">
+                  Damage Price:{' '}
+                  <span className="text-gray-700">
+                    ₹{selectedPurchase.totals.damagePrice || 0}
+                  </span>
+                </p>
+                <p className="text-xs mb-1">
+                  Total Other Expenses:{' '}
+                  <span className="text-gray-700">
+                    ₹{selectedPurchase.totals.totalOtherExpenses || 0}
                   </span>
                 </p>
               </div>
@@ -581,6 +760,9 @@ const PurchaseList = () => {
                         </th>
                         <th scope="col" className="px-2 py-3">
                           Qty
+                        </th>
+                        <th scope="col" className="px-2 py-3">
+                          Unit
                         </th>
                         <th scope="col" className="px-2 py-3">
                           Bill Price
@@ -617,13 +799,16 @@ const PurchaseList = () => {
                             {item.quantity}
                           </td>
                           <td className="px-2 py-4 text-xs">
-                            ₹{item.billPartPrice.toFixed(2)}
+                            {item.pUnit || 'N/A'}
                           </td>
                           <td className="px-2 py-4 text-xs">
-                            ₹{item.cashPartPrice.toFixed(2)}
+                            ₹{item.billPartPrice?.toFixed(2)}
                           </td>
                           <td className="px-2 py-4 text-xs">
-                            ₹{(item.quantity * (item.billPartPrice + item.cashPartPrice)).toFixed(2)}
+                            ₹{item.cashPartPrice?.toFixed(2)}
+                          </td>
+                          <td className="px-2 py-4 text-xs">
+                            ₹{(item.quantity * (item.billPartPrice + item.cashPartPrice))?.toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -634,25 +819,91 @@ const PurchaseList = () => {
                     <p className="text-xs mb-1">
                       Bill Part Total:{' '}
                       <span className="text-gray-600">
-                        ₹{selectedPurchase.totals.billPartTotal.toFixed(2)}
+                        ₹{selectedPurchase.totals.billPartTotal?.toFixed(2)}
                       </span>
                     </p>
                     <p className="text-xs mb-1">
                       Cash Part Total:{' '}
                       <span className="text-gray-600">
-                        ₹{selectedPurchase.totals.cashPartTotal.toFixed(2)}
+                        ₹{selectedPurchase.totals.cashPartTotal?.toFixed(2)}
                       </span>
                     </p>
                     <p className="text-xs mb-1">
-                      Transportation Charges:{' '}
+                      Amount Without GST (Items):{' '}
                       <span className="text-gray-600">
-                        ₹{selectedPurchase.totals.transportationCharges.toFixed(2)}
+                        ₹{selectedPurchase.totals.amountWithoutGSTItems?.toFixed(2)}
                       </span>
                     </p>
-                    <p className="text-sm font-bold mb-1">
-                      Total Purchase Amount:{' '}
+                    <p className="text-xs mb-1">
+                      GST Amount (Items):{' '}
                       <span className="text-gray-600">
-                        ₹{selectedPurchase.totals.totalPurchaseAmount.toFixed(2)}
+                        ₹{selectedPurchase.totals.gstAmountItems?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      CGST (Items):{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.cgstItems?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      SGST (Items):{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.sgstItems?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      Amount Without GST (Transport):{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.amountWithoutGSTTransport?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      GST Amount (Transport):{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.gstAmountTransport?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      CGST (Transport):{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.cgstTransport?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      SGST (Transport):{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.sgstTransport?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      Unloading Charge:{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.unloadingCharge?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      Insurance:{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.insurance?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      Damage Price:{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.damagePrice?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      Total Other Expenses:{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.totalOtherExpenses?.toFixed(2)}
+                      </span>
+                    </p>
+                    <p className="text-xs mb-1">
+                      Grand Total Purchase Amount:{' '}
+                      <span className="text-gray-600">
+                        ₹{selectedPurchase.totals.grandTotalPurchaseAmount?.toFixed(2)}
                       </span>
                     </p>
                   </div>
