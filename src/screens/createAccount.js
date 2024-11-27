@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api';
+import { useSelector } from 'react-redux';
 
 export default function PaymentAccountForm() {
   const navigate = useNavigate();
@@ -10,6 +11,10 @@ export default function PaymentAccountForm() {
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
   const [showErrorMessage, setShowErrorMessage] = useState('');
   const [step, setStep] = useState(1);
+
+
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
 
 
   function changeRef(e, nextRef) {
@@ -35,6 +40,7 @@ export default function PaymentAccountForm() {
         const response = await api.post('/api/accounts/create', {
           accountName,
           balance: parseFloat(balance) || 0,
+          userId: userInfo?._id
         });
 
         if (response.status === 201) {

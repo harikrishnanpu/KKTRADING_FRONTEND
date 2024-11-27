@@ -126,6 +126,11 @@ export default function HomeScreen() {
             <ActionButton href="/daily-transactions" title="Daily Transactions" />
             </CardSection>
 
+            <CardSection title="Site Reports">
+            <ActionButton href="/all-sites" title="All Sites Report" />
+            <ActionButton href="/report-site" title="Report Site" />
+            </CardSection>
+
             <CardSection title="Accounts">
             <ActionButton href="/create-account" title="Create Account" />
             <ActionButton href="/payment-accounts" title="Accounts" />

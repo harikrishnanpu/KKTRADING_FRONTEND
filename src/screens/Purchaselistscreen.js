@@ -654,8 +654,8 @@ const PurchaseList = () => {
 
       {/* Modal for Viewing Purchase Details */}
       {selectedPurchase && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 overflow-auto">
-          <div className="bg-white rounded-lg p-5 w-full max-w-3xl relative">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center z-50 overflow-y-auto">
+          <div className="bg-white top-1/2  rounded-lg p-6  max-w-4xl relative">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={closeModal}

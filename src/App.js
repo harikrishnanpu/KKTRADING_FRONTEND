@@ -59,6 +59,9 @@ import PaymentAccountsList from './screens/AccountsListScreen';
 import EditTransportPaymentPage from './screens/EditTransportpaymentsPage';
 import VerifyBill from './screens/verifyBills';
 import PurchaseInfo from './screens/purchaseInfo';
+import SiteReportPage from './screens/siteReportingScreen';
+import SiteReportListPage from './screens/siteReportListScreen';
+import SiteReportEditPage from './screens/editSiteReportPage';
 
 
 function App() {
@@ -165,6 +168,9 @@ useEffect(() => {
             <Route path="/purchases" element={<PurchaseInfo />}></Route>
             <Route path="/purchases/:id" element={<PurchaseInfo />}></Route>
             <Route path="/verify" element={<VerifyBill />}></Route>
+            <Route path="/report-site" element={<SiteReportPage />}></Route>
+            <Route path="/report/edit/:id" element={<SiteReportEditPage />}></Route>
+            <Route path="/all-sites" element={<SiteReportListPage />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}

@@ -1684,15 +1684,22 @@ useEffect(() => {
       {showOutOfStockModal && outOfStockProduct && (
         <OutOfStockModal
           product={outOfStockProduct}
-          onUpdate={(newQ) => {
-            handleEditProduct(
-              products.findIndex((p) => p.item_id === newQ.item_id),
-              'quantity',
-              newQ.countInStock
-            );
-            setShowOutOfStockModal(false);
-            setOutOfStockProduct(null);
-          }}
+          onUpdate={async (newQ,product)=> {
+              if(newQ){
+                const { data } = await api.get(`/api/products/itemId/${product.item_id}`);
+                if(newQ && data.countInStock){
+                  setSelectedProduct(data);
+                  setQuantity(1);
+                  setSellingPrice(data.price);
+                  setFetchQuantity(data.countInStock);
+                  setItemId('');
+                  setSuggestions([]);
+                }else{
+                  alert("Error Occured In Updating the Stock")
+                }
+              }
+            }
+          }
           onClose={() => {
             setOutOfStockProduct(null);
             setShowOutOfStockModal(false);

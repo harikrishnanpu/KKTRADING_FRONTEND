@@ -174,6 +174,7 @@ export const createReview =
         headers: { Authorization: `Bearer ${userInfo.token}` },
       });
       dispatch({ type: 'PURCHASE_SUCCESS', payload: data });
+      return data;
     } catch (error) {
       dispatch({
         type: 'PURCHASE_FAIL',

@@ -119,7 +119,8 @@ const PaymentAccountsList = () => {
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this account?')) {
       try {
-        await api.delete(`/api/payment-accounts/${id}`); // Ensure DELETE endpoint is implemented
+        await api.delete(`/api/accounts/acc/${id}/delete`); // Ensure DELETE endpoint is implemented
+        alert("successfully deleted")
         setAccounts(accounts.filter((account) => account._id !== id));
       } catch (error) {
         setError('Error occurred while deleting the account.');

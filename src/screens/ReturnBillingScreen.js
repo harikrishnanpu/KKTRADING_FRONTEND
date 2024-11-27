@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api';
+import BillingSuccess from '../components/billingsuccess';
+import { useSelector } from 'react-redux';
 
 export default function ReturnBillingScreen() {
   const navigate = useNavigate();
@@ -24,6 +26,12 @@ export default function ReturnBillingScreen() {
   const [totalTax, setTotalTax] = useState(0);
   const [netReturnAmount, setNetReturnAmount] = useState(0);
   const [isGstEnabled, setIsGstEnabled] = useState(true); // GST Toggle
+  const [success,setSuccess] = useState(false);
+  const [returnInvoice,setReturnInvoice] = useState('');
+
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
+
 
   // Refs for Input Navigation
   const billingNoRef = useRef();
@@ -199,20 +207,22 @@ export default function ReturnBillingScreen() {
     };
 
     try {
-      await api.post('/api/returns/create', returnData);
+     const getData =  await api.post('/api/returns/create', returnData);
 
-      // Reset Form After Submission
-      setReturnNo('');
-      setSelectedBillingNo('');
-      setReturnDate(new Date().toISOString().substring(0, 10));
-      setCustomerName('');
-      setCustomerAddress('');
-      setDiscount(0);
-      setPerItemDiscount(0);
-      setProducts([]);
-      setStep(0);
-      setIsGstEnabled(true);
-      alert('Return data submitted successfully!');
+     setReturnInvoice(getData.data);
+     // Reset Form After Submission
+     setReturnNo('');
+     setSelectedBillingNo('');
+     setReturnDate(new Date().toISOString().substring(0, 10));
+     setCustomerName('');
+     setCustomerAddress('');
+     setDiscount(0);
+     setPerItemDiscount(0);
+     setProducts([]);
+     setStep(0);
+     setIsGstEnabled(true);
+     alert('Return data submitted successfully!');
+     setSuccess(true);
     } catch (error) {
       console.error('Error submitting return data:', error);
       alert('There was an error submitting the return data. Please try again.');
@@ -310,6 +320,8 @@ export default function ReturnBillingScreen() {
 
           {/* Error Message */}
           {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+          {success && <BillingSuccess isAdmin={userInfo.isAdmin}  estimationNo={returnInvoice} />}
 
           {/* Form Steps */}
           <div>
@@ -562,17 +574,17 @@ export default function ReturnBillingScreen() {
             </p>
             <button
               disabled={
-                (step === 0 && !selectedBillingNo) ||
+                (step === 0) ||
                 (step === 1 && (!returnNo || !returnDate)) ||
                 (step === 2 && (!customerName || !customerAddress)) ||
-                (step === 3 && products.length === 0)
+                (step === 3)
               }
               onClick={nextStep}
               className={`${
-                (step === 0 && !selectedBillingNo) ||
+                (step === 0) ||
                 (step === 1 && (!returnNo || !returnDate)) ||
                 (step === 2 && (!customerName || !customerAddress)) ||
-                (step === 3 && products.length === 0)
+                (step === 3)
                   ? 'bg-gray-300 text-xs text-gray-500 font-bold py-2 px-4 rounded-lg cursor-not-allowed'
                   : 'bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600'
               }`}

@@ -5,7 +5,6 @@ import LowStockPreview from "../components/lowStockPreview";
 import api from "./api";
 import Loading from "../components/loading";
 import DeliverySuccess from "../components/deliverySuccess";
-import { dblClick } from "../../node_modules/@testing-library/user-event/dist/click";
 import DeliveredProducts from "../components/deliveredProductscomponent";
 
 const DriverBillingPage = () => {
@@ -356,6 +355,7 @@ const DriverBillingPage = () => {
   };
 
   const handleSubmit = async (billIndex) => {
+    setIsLoading(true);
     setAssignedBills((prevBills) => {
       const updatedBills = [...prevBills];
       updatedBills[billIndex].showModal = false;
@@ -364,7 +364,6 @@ const DriverBillingPage = () => {
 
     const bill = assignedBills[billIndex];
 
-    setIsLoading(true);
     try {
       await getCurrentLocation(async (endLocation) => {
         if (endLocation) {
@@ -762,7 +761,7 @@ const DriverBillingPage = () => {
                             <p className="mt-1 text-sm text-gray-600">
                               Discount: ₹ {bill.discount}
                             </p>
-                            <p className="mt-1 text-xs font-bold text-green-600">
+                            <p className="mt-1 text-xs font-bold text-red-600">
                               Received Amount: ₹ {bill.receivedAmount}
                             </p>
                           </div>
@@ -850,7 +849,7 @@ const DriverBillingPage = () => {
                                         <i
                                           className={`fa ${
                                             dp.isDelivered
-                                              ? "fa-check text-green-500"
+                                              ? "fa-check text-red-500"
                                               : "fa-times text-red-500"
                                           }`}
                                         ></i>
@@ -912,11 +911,11 @@ const DriverBillingPage = () => {
 
                         {/* Modal for Delivery Summary and Additional Details */}
                         {bill.showModal && (
-                          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                            <div className="bg-white rounded-lg w-full max-w-lg shadow-lg p-6 relative">
+                          <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 overflow-auto">
+                            <div className="bg-white animate-slide-up top-1/4 rounded-lg w-full max-w-xl shadow-lg p-6 relative">
                               {/* Close Button */}
                               <button
-                                className="absolute top-4 right-4 text-gray-600 hover:text-gray-600"
+                                className="absolute font-bold top-4 right-4 text-gray-600 hover:text-gray-600"
                                 onClick={() =>
                                   setAssignedBills((prevBills) => {
                                     const updatedBills = [...prevBills];
@@ -966,8 +965,8 @@ const DriverBillingPage = () => {
                                   </div>
 
                                   <div className="mt-4">
-                                    <h6 className="font-bold text-gray-700">
-                                      Delivered Products:
+                                    <h6 className="font-bold text-sm text-gray-700">
+                                      Delivered Products: {bill.deliveredProducts?.length}
                                     </h6>
                                     <ul className="list-disc list-inside text-xs text-gray-700 mt-2">
                                       {bill.deliveredProducts.map((dp) => {
@@ -977,9 +976,12 @@ const DriverBillingPage = () => {
                                             : dp.name;
                                         if (dp.deliveredQuantity > 0) {
                                           return (
-                                            <li key={dp.item_id}>
-                                              {productName}: Delivered Quantity -{" "}
-                                              {dp.deliveredQuantity}
+                                            <li className="bg-gray-100 p-2 space-y-1 rounded-lg" key={dp.item_id}>
+                                              <div className="flex justify-between">
+                                              <p className="font-bold">{dp.item_id}</p>
+                                              <p className="font-bold">{productName}</p>
+                                              </div>
+                                              <p className="font-bold">Delivered Quantity: {dp.deliveredQuantity}</p>
                                             </li>
                                           );
                                         }
@@ -1009,7 +1011,7 @@ const DriverBillingPage = () => {
                                   <div className="flex flex-col gap-4">
                                     {/* Starting KM */}
                                     <div>
-                                      <label className="block text-xs font-bold text-gray-400">
+                                      <label className="block text-xs text-gray-400">
                                         Starting KM
                                       </label>
                                       <input
@@ -1024,12 +1026,12 @@ const DriverBillingPage = () => {
                                             return updatedBills;
                                           })
                                         }
-                                        className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+                                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                       />
                                     </div>
                                     {/* Ending KM */}
                                     <div>
-                                      <label className="block text-xs font-bold text-gray-400">
+                                      <label className="block text-xs text-gray-400">
                                         Ending KM
                                       </label>
                                       <input
@@ -1046,7 +1048,7 @@ const DriverBillingPage = () => {
                                             return updatedBills;
                                           })
                                         }
-                                        className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+                                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                       />
                                     </div>
                                     {/* Distance Travelled */}
@@ -1058,7 +1060,7 @@ const DriverBillingPage = () => {
                                         type="number"
                                         value={bill.kmTravelled}
                                         readOnly
-                                        className="w-full border-gray-300 px-3 py-2 mt-1 rounded-md bg-gray-100"
+                                        className="w-full border bg-gray-100 border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                       />
                                     </div>
                                     {/* Fuel Charge */}
@@ -1076,7 +1078,7 @@ const DriverBillingPage = () => {
                                             return updatedBills;
                                           })
                                         }
-                                        className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+                                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                       />
                                     </div>
                                     {/* Other Expenses */}
@@ -1098,7 +1100,7 @@ const DriverBillingPage = () => {
                                               )
                                             }
                                             placeholder="Amount"
-                                            className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                                            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                           />
                                           <input
                                             type="text"
@@ -1112,7 +1114,7 @@ const DriverBillingPage = () => {
                                               )
                                             }
                                             placeholder="Remark"
-                                            className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                                            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                           />
                                         </div>
                                       ))}
@@ -1126,9 +1128,9 @@ const DriverBillingPage = () => {
                                   </div>
 
                                   {/* Submit and Back Buttons */}
-                                  <div className="flex justify-between mt-6 gap-4">
+                                  <div className="flex justify-right mt-6 gap-4">
                                     <button
-                                      className="bg-gray-400 hover:bg-gray-500 text-white font-bold text-xs px-4 py-2 rounded-lg w-full"
+                                      className="bg-gray-400 hover:bg-gray-500 text-white font-bold text-xs px-4 py-2 rounded-lg w-1/2"
                                       onClick={() =>
                                         setAssignedBills((prevBills) => {
                                           const updatedBills = [...prevBills];
@@ -1140,7 +1142,7 @@ const DriverBillingPage = () => {
                                       Back
                                     </button>
                                     <button
-                                      className="bg-green-500 hover:bg-green-600 text-white font-bold text-xs px-4 py-2 rounded-lg w-full"
+                                      className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2 rounded-lg w-full"
                                       onClick={() => handleSubmit(billIndex)}
                                     >
                                       Submit
@@ -1161,7 +1163,7 @@ const DriverBillingPage = () => {
                           <p
                             className={`${
                               bill.newPaymentStatus === "Paid"
-                                ? "bg-green-200"
+                                ? "bg-red-200"
                                 : bill.newPaymentStatus === "Partial"
                                 ? "bg-yellow-200"
                                 : "bg-red-200"
@@ -1170,7 +1172,7 @@ const DriverBillingPage = () => {
                             <span
                               className={`${
                                 bill.newPaymentStatus === "Paid"
-                                  ? "text-green-500"
+                                  ? "text-red-500"
                                   : bill.newPaymentStatus === "Partial"
                                   ? "text-yellow-500"
                                   : "text-red-800"
@@ -1260,7 +1262,7 @@ const DriverBillingPage = () => {
                   Successfully updated the billing information.
                 </p>
                 <button
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold text-xs px-4 py-2 rounded-lg"
+                  className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2 rounded-lg"
                   onClick={() => setShowSuccessModal(false)}
                 >
                   <i className="fa fa-check" />
@@ -1373,7 +1375,7 @@ const DriverBillingPage = () => {
                 kmTravelled: prev.endKm - +e.target.value,
               }))
             }
-            className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
           />
         </div>
         {/* Ending KM */}
@@ -1389,7 +1391,7 @@ const DriverBillingPage = () => {
                 kmTravelled: +e.target.value - prev.startingKm,
               }))
             }
-            className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
           />
         </div>
         {/* Distance Travelled */}
@@ -1416,7 +1418,7 @@ const DriverBillingPage = () => {
                 fuelCharge: +e.target.value,
               }))
             }
-            className="w-full border-gray-300 focus:outline-none focus:ring-red-300 focus:border-red-300 px-3 py-2 mt-1 rounded-md"
+            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
           />
         </div>
         {/* Other Expenses */}
@@ -1492,7 +1494,7 @@ const DriverBillingPage = () => {
           Close
         </button>
         <button
-          className="bg-green-500 hover:bg-green-600 text-white font-bold text-xs px-4 py-2 rounded-lg"
+          className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2 rounded-lg"
           onClick={handleUpdateDelivery}
         >
           Save

@@ -601,8 +601,8 @@ const BillingList = () => {
 
       {/* Modal for Viewing Billing Details */}
       {selectedBilling && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 overflow-auto">
-          <div className="bg-white rounded-lg p-5 w-full max-w-md relative">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center z-50 overflow-auto">
+          <div className="bg-white overflow-y-auto top-1/2 rounded-lg p-5 w-full max-w-2xl relative">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={closeModal}

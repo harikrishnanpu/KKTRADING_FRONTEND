@@ -30,16 +30,26 @@ const BillingSuccess = ({estimationNo, isAdmin}) => {
           <i className="fa fa-check checkmark"></i>
         </div>
 
-       {isAdmin && <h1 className='text-sm font-bold mb-2'>Estimation No: {estimationNo || 'error'}</h1> }
-       {!isAdmin && <h1 className='text-sm font-bold mb-2'>Bill No: {estimationNo || 'error'}</h1> }
+       {!isAdmin && <h1 className='text-sm font-bold mb-2'>Estimation No: {estimationNo || 'error'}</h1> }
+       {isAdmin && <h1 className='text-sm font-bold mb-2'>Bill No: {estimationNo || 'error'}</h1> }
         
         {/* Success Message */}
-        <h2 className="text-sm font-bold text-red-800 mb-4">
+        {!isAdmin && <div style={{textAlign:'center'}}>  <h2 className="text-sm font-bold text-red-800 mb-4">
           Successfully Submitted Estimate
         </h2>
         <p className="text-gray-600 italic text-gray-300 animate-pulse mb-6 text-xs text-center">
           Your Estimation Bill Is Successfully Submitted To The Admin Panel for Review
+        </p> </div>}
+
+
+        {isAdmin && <div style={{textAlign:'center'}}> 
+          <h2 className="text-sm font-bold text-red-800 mb-4">
+          Successfully Submitted Bill
+        </h2>
+        <p className="text-gray-600 italic text-gray-300 animate-pulse mb-6 text-xs text-center">
+          Your Bill Is Successfully Submitted 
         </p>
+          </div>}
         
         {/* Optional Button */}
         <button onClick={()=> navigate('/')} className="mt-4 px-6 text-xs font-bold py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-300">

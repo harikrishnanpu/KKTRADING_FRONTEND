@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { createPurchase } from "../actions/productActions";
 import { useNavigate } from "react-router-dom";
 import api from "./api";
 import ErrorModal from "../components/ErrorModal";
+import BillingSuccess from "../components/billingsuccess";
 
 export default function PurchasePage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -16,6 +17,11 @@ export default function PurchasePage() {
   const [sellerSuggestions, setSellerSuggestions] = useState([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const [lastBillId, setLastBillId] = useState("");
+  const [success,setSuccess] = useState(false);
+  const [returnInvoice,setReturnInvoice] = useState('');
+
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
 
   // Purchase Information
   const [purchaseId, setPurchaseId] = useState("");
@@ -87,6 +93,16 @@ export default function PurchasePage() {
   const itemCashPriceRef = useRef();
   const itemUnitRef = useRef();
   const itemQuantityRef = useRef();
+  const itemSunitRef = useRef();
+  const itemlengthRef = useRef();
+  const itemBreadthRef = useRef();
+  const itemSizeRef = useRef();
+  const itemPsRatioRef = useRef();
+
+  const unloadingRef = useRef();
+  const insuranceRef = useRef();
+  const damagePriceRef = useRef();
+
   const logisticCompanyRef = useRef();
   const logisticAmountRef = useRef();
   const localCompanyRef = useRef();
@@ -133,7 +149,7 @@ export default function PurchasePage() {
     } else if (currentStep === 3) {
       itemIdRef.current?.focus();
     } else if (currentStep === 4) {
-      logisticCompanyRef.current?.focus();
+      unloadingRef.current?.focus();
     }
   }, [currentStep]);
 
@@ -219,8 +235,7 @@ export default function PurchasePage() {
       sUnit === "" ||
       psRatio === "" ||
       length === "" ||
-      breadth === "" ||
-      size === ""
+      breadth === "" 
     ) {
       setError("Please fill in all required fields before adding an item.");
       setShowErrorModal(true);
@@ -233,7 +248,7 @@ export default function PurchasePage() {
     const parsedCashPrice = parseFloat(itemCashPrice);
     const productLength = parseFloat(length);
     const productBreadth = parseFloat(breadth);
-    const productSize = parseFloat(size);
+    const productSize = size;
     const productPsRatio = parseFloat(psRatio);
 
     // Validate numerical inputs
@@ -248,8 +263,6 @@ export default function PurchasePage() {
       productLength <= 0 ||
       isNaN(productBreadth) ||
       productBreadth <= 0 ||
-      isNaN(productSize) ||
-      productSize <= 0 ||
       isNaN(productPsRatio) ||
       productPsRatio <= 0
     ) {
@@ -364,6 +377,7 @@ export default function PurchasePage() {
     if (newCategory && !categories.includes(newCategory)) {
       setCategories([...categories, newCategory]);
       setMessage(`Category "${newCategory}" added successfully!`);
+      setItemCategory(newCategory);
     }
   };
 
@@ -581,7 +595,8 @@ export default function PurchasePage() {
 
     try {
       setLoading(true);
-      await dispatch(createPurchase(purchaseData));
+      const returnData = await dispatch(createPurchase(purchaseData));
+      setReturnInvoice(returnData);
       alert("Purchase submitted successfully!");
       // Reset form fields
       setCurrentStep(1); 
@@ -603,7 +618,7 @@ export default function PurchasePage() {
       setUnloadCharge("");
       setInsurance("");
       setDamagePrice("");
-      navigate("/")
+      setSuccess(true);
     } catch (error) {
       setError("Error submitting purchase. Please try again.");
       setShowErrorModal(true);
@@ -652,6 +667,8 @@ export default function PurchasePage() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto mt-8 p-6 bg-white shadow-md rounded-md">
+
+    {success && <BillingSuccess isAdmin={userInfo.isAdmin}  estimationNo={returnInvoice} />}
         {/* Step Indicator */}
         <div className="flex justify-between mb-5">
           <div className="text-left">
@@ -690,41 +707,41 @@ export default function PurchasePage() {
 
         {/* Total Amount Display */}
         {(currentStep === 3 || currentStep === 4) && (
-          <div className="bg-gray-100 p-4 rounded-lg shadow-inner mb-4">
+          <div className="bg-gray-100 p-4 space-y-2 rounded-lg shadow-inner mb-4">
             <div className="flex justify-between">
               <p className="text-xs font-bold">Bill Part Total:</p>
-              <p className="text-xs">₹{billPartTotal.toFixed(2)}</p>
+              <p className="text-xs">{billPartTotal.toFixed(2)}</p>
             </div>
             <div className="flex justify-between">
               <p className="text-xs">Amount without GST:</p>
-              <p className="text-xs">₹{amountWithoutGSTItems.toFixed(2)}</p>
+              <p className="text-xs">{amountWithoutGSTItems.toFixed(2)}</p>
             </div>
             <div className="flex justify-between">
               <p className="text-xs">CGST (9%):</p>
-              <p className="text-xs">₹{cgstItems.toFixed(2)}</p>
+              <p className="text-xs">{cgstItems.toFixed(2)}</p>
             </div>
             <div className="flex justify-between">
               <p className="text-xs">SGST (9%):</p>
-              <p className="text-xs">₹{sgstItems.toFixed(2)}</p>
+              <p className="text-xs">{sgstItems.toFixed(2)}</p>
             </div>
             <div className="flex justify-between mt-2">
-              <p className="text-sm font-bold">Cash Part Total:</p>
-              <p className="text-xs">₹{cashPartTotal.toFixed(2)}</p>
+              <p className="text-xs font-bold">Cash Part Total:</p>
+              <p className="text-xs">{cashPartTotal.toFixed(2)}</p>
             </div>
             <div className="flex justify-between mt-2">
-              <p className="text-sm font-bold">Total Purchase Amount:</p>
+              <p className="text-xs font-bold">Total Purchase Amount:</p>
               <p className="text-xs font-bold">
-                ₹{totalPurchaseAmount.toFixed(2)}
+               {totalPurchaseAmount.toFixed(2)}
               </p>
             </div>
             <div className="flex justify-between mt-2">
-              <p className="text-sm font-bold">Total Other Expenses:</p>
-              <p className="text-xs">₹{totalOtherExpenses.toFixed(2)}</p>
+              <p className="text-xs font-bold">Total Other Expenses:</p>
+              <p className="text-xs">{totalOtherExpenses.toFixed(2)}</p>
             </div>
             <div className="flex justify-between mt-2">
               <p className="text-sm font-bold">Grand Total:</p>
-              <p className="text-xs font-bold">
-                ₹{grandTotalPurchaseAmount.toFixed(2)}
+              <p className="text-sm font-bold">
+                {grandTotalPurchaseAmount.toFixed(2)}
               </p>
             </div>
           </div>
@@ -1188,7 +1205,11 @@ export default function PurchasePage() {
                         required
                       />
                     </div>
-                    <div className="flex flex-col flex-1">
+                  </div>
+
+                  {/* Item Category and Add Category */}
+                  <div className="flex grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="flex flex-col flex-1">
                       <label className="text-xs text-gray-700 mb-1">
                         Item Brand
                       </label>
@@ -1203,10 +1224,6 @@ export default function PurchasePage() {
                         required
                       />
                     </div>
-                  </div>
-
-                  {/* Item Category and Add Category */}
-                  <div className="flex flex-col md:flex-row gap-2">
                     <div className="flex flex-col flex-1">
                       <label className="text-xs text-gray-700 mb-1">
                         Item Category
@@ -1215,7 +1232,7 @@ export default function PurchasePage() {
                         value={itemCategory}
                         ref={itemCategoryRef}
                         onChange={(e) => setItemCategory(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemBillPriceRef)}
+                        onKeyDown={(e) => changeRef(e, itemSunitRef)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                         required
                       >
@@ -1240,8 +1257,134 @@ export default function PurchasePage() {
                     </div>
                   </div>
 
+                  {/* Item Unit, Quantity, and Dimensions */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Dimensions and Ratios */}
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-700 mb-1">
+                        S Unit
+                      </label>
+                      <input
+                        type="text"
+                        ref={itemSunitRef}
+                        placeholder="Enter S Unit"
+                        value={sUnit}
+                        onKeyDown={(e) => changeRef(e, itemPsRatioRef)}
+                        onChange={(e) => setSUnit(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-700 mb-1">
+                        P/S Ratio
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Enter P/S Ratio"
+                        value={psRatio}
+                        ref={itemPsRatioRef}
+                        onKeyDown={(e) => changeRef(e, itemlengthRef)}
+                        onChange={(e) => setPsRatio(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Length
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Enter Length"
+                        value={length}
+                        ref={itemlengthRef}
+                        onKeyDown={(e) => changeRef(e, itemBreadthRef)}
+                        onChange={(e) => setLength(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Breadth
+                      </label>
+                      <input
+                        type="number"
+                        ref={itemBreadthRef}
+                        placeholder="Enter Breadth"
+                        value={breadth}
+                        onKeyDown={(e) => changeRef(e, itemSizeRef)}
+                        onChange={(e) => setBreadth(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+
+                  <div className="flex flex-col">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Size
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Size"
+                        value={size}
+                        ref={itemSizeRef}
+                        onKeyDown={(e) => changeRef(e, itemUnitRef)}
+                        onChange={(e) => setSize(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-700 mb-1">P Unit</label>
+                      <select
+                        value={itemUnit}
+                        onChange={(e) => setItemUnit(e.target.value)}
+                        ref={itemUnitRef}
+                        onKeyDown={(e) => changeRef(e, itemQuantityRef)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        required
+                      >
+                        <option value="" disabled>
+                          Select Unit
+                        </option>
+                        <option value="SQFT">SQFT</option>
+                        <option value="BOX">BOX</option>
+                        <option value="NOS">NOS</option>
+                        <option value="GSQFT">GSQFT</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-700 mb-1">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Enter Quantity"
+                        value={itemQuantity}
+                        ref={itemQuantityRef}
+                        onChange={(e) => setItemQuantity(e.target.value)}
+                        onKeyDown={(e) => changeRef(e, itemBillPriceRef)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        min="1"
+                        step="0.01"
+                        required
+                      />
+                    </div>
+
+                  </div>
+
+
                   {/* Item Prices */}
-                  <div className="flex flex-col md:flex-row gap-2">
+                  <div className="flex grid-cols-3 md:grid-cols-4 gap-2">
                     <div className="flex flex-col flex-1">
                       <label className="text-xs text-gray-700 mb-1">
                         Bill Part Price (₹)
@@ -1269,136 +1412,18 @@ export default function PurchasePage() {
                         value={itemCashPrice}
                         ref={itemCashPriceRef}
                         onChange={(e) => setItemCashPrice(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemUnitRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Item Unit, Quantity, and Dimensions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">Unit</label>
-                      <select
-                        value={itemUnit}
-                        onChange={(e) => setItemUnit(e.target.value)}
-                        ref={itemUnitRef}
-                        onKeyDown={(e) => changeRef(e, itemQuantityRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        required
-                      >
-                        <option value="" disabled>
-                          Select Unit
-                        </option>
-                        <option value="SQFT">SQFT</option>
-                        <option value="BOX">BOX</option>
-                        <option value="NOS">NOS</option>
-                        <option value="GSQFT">GSQFT</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Quantity"
-                        value={itemQuantity}
-                        ref={itemQuantityRef}
-                        onChange={(e) => setItemQuantity(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             addItem();
                           }
                         }}
                         className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="1"
+                        min="0"
                         step="0.01"
                         required
                       />
                     </div>
-
-                    {/* Dimensions and Ratios */}
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        S Unit
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter S Unit"
-                        value={sUnit}
-                        onChange={(e) => setSUnit(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        P/S Ratio
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter P/S Ratio"
-                        value={psRatio}
-                        onChange={(e) => setPsRatio(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Length (m)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Length"
-                        value={length}
-                        onChange={(e) => setLength(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Breadth (m)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Breadth"
-                        value={breadth}
-                        onChange={(e) => setBreadth(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Size (m)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Size"
-                        value={size}
-                        onChange={(e) => setSize(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-center">
+                    <div className="flex justify-center">
                   <button
                     type="button"
                     onClick={addItem}
@@ -1406,6 +1431,10 @@ export default function PurchasePage() {
                   >
                     Add Item
                   </button>
+                </div>
+                  </div>
+
+
                 </div>
               </div>
             )}
@@ -1426,6 +1455,8 @@ export default function PurchasePage() {
                       type="number"
                       placeholder="Enter Unloading Charge"
                       value={unloadingCharge}
+                      ref={unloadingRef}
+                      onKeyDown={(e) => changeRef(e, insuranceRef)}
                       onChange={(e) => setUnloadCharge(e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       min="0"
@@ -1440,6 +1471,8 @@ export default function PurchasePage() {
                     <input
                       type="number"
                       placeholder="Enter Insurance Amount"
+                      ref={insuranceRef}
+                      onKeyDown={(e) => changeRef(e, damagePriceRef)}
                       value={insurance}
                       onChange={(e) => setInsurance(e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
@@ -1454,6 +1487,8 @@ export default function PurchasePage() {
                     </label>
                     <input
                       type="number"
+                      ref={damagePriceRef}
+                      onKeyDown={(e) => changeRef(e, logisticCompanyRef)}
                       placeholder="Enter Damage Price"
                       value={damagePrice}
                       onChange={(e) => setDamagePrice(e.target.value)}
@@ -1683,52 +1718,52 @@ export default function PurchasePage() {
 
             {/* Overall Details */}
             {currentStep === 4 && (
-              <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-inner">
-                <h3 className="text-sm font-bold text-gray-900 mb-2">
+              <div className="mt-6 bg-gray-100 space-y-2 p-4 rounded-lg shadow-inner">
+                <h3 className="text-sm font-bold text-red-700 mb-2">
                   Overall Details
                 </h3>
                 <div className="flex justify-between">
                   <p className="text-xs font-bold">Bill Part Total:</p>
-                  <p className="text-xs">₹{billPartTotal.toFixed(2)}</p>
+                  <p className="text-xs">{billPartTotal.toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-xs">Subtotal (without GST):</p>
                   <p className="text-xs">
-                    ₹{amountWithoutGSTItems.toFixed(2)}
+                    {amountWithoutGSTItems.toFixed(2)}
                   </p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-xs">CGST (9%):</p>
-                  <p className="text-xs">₹{cgstItems.toFixed(2)}</p>
+                  <p className="text-xs">{cgstItems.toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-xs">SGST (9%):</p>
-                  <p className="text-xs">₹{sgstItems.toFixed(2)}</p>
+                  <p className="text-xs">{sgstItems.toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between mt-2">
-                  <p className="text-sm font-bold">Cash Part Total:</p>
-                  <p className="text-xs">₹{cashPartTotal.toFixed(2)}</p>
+                  <p className="text-xs font-bold">Cash Part Total:</p>
+                  <p className="text-xs">{cashPartTotal.toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between mt-2">
-                  <p className="text-sm font-bold">Transportation Charges:</p>
+                  <p className="text-xs font-bold">Transportation Charges:</p>
                   <p className="text-xs">
-                    ₹{totalTransportationCharges.toFixed(2)}
+                    {totalTransportationCharges.toFixed(2)}
                   </p>
                 </div>
                 <div className="flex justify-between mt-2">
-                  <p className="text-sm font-bold">Other Expenses Total:</p>
-                  <p className="text-xs">₹{totalOtherExpenses.toFixed(2)}</p>
+                  <p className="text-xs font-bold">Other Expenses Total:</p>
+                  <p className="text-xs">{totalOtherExpenses.toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between mt-2">
-                  <p className="text-sm font-bold">Purchase Amount:</p>
+                  <p className="text-xs font-bold">Purchase Amount:</p>
                   <p className="text-xs font-bold">
-                    ₹{totalPurchaseAmount.toFixed(2)}
+                    {totalPurchaseAmount.toFixed(2)}
                   </p>
                 </div>
                 <div className="flex justify-between mt-2">
                   <p className="text-sm font-bold">Grand Total:</p>
-                  <p className="text-xs font-bold">
-                    ₹{grandTotalPurchaseAmount.toFixed(2)}
+                  <p className="text-sm font-bold">
+                    {grandTotalPurchaseAmount.toFixed(2)}
                   </p>
                 </div>
               </div>
