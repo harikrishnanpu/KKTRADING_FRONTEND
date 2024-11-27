@@ -139,7 +139,7 @@ export default function HomeScreen() {
            {userInfo.isAdmin && <CardSection title="Admin Panel">
               <ActionButton href={userInfo?.isAdmin ? '/support' : '/chat'} title="Inbox" />
               <ActionButton href="/dashboard" title="Dashboard" />
-              <ActionButton href="http://localhost:4000/export" title="Export All" />
+              <ActionButton href="https://kktrading-backend.vercel.app/export" title="Export All" />
             </CardSection> }
 
             <CardSection title="Edit Billings">
