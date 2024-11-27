@@ -67,7 +67,7 @@ export default function ReturnListingScreen() {
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this return entry?')) {
       try {
-        await api.delete(`/api/returns/delete/${id}`); // Ensure this endpoint exists
+        await api.delete(`/api/returns/return/delete/${id}/`); // Ensure this endpoint exists
         const updatedReturns = returns.filter((returnEntry) => returnEntry._id !== id);
         setReturns(updatedReturns);
         setFilteredReturns(updatedReturns);

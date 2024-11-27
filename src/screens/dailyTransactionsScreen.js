@@ -18,6 +18,8 @@ const DailyTransactions = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
   const [billings, setBillings] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [otherExpenses, setOtherExpenses] = useState([]);
   const [purchasePayments, setPurchasePayments] = useState([]);
   const [transportPayments, setTransportPayments] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -63,18 +65,26 @@ const DailyTransactions = () => {
         api.get('/api/accounts/allaccounts'),
       ]);
 
+      const { billingsRes: billingData, payments: paymentData, otherExpenses: expenseData } = billingRes.data;
+
+
       setTransactions(transRes.data);
-      setBillings(billingRes.data);
+      setBillings(billingRes); 
+      setPayments(paymentData);
+      setOtherExpenses(expenseData);
       setPurchasePayments(purchaseRes.data.flatMap((seller) => seller.payments || []));
       setTransportPayments(transportRes.data.flatMap((transport) => transport.payments || []));
       setCategories(catRes.data);
       setAccounts(accRes.data);
 
-      console.log(purchaseRes.data)
+
+
+      console.log(billingRes.data)
 
       calculateTotals(
         transRes.data,
-        billingRes.data,
+        paymentData,
+        expenseData,
         purchaseRes.data.flatMap((seller) => seller.payments || []),
         transportRes.data.flatMap((transport) => transport.payments || [])
       );
@@ -86,7 +96,7 @@ const DailyTransactions = () => {
     }
   };
 
-  const calculateTotals = (transactionsData, billingsData, purchasePaymentsData, transportPaymentsData) => {
+  const calculateTotals = (transactionsData, paymentData, expenseData, purchasePaymentsData, transportPaymentsData) => {
     let totalInAmount = 0;
     let totalOutAmount = 0;
   
@@ -101,15 +111,14 @@ const DailyTransactions = () => {
     });
   
     // Billings (billing received counts as "in", expenses as "out")
-    billingsData.forEach((billing) => {
-      const billingReceived = parseFloat(billing.billingAmountReceived) || 0;
-      totalInAmount += billingReceived;
-  
-      if (billing.otherExpenses) {
-        billing.otherExpenses.forEach((expense) => {
-          totalOutAmount += parseFloat(expense.amount) || 0;
-        });
-      }
+    // Payments (type "in")
+    paymentData.forEach((payment) => {
+      totalInAmount += parseFloat(payment.amount) || 0;
+    });
+
+    // Other Expenses (type "out")
+    expenseData.forEach((expense) => {
+      totalOutAmount += parseFloat(expense.amount) || 0;
     });
   
     // Purchase Payments (all "out")
@@ -251,41 +260,42 @@ const DailyTransactions = () => {
     });
   
     // Include billing payments (type "in")
-    if (activeTab === 'in' || activeTab === 'all') {
-      billings.forEach((billing) => {
-        if (billing.billingAmountReceived > 0) {
-          filtered.push({
-            _id: `billing-${billing._id}`,
-            date: billing.invoiceDate,
-            amount: billing.billingAmountReceived,
-            paymentFrom: billing.customerName,
-            category: 'Billing Payment',
-            method: billing.method || 'Cash',
-            remark: 'Payment received from billing',
-            type: 'in',
-          });
-        }
-      });
-    }
+ // Include payments (type "in")
+ if (activeTab === 'in' || activeTab === 'all') {
+  payments.forEach((payment) => {
+    filtered.push({
+      _id: `payment-${payment.billingId}-${Date.now()}`,
+      date: payment.date,
+      amount: payment.amount,
+      paymentFrom: payment.paymentFrom || 'Unknown Customer',
+      category: 'Billing Payment',
+      method: payment.method || 'Cash',
+      remark: payment.remark || 'Payment received',
+      type: 'in',
+    });
+  });
+}
+
+// Include other expenses (type "out")
+if (activeTab === 'out' || activeTab === 'all') {
+  otherExpenses.forEach((expense) => {
+    filtered.push({
+      _id: `expense-${expense.billingId}-${Date.now()}`,
+      date: expense.date,
+      amount: expense.amount,
+      paymentTo: 'Other Expense',
+      category: 'Other Expense',
+      method: expense.method || 'Cash',
+      remark: expense.remark || 'Additional expense',
+      type: 'out',
+    });
+  });
+
+}
+
   
-    // Include billing expenses (type "out")
-    if (activeTab === 'out' || activeTab === 'all') {
-      billings.forEach((billing) => {
-        if (billing.otherExpenses) {
-          billing.otherExpenses.forEach((expense) => {
-            filtered.push({
-              _id: `expense-${expense._id}`,
-              date: expense.date,
-              amount: expense.amount,
-              paymentTo: expense.paidTo || 'Expense',
-              category: expense.category || 'Other Expense',
-              method: expense.method || 'Cash',
-              remark: expense.remark || 'Expense',
-              type: 'out',
-            });
-          });
-        }
-      });
+
+  if (activeTab === 'out' || activeTab === 'all') {
   
       // Include purchase payments (type "out")
       purchasePayments.forEach((payment) => {

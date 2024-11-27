@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import QrScanner from 'react-qr-scanner';
+import { useNavigate } from 'react-router-dom';
 import './VerifyBill.css'; // For animations
 import api from './api';
 
 const VerifyBill = () => {
+  const navigate = useNavigate();
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null); // 'verified' or 'not_verified'
   const [billId, setBillId] = useState('');
@@ -28,11 +30,9 @@ const VerifyBill = () => {
         const result = response.data;
 
         if (response.status === 200 && result.verified) {
-          alert("verified")
           setVerificationStatus('verified');
           setBillId(result.billId);
         } else {
-          alert("not verified")
           setVerificationStatus('not_verified');
           setErrorMessage(result.message || 'Verification failed.');
         }
@@ -82,6 +82,18 @@ const VerifyBill = () => {
   };
 
   return (
+    <div>
+
+
+<div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
+        <div onClick={() => navigate('/')} className="text-center cursor-pointer">
+          <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
+          <p className="text-gray-400 text-xs font-bold">All Invoice Verification</p>
+        </div>
+        <i className="fa fa-recycle text-gray-500 text-2xl" />
+      </div>
+
+    
     <div className="verify-bill-container flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       <h2 className="title text-2xl font-bold text-red-600 mb-6">Verify Bill</h2>
       <div className="qr-scanner-wrapper mb-4 shadow-lg rounded overflow-hidden relative">
@@ -101,7 +113,7 @@ const VerifyBill = () => {
 />
 
         ) : (
-          <div className="flex items-center justify-center h-64 w-full bg-gray-200">
+          <div className="flex items-center justify-center w-full bg-gray-200">
             <p className="text-gray-500">Scanning Paused</p>
           </div>
         )}
@@ -123,42 +135,25 @@ const VerifyBill = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div
-            className={`modal rounded-lg p-6 w-11/12 max-w-md bg-white shadow-xl transform transition-all animate-slideUp`}
-          >
-            {verificationStatus === 'verified' ? (
-              <div className="flex flex-col items-center">
-                <i className="fa fa-check-circle text-green-500 text-6xl mb-4"></i>
-                <h3 className="text-xl font-semibold text-green-600 mb-2">Bill Verified</h3>
-                <div className="bill-details w-full text-left mb-4">
-                  <p>
-                    <strong>Bill ID:</strong> {billId ? billId : 'N/A'}
-                  </p>
-                </div>
-                <button
-                  onClick={closeModal}
-                  className="close-button mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition duration-200"
-                >
-                  Close
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center">
-                <i className="fa fa-times-circle text-red-500 text-6xl mb-4"></i>
-                <h3 className="text-xl font-semibold text-red-600 mb-2">Verification Failed</h3>
-                <p className="text-gray-700 mb-4">{errorMessage ? errorMessage : 'N/A'}</p>
-                <button
-                  onClick={closeModal}
-                  className="close-button mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-200"
-                >
-                  Close
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+         <div className="fixed inset-0 flex justify-center z-50 bg-black bg-opacity-50">
+         <div className="bg-white animate-slide-up rounded-lg shadow-xl  w-full py-40 flex flex-col items-center">
+           {/* Animated Checkmark */}
+           <div className="checkmark-container mb-6">
+             {verificationStatus == "verified" ?  <i className="fa fa-check checkmark"></i> :  <i className="fa fa-times checkmark"></i> }
+           </div>
+
+           {verificationStatus == "verified" ?  <p className='font-bold text-xs'>Verified</p> : <p className='font-bold text-xs'>Not Verified</p>  }
+        
+           
+           {/* Optional Button */}
+           <button onClick={()=> navigate('/')} className="mt-4 px-6 text-xs font-bold py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-300">
+             Continue
+           </button>
+     
+         </div>
+       </div>
       )}
+    </div>
     </div>
   );
 };

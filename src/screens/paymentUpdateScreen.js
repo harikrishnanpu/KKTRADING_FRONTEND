@@ -278,9 +278,9 @@ const EmployeePaymentExpensePage = () => {
                   value={invoiceNo}
                   onKeyDown={handleKeyDown}
                   onChange={(e) => setInvoiceNo(e.target.value)}
-                  className="w-full p-2 pr-8 focus:outline-none focus:border-red-300 focus:ring-red-300 border-gray-300 rounded-md"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-200 focus:ring-red-500 text-xs"
                 />
-                <i onClick={() => setInvoiceNo('')} className="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <i onClick={() => setInvoiceNo(' ')} className="fa fa-chevron-down absolute cursor-pointer right-3 bottom-0 transform -translate-y-1/2 text-gray-400"></i>
               </div>
             </div>
           )}
@@ -366,13 +366,13 @@ const EmployeePaymentExpensePage = () => {
     {/* Expense Summary Section */}
     <div className="mt-4 border-t border-gray-200 pt-4">
       <p className="text-xs text-gray-500 font-semibold">
-        Total Fuel Expenses: ${billingDetails.fuelCharge.toFixed(2)}
+        Total Fuel Expenses: {billingDetails.fuelCharge.toFixed(2)}
       </p>
       <p className="text-xs mt-1 text-gray-500 font-semibold">
-        Total Other Expenses: ${billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
+        Total Other Expenses: {billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
       </p>
       <p className="text-xs mt-1 text-gray-500 font-semibold">
-        Grand Total (Fuel + Other Expenses): $
+        Grand Total (Fuel + Other Expenses): {" "}
         {(
           billingDetails.fuelCharge +
           (billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0)
@@ -386,13 +386,13 @@ const EmployeePaymentExpensePage = () => {
 
       {/* Total Payments In */}
       <p className="text-xs mt-2 text-gray-500 font-semibold">
-        Total Payments In: $
+        Total Payments In: 
         {billingDetails.payments?.reduce((sum, payment) => sum + payment.amount, 0).toFixed(2)}
       </p>
 
       {/* Net Balance (Total In - Total Out) */}
       <p className="text-xs mt-1 text-gray-500 font-semibold">
-        Net Balance (In - Expenses): $
+        Net Balance (In - Expenses): 
         {(
           billingDetails.payments?.reduce((sum, payment) => sum + payment.amount, 0) -
           (billingDetails.fuelCharge +
@@ -409,6 +409,10 @@ const EmployeePaymentExpensePage = () => {
                 <div className="mt-6 pt-4">
                   <h3 className="text-md font-bold text-gray-600 mb-2">Add Payment</h3>
                   <div className="flex flex-col gap-4">
+
+      <p className="mt-1 text-xs font-medium text-gray-600">
+        Remaining Amount: <span className="font-bold text-red-500">{remainingAmount.toFixed(2)}</span>
+      </p>
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1">Payment Amount</label>
                       <input
