@@ -66,6 +66,7 @@ export default function PurchasePage() {
   const [insurance, setInsurance] = useState("");
   const [damagePrice, setDamagePrice] = useState("");
   const [transportCompanies, setTransportCompanies] = useState([]);
+  const [lastItemId, setLastItemId] = useState("");
 
   // Other States
   const [loading, setLoading] = useState(false);
@@ -125,10 +126,14 @@ export default function PurchasePage() {
       setLoading(true);
       try {
         const { data } = await api.get("/api/purchases/lastOrder/id");
+        const response = await api.get('/api/products/lastadded/id');
         const nextInvoiceNo = "KP" + parseInt(parseInt(data.slice(2), 10) + 1);
         if (data) {
           setLastBillId(data);
           setPurchaseId(nextInvoiceNo);
+        }
+        if (response.data) {
+          setLastItemId(response.data);
         }
       } catch (error) {
         console.error("Error fetching last bill:", error);
@@ -1163,7 +1168,10 @@ export default function PurchasePage() {
                 <div className="mt-4 space-y-4">
                   {/* Item ID and Search */}
                   <div className="flex flex-col">
-                    <label className="mb-1 text-xs text-gray-700">Item ID</label>
+                    <label className="mb-1 flex  text-xs text-gray-700">
+                    <p>Item ID</p>
+                    <p className="italic ml-60 text-gray-300">Last Entered Item:{" "}{lastItemId || "Not found"}</p>
+                      </label>
                     <div className="flex">
                       <input
                         type="text"
