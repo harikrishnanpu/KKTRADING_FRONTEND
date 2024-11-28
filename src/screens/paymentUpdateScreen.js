@@ -80,7 +80,7 @@ const EmployeePaymentExpensePage = () => {
       const response = await api.get(`/api/billing/${id}`);
       setBillingDetails(response.data);
       setRemainingAmount(
-        (response.data.billingAmount - response.data.discount) -
+        (response.data.grandTotal) -
         (response.data.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0)
       );
       setError("");
@@ -102,7 +102,7 @@ const EmployeePaymentExpensePage = () => {
     setIsLoading(true);
     try {
         const updatedPaymentStatus =
-        paymentAmount >= billingDetails.billingAmount
+        paymentAmount >= billingDetails.grandTotal
           ? "Paid"
           : paymentAmount > 0
           ? "Partial"
@@ -207,7 +207,7 @@ const EmployeePaymentExpensePage = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-3">
       {/* Header */}
       <div className="flex max-w-4xl mx-auto items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
         <div onClick={() => navigate('/')} className="text-center cursor-pointer">
@@ -266,8 +266,8 @@ const EmployeePaymentExpensePage = () => {
         </button>
       </div>
 
-      <div className="flex flex-col justify-center items-center p-2">
-        <div className="bg-white shadow-xl rounded-lg w-full max-w-lg p-6">
+      <div className="flex flex-col justify-center items-center">
+        <div className="bg-white shadow-xl rounded-lg w-full max-w-2xl p-4">
           {!billingDetails && (
             <div className="mb-4">
               <div className="relative w-full">
@@ -310,7 +310,7 @@ const EmployeePaymentExpensePage = () => {
   <div>
     {/* Billing Details Section */}
     <div className="mt-4 border-b pb-4 flex justify-between items-center relative">
-      <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900">
+      <h5 className="mb-2 text-2xl ml-2 font-bold tracking-tight text-gray-900">
         {billingDetails.invoiceNo}
       </h5>
 
@@ -324,7 +324,7 @@ const EmployeePaymentExpensePage = () => {
       
       {/* Payment Status Badge */}
       <p
-        className={`mt-auto mr-2 mb-auto py-2 w-40 text-center ml-auto rounded-full text-xs font-bold z-20 shadow-md transition-all duration-300 ease-in-out transform ${
+        className={`mt-auto mr-2 mb-auto py-2 w-40 text-center ml-auto rounded-full text-xs font-bold shadow-md transition-all duration-300 ease-in-out transform ${
           billingDetails.paymentStatus === "Paid"
             ? "text-green-600 bg-green-200 hover:bg-green-300 hover:scale-105"
             : billingDetails.paymentStatus === "Partial"
@@ -336,7 +336,7 @@ const EmployeePaymentExpensePage = () => {
       </p>
     </div>
 
-    <div className="flex justify-between pt-3">
+    <div className="flex-col pt-3">
       <p className="mt-1 text-xs truncate font-bold text-gray-600">
         Customer: {billingDetails.customerName}
       </p>
@@ -346,53 +346,88 @@ const EmployeePaymentExpensePage = () => {
     </div>
 
     <div className="flex justify-between">
-      <p className="mt-1 text-xs font-medium text-gray-600">
+      <p className="mt-1 text-xs text-gray-600">
        Customer Address: <span className="font-bold text-gray-500">{billingDetails.customerAddress}</span>
       </p>
-      <p className="mt-1 text-xs font-medium text-gray-600">
-        Received Amount: <span className="font-bold text-green-500">{billingDetails.billingAmountReceived}</span>
-      </p>
     </div>
 
-    <div className="flex justify-between">
-      <p className="mt-1 text-sm font-bold text-gray-600">
-        Bill Amount: <span className="font-bold text-gray-600">{billingDetails.billingAmount.toFixed(2)}</span>
-      </p>
-      <p className="mt-1 text-xs font-medium text-gray-600">
-        Remaining Amount: <span className="font-bold text-red-500">{remainingAmount.toFixed(2)}</span>
-      </p>
-    </div>
+    <div className="mt-4 bg-gray-50 p-3 mb-4 rounded-lg">
+                    <div className="flex text-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-600">
+                         Grand Total:
+                        </span>
+                        <span className="text-sm font-bold text-gray-800">
+                          {billingDetails.grandTotal}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-600">
+                          Received:
+                        </span>
+                        <span className="text-sm font-bold text-green-600">
+                          {billingDetails.billingAmountReceived.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-600">
+                          Remaining:
+                        </span>
+                        <span className="text-sm font-bold text-red-600">
+                          {remainingAmount}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
     {/* Expense Summary Section */}
-    <div className="mt-4 border-t border-gray-200 pt-4">
-      <p className="text-xs text-gray-500 font-semibold">
-        Total Fuel Expenses: {billingDetails.fuelCharge.toFixed(2)}
-      </p>
-      <p className="text-xs mt-1 text-gray-500 font-semibold">
-        Total Other Expenses: {billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
-      </p>
-      <p className="text-xs mt-1 text-gray-500 font-semibold">
-        Grand Total (Fuel + Other Expenses): {" "}
-        {(
+
+<div className="border-t border-gray-200"></div>
+    <div className="mt-4 bg-gray-50 p-3 rounded-lg">
+                    <div className="flex text-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-600">
+                        Fuel Exp: 
+                        </span>
+                        <span className="text-sm font-bold text-gray-600">
+                        {billingDetails.fuelCharge.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-600">
+                        Other Exp: 
+                        </span>
+                        <span className="text-sm font-bold text-gray-600">
+                        {billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-600">
+                        Total:
+                        </span>
+                        <span className="text-sm font-bold text-gray-600">
+                        {(
           billingDetails.fuelCharge +
           (billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0)
         ).toFixed(2)}
-      </p>
-    </div>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
     {/* Payment Summary Section */}
-    <div className="mt-4 border-t border-gray-200 pt-4">
+    <div className="mt-4 border-t space-y-2 border-gray-200 pt-4">
       <h4 className="text-md font-bold text-gray-700">Payment Summary</h4>
 
       {/* Total Payments In */}
       <p className="text-xs mt-2 text-gray-500 font-semibold">
-        Total Payments In: 
+        Total Payments In: {" "}
         {billingDetails.payments?.reduce((sum, payment) => sum + payment.amount, 0).toFixed(2)}
       </p>
 
       {/* Net Balance (Total In - Total Out) */}
       <p className="text-xs mt-1 text-gray-500 font-semibold">
-        Net Balance (In - Expenses): 
+        Net Balance (In - Expenses): {" "}
         {(
           billingDetails.payments?.reduce((sum, payment) => sum + payment.amount, 0) -
           (billingDetails.fuelCharge +
@@ -529,7 +564,7 @@ const EmployeePaymentExpensePage = () => {
       {billingDetails.payments?.map((payment, index) => (
         <li key={index} className="py-2">
           <p className="text-sm text-gray-700 font-semibold">
-            {payment.method}: ${payment.amount.toFixed(2)}
+            {payment.method}: {payment.amount.toFixed(2)}
           </p>
           <p className="text-xs text-gray-500">
             {new Date(payment.date).toLocaleDateString()}
@@ -541,7 +576,7 @@ const EmployeePaymentExpensePage = () => {
     {/* Fuel Charge */}
     <div className="py-2 border-t border-gray-200">
       <p className="text-sm text-gray-700 font-semibold">
-        Fuel Charge: ${billingDetails.fuelCharge.toFixed(2)}
+        Fuel Charge: {billingDetails.fuelCharge.toFixed(2)}
       </p>
     </div>
 
@@ -552,7 +587,7 @@ const EmployeePaymentExpensePage = () => {
         {billingDetails.otherExpenses?.map((expense, index) => (
           <li key={index} className="py-2">
             <p className="text-sm text-gray-700 font-semibold">
-              ${expense.amount.toFixed(2)} - {expense.remark}
+              {expense.amount.toFixed(2)} - {expense.remark}
             </p>
             <p className="text-xs text-gray-500">
               {new Date(expense.date).toLocaleDateString()}
@@ -565,11 +600,11 @@ const EmployeePaymentExpensePage = () => {
     {/* Total for Fuel and Other Expenses */}
     <div className="mt-4 border-t border-gray-200 pt-4">
       <p className="text-sm text-gray-800 font-semibold">
-        Total Other Expenses: $
+        Total Other Expenses:
         {billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
       </p>
       <p className="text-sm text-gray-800 font-semibold">
-        Grand Total (Fuel + Other Expenses): $
+        Grand Total (Fuel + Other Expenses): 
         {(
           billingDetails.fuelCharge +
           (billingDetails.otherExpenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0)
@@ -578,9 +613,6 @@ const EmployeePaymentExpensePage = () => {
     </div>
   </div>
 )}
-
-
-
             </div>
           )}
 

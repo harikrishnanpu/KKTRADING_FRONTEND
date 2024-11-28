@@ -494,7 +494,8 @@ const DriverPage = () => {
 <div>
   <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Discount: <span className="font-bold text-gray-500">Rs. {bill.discount} </span></p>
   <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Bill Amount: <span className="font-bold text-gray-500">Rs. {bill.billingAmount} </span></p>
-  <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Total Net Amount: <span className="font-bold text-gray-500">Rs. {bill.billingAmount - bill.discount} </span></p>
+
+  <p className="mt-1 text-sm font-bold text-gray-600 dark:text-gray-400">Grand Total Amount: <span className="font-bold text-gray-500">Rs. {bill.grandTotal} </span></p>
   </div>
 
   <div className="flex justify-between mt-4 bg-gray-50 p-3 rounded-lg">
@@ -503,7 +504,7 @@ const DriverPage = () => {
                    Total Amount:
                   </span>
                   <span className="text-sm font-bold text-gray-800">
-                    ₹{(bill.billingAmount - bill.discount).toFixed(2)}
+                    ₹{(bill.grandTotal)}
                   </span>
                 </div>
                 <div className="flex flex-col">
@@ -512,9 +513,7 @@ const DriverPage = () => {
                   </span>
                   <span className="text-sm font-bold text-green-600">
                     ₹
-                    {bill.payments
-                      .reduce((sum, payment) => sum + payment.amount, 0)
-                      .toFixed(2)}
+                    {bill.billingAmountReceived}
                   </span>
                 </div>
                 <div className="flex flex-col">
@@ -522,9 +521,9 @@ const DriverPage = () => {
                     Remaining:
                   </span>
                   <span className="text-sm font-bold text-red-600">
-                    ₹{bill.billingAmount -  parseFloat((bill.payments
+                    ₹{parseFloat(bill.grandTotal) -  parseFloat((bill.payments
                       .reduce((sum, payment) => sum + payment.amount, 0)
-                      .toFixed(2)) - bill.discount).toFixed(2)}
+                      .toFixed(2))).toFixed(2)}
                   </span>
                 </div>
               </div>

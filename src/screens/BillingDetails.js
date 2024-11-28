@@ -740,13 +740,13 @@ const BillingList = () => {
                     <p className="text-xs mb-1">
                       Sub Total:{' '}
                       <span className="text-gray-600">
-                        Rs. {((parseFloat(selectedBilling.billingAmount) / 1.18)).toFixed(2)}
+                        Rs. {((parseFloat(selectedBilling.grandTotal) / 1.18)).toFixed(2)}
                       </span>
                     </p>
                     <p className="text-xs mb-1">
                       GST (18%):{' '}
                       <span className="text-gray-600">
-                        Rs. {(parseFloat(selectedBilling.billingAmount) - parseFloat(selectedBilling.billingAmount / 1.18)).toFixed(2)}
+                        Rs. {(parseFloat(selectedBilling.grandTotal) - parseFloat(selectedBilling.billingAmount / 1.18)).toFixed(2)}
                       </span>
                     </p>
                     <p className="text-xs mb-1">
@@ -756,9 +756,9 @@ const BillingList = () => {
                       </span>
                     </p>
                     <p className="text-sm font-bold mb-1">
-                      Total Amount:{' '}
+                      Grand Total:{' '}
                       <span className="text-gray-600">
-                        Rs. {(parseFloat(selectedBilling.billingAmount) - parseFloat(selectedBilling.discount)).toFixed(2)}
+                        Rs. {(parseFloat(selectedBilling.grandTotal ? selectedBilling.grandTotal : 0)).toFixed(2)}
                       </span>
                     </p>
                     <p className="text-xs mb-1">

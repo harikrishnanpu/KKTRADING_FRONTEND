@@ -513,11 +513,26 @@ useEffect(() => {
   const parsedUnloading = parseFloat(unloading) || 0;
   const parsedHandling = parseFloat(handlingCharge) || 0;
 
+  const totalQtyProducts = products.reduce(
+    (acc, product) => acc + parseFloat(product.quantity || 0),
+    0
+  );
+
+  const calculatedPerItemDiscount =
+  totalQtyProducts > 0 ? parsedDiscount / totalQtyProducts : 0;
+
+setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
+
   // Calculate the total product amount without discount
   const totalProductAmount = products.reduce((acc, product) => {
-    const parsedQty = parseFloat(product.quantity) || 0;
-    const parsedSellingPrice = parseFloat(product.sellingPriceinQty) || 0;
-    return acc + (parsedQty * parsedSellingPrice);
+    const parsedQty = parseFloat(product.quantity || 0);
+    const parsedSellingPrice = parseFloat(product.sellingPriceinQty || 0);
+
+    // Total for each product after applying discount
+    const productTotal =
+      parsedQty * (parsedSellingPrice - calculatedPerItemDiscount);
+
+    return acc + (productTotal || 0);
   }, 0);
 
   // Apply the total discount directly
@@ -568,6 +583,7 @@ useEffect(() => {
       paymentStatus,
       userId: userInfo._id,
       billingAmount: totalAmount,
+      grandTotal: grandTotal,
       cgst,
       sgst,
       paymentAmount: receivedAmount,

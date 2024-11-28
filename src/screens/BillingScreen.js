@@ -630,6 +630,7 @@ useEffect(() => {
       deliveryStatus,
       paymentStatus,
       billingAmount: totalAmount,
+      grandTotal: grandTotal,
       paymentAmount: receivedAmount,
       paymentMethod,
       paymentReceivedDate: receivedDate,

@@ -26,6 +26,7 @@ const DriverBillingPage = () => {
   const [currentDelivered,setCurrentDelivered] = useState({invoiceNo: '', deliveryId: ''});
   const [psRatio,setPsRatio] = useState(0);
   const [qtyInBox,setQtyInBox] = useState('');
+  const [accounts, setAccounts] = useState([]);
   const navigate = useNavigate();
 
   const userSignin = useSelector((state) => state.userSignin);
@@ -53,6 +54,33 @@ const DriverBillingPage = () => {
     }
   }, []);
 
+  useEffect(()=>{
+    const fetchAccounts = async () => {
+      setIsLoading(true); // Set loading state
+      try {
+        const response = await api.get('/api/accounts/allaccounts');
+        const getPaymentMethod = response.data.map((acc) => acc.accountId);
+    
+        // Check if there are any accounts and set the first account as the default
+        if (getPaymentMethod.length > 0) {
+          const firstAccountId = getPaymentMethod[0];
+          // setPaymentMethod(firstAccountId); // Set the first account as default
+        } else {
+          // setPaymentMethod(null); // Handle case where there are no accounts
+        }
+    
+        setAccounts(response.data); // Set the accounts in state
+      } catch (err) {
+        setError('Failed to fetch payment accounts.'); // Set error message
+        console.error(err);
+      } finally {
+        setIsLoading(false); // Stop loading
+      }
+    };
+
+    fetchAccounts()
+  },[])
+
   // Update local storage whenever assigned bills, deliveryStarted, or driverName change
   useEffect(() => {
     localStorage.setItem("assignedBills", JSON.stringify(assignedBills));
@@ -66,7 +94,7 @@ const DriverBillingPage = () => {
       if (invoiceNo) {
         try {
           const response = await api.get(
-            `/api/billing/billing/suggestions?search=${invoiceNo}`
+            `/api/billing/billing/driver/suggestions?search=${invoiceNo}`
           );
           setSuggestions(response.data);
         } catch (error) {
@@ -158,7 +186,7 @@ const DriverBillingPage = () => {
             ...billingData,
             newPaymentStatus: billingData.paymentStatus,
             remainingAmount:
-             (billingData.billingAmount - billingData.discount) -
+             (billingData.grandTotal) -
               (billingData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0),
             receivedAmount:
               billingData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0,
@@ -248,7 +276,6 @@ const DriverBillingPage = () => {
   };
 
   const handleSuggestionClick = (suggestion) => {
-    setInvoiceNo(suggestion.invoiceNo);
     setSuggestions([]);
     handleAssignBill(suggestion._id);
   };
@@ -307,6 +334,7 @@ const DriverBillingPage = () => {
         invoiceNo: bill.invoiceNo,
         paymentAmount: bill.paymentAmount,
         paymentMethod: bill.paymentMethod,
+        userId: userInfo._id,
       });
 
       // Update the bill details after payment
@@ -320,7 +348,7 @@ const DriverBillingPage = () => {
           ...updatedBillData,
           newPaymentStatus: updatedBillData.paymentStatus,
           remainingAmount:
-            updatedBillData.billingAmount -
+            updatedBillData.grandTotal -
             (updatedBillData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0),
           receivedAmount:
             updatedBillData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0,
@@ -591,9 +619,9 @@ const DriverBillingPage = () => {
                   placeholder="Enter Driver Name"
                   value={driverName}
                   onChange={(e) => setDriverName(e.target.value)}
-                  className="w-full py-2 focus:outline-none focus:border-red-300 focus:ring-red-300 border-gray-300 rounded-md mb-4"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-200 focus:ring-red-500 text-xs"
                 />
-                <div className="relative w-full">
+                <div className="relative w-full mt-2">
                   <label className="font-bold text-xs text-gray-500">Invoice No.</label>
                   <input
                     type="text"
@@ -601,12 +629,12 @@ const DriverBillingPage = () => {
                     value={invoiceNo}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setInvoiceNo(e.target.value)}
-                    className="w-full p-2 pr-8 focus:outline-none focus:border-red-300 focus:ring-red-300 border-gray-300 rounded-md"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-200 focus:ring-red-500 text-xs"
                     readOnly={driverName.length === 0}
                   />
                   <i
-                    onClick={() => setInvoiceNo("")}
-                    className="fa fa-angle-down absolute right-3 bottom-2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
+                    onClick={() => setInvoiceNo(" ")}
+                    className="fa fa-angle-down absolute right-3 bottom-0 transform -translate-y-1/2 text-gray-400 cursor-pointer"
                   ></i>
                 </div>
               </div>
@@ -643,8 +671,9 @@ const DriverBillingPage = () => {
                           Invoice No: {bill.invoiceNo}
                         </h4>
                         <p className="text-xs text-gray-600">Customer: {bill.customerName}</p>
+                        <p className="text-xs text-gray-600">Address: {bill.customerAddress}</p>
                         <p className="text-xs font-bold text-gray-600">
-                          Net Amount: ₹ {bill.billingAmount - bill.discount}
+                          Net Amount: ₹ {bill.grandTotal}
                         </p>
                         <p className="text-xs text-gray-600">
                           Delivered Products:  {bill.deliveredProducts?.length}
@@ -750,18 +779,15 @@ const DriverBillingPage = () => {
                             </p>
                           </div>
                           <div className="flex justify-between">
-                          <p className="mt-1 font-bold text-sm text-gray-600">
-                              Net Amount: ₹ {bill.billingAmount - bill.discount}
-                            </p>
                             <p className="mt-1 font-bold text-sm text-gray-600">
-                              Bill Amount: ₹ {bill.billingAmount}
+                              Bill Amount: ₹ {bill.grandTotal}
                             </p>
                             </div>
                           <div className="flex justify-between">
-                            <p className="mt-1 text-sm text-gray-600">
+                            <p className="mt-1 text-xs text-gray-600">
                               Discount: ₹ {bill.discount}
                             </p>
-                            <p className="mt-1 text-xs font-bold text-red-600">
+                            <p className="mt-1 text-xs font-bold text-green-600">
                               Received Amount: ₹ {bill.receivedAmount}
                             </p>
                           </div>
@@ -886,12 +912,7 @@ const DriverBillingPage = () => {
         ))}
       </div>
 
-
-
-
-
-
-                        </div>
+                    </div>
 
                         {/* Continue and Cancel Buttons */}
                         <div className="flex justify-between mt-6">
@@ -952,7 +973,7 @@ const DriverBillingPage = () => {
                                     </p>
                                     <p>
                                       <span className="font-bold">Bill Amount:</span> ₹{" "}
-                                      {bill.billingAmount}
+                                      {bill.grandTotal}
                                     </p>
                                     <p>
                                       <span className="font-bold">Received Amount:</span> ₹{" "}
@@ -972,7 +993,7 @@ const DriverBillingPage = () => {
                                       {bill.deliveredProducts.map((dp) => {
                                         const productName =
                                           dp.name.length > 30
-                                            ? dp.name.slice(0, 30) + "..."
+                                            ? dp.name.slice(0, 30) + ".."
                                             : dp.name;
                                         if (dp.deliveredQuantity > 0) {
                                           return (
@@ -1213,7 +1234,7 @@ const DriverBillingPage = () => {
                                   return updatedBills;
                                 })
                               }
-                              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                             />
                           </div>
                           {/* Payment Method */}
@@ -1230,13 +1251,15 @@ const DriverBillingPage = () => {
                                   return updatedBills;
                                 })
                               }
-                              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                             >
-                              <option value="Cash">Cash</option>
-                              <option value="Card">Card</option>
-                              <option value="Bank Transfer">Bank Transfer</option>
-                              <option value="Online">Online</option>
-                            </select>
+
+      {accounts.map((acc) => (
+        <option key={acc.accountId} value={acc.accountId}>
+          {acc.accountName}
+        </option>
+      ))}
+            </select>
                           </div>
                           {/* Remaining Amount */}
                           <div>
@@ -1311,7 +1334,7 @@ const DriverBillingPage = () => {
                   </h3>
                   <p className="text-xs text-gray-500">Customer: {delivery.customerName}</p>
                   <p className="text-xs text-gray-500">
-                    Billing Amount: ₹ {delivery.billingAmount}
+                    Billing Amount: ₹ {delivery.grandTotal}
                   </p>
                   <p className="text-xs text-gray-500">Payment Status: {delivery.paymentStatus}</p>
                   <p className="text-xs text-gray-500">
@@ -1350,7 +1373,7 @@ const DriverBillingPage = () => {
           <span className="font-bold">Address:</span> {selectedDelivery.customerAddress}
         </p>
         <p>
-          <span className="font-bold">Billing Amount:</span> ₹ {selectedDelivery.billingAmount}
+          <span className="font-bold">Billing Amount:</span> ₹ {selectedDelivery.grandTotal}
         </p>
         <p>
           <span className="font-bold">Payment Status:</span> {selectedDelivery.paymentStatus}
