@@ -506,64 +506,68 @@ useEffect(() => {
   const [perItemDiscount, setPerItemDiscount] = useState(0);
 
   // Calculate Totals and GST whenever relevant fields change
- // Calculate Totals and GST whenever relevant fields change
-useEffect(() => {
-  const parsedDiscount = parseFloat(discount) || 0;
-  const parsedTransportation = parseFloat(transportation) || 0;
-  const parsedUnloading = parseFloat(unloading) || 0;
-  const parsedHandling = parseFloat(handlingCharge) || 0;
-
-  const totalQtyProducts = products.reduce(
-    (acc, product) => acc + parseFloat(product.quantity || 0),
-    0
-  );
-
-  const calculatedPerItemDiscount =
-  totalQtyProducts > 0 ? parsedDiscount / totalQtyProducts : 0;
-
-setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
-
-  // Calculate the total product amount without discount
-  const totalProductAmount = products.reduce((acc, product) => {
-    const parsedQty = parseFloat(product.quantity || 0);
-    const parsedSellingPrice = parseFloat(product.sellingPriceinQty || 0);
-
-    // Total for each product after applying discount
-    const productTotal =
-      parsedQty * (parsedSellingPrice - calculatedPerItemDiscount);
-
-    return acc + (productTotal || 0);
-  }, 0);
-
-  // Apply the total discount directly
-  const calculatedGrandTotal = totalProductAmount - parsedDiscount + parsedTransportation + parsedUnloading + parsedHandling;
-
-  setTotalAmount(totalProductAmount.toFixed(2));
-
-  // Calculate GST based on the grand total
-  const amountExcludingGST = calculatedGrandTotal / 1.18;
-  const calculatedGSTAmount = calculatedGrandTotal - amountExcludingGST;
-  const calculatedCGST = calculatedGSTAmount / 2;
-  const calculatedSGST = calculatedGSTAmount / 2;
-
-  setAmountWithoutGST(amountExcludingGST.toFixed(2));
-  setGSTAmount(calculatedGSTAmount.toFixed(2));
-  setCGST(calculatedCGST.toFixed(2));
-  setSGST(calculatedSGST.toFixed(2));
-  setGrandTotal(calculatedGrandTotal.toFixed(2));
-
-  // Reset totals if no products are present
-  if (products.length <= 0) {
-    setPerItemDiscount(0);
-    setDiscount(0);
-    setGrandTotal(0);
-    setTotalAmount(0);
-    setAmountWithoutGST(0);
-    setGSTAmount(0);
-    setCGST(0);
-    setSGST(0);
-  }
-}, [discount, products, unloading, transportation, handlingCharge]);
+  useEffect(() => {
+    // Parse all numeric inputs to ensure accurate calculations
+    const parsedDiscount = parseFloat(discount) || 0;
+    const parsedTransportation = parseFloat(transportation) || 0;
+    const parsedUnloading = parseFloat(unloading) || 0;
+    const parsedHandling = parseFloat(handlingCharge) || 0;
+  
+    // Calculate the total quantity of products
+    const totalQtyProducts = products.reduce(
+      (acc, product) => acc + parseFloat(product.quantity || 0),
+      0
+    );
+  
+    // Calculate per-item discount based on total discount and quantity
+    const calculatedPerItemDiscount =
+      totalQtyProducts > 0 ? parsedDiscount / totalQtyProducts : 0;
+  
+    setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
+  
+    // Calculate the total product amount after applying per-item discount
+    const totalProductAmount = products.reduce((acc, product) => {
+      const parsedQty = parseFloat(product.quantity || 0);
+      const parsedSellingPrice = parseFloat(product.sellingPriceinQty || 0);
+  
+      // Total for each product after applying per-item discount
+      const productTotal =
+        parsedQty * (parsedSellingPrice - calculatedPerItemDiscount);
+  
+      return acc + (productTotal || 0);
+    }, 0);
+  
+    // Calculate grand total by adding transportation, unloading, and handling charges
+    const calculatedGrandTotal =
+      totalProductAmount + parsedTransportation + parsedUnloading + parsedHandling;
+  
+    setTotalAmount(totalProductAmount.toFixed(2));
+  
+    // Calculate GST based on the grand total
+    const amountExcludingGST = calculatedGrandTotal / 1.18;
+    const calculatedGSTAmount = calculatedGrandTotal - amountExcludingGST;
+    const calculatedCGST = calculatedGSTAmount / 2;
+    const calculatedSGST = calculatedGSTAmount / 2;
+  
+    setAmountWithoutGST(amountExcludingGST.toFixed(2));
+    setGSTAmount(calculatedGSTAmount.toFixed(2));
+    setCGST(calculatedCGST.toFixed(2));
+    setSGST(calculatedSGST.toFixed(2));
+    setGrandTotal(calculatedGrandTotal.toFixed(2));
+  
+    // Reset totals if no products are present
+    if (products.length <= 0) {
+      setPerItemDiscount(0);
+      setDiscount(0);
+      setGrandTotal(0);
+      setTotalAmount(0);
+      setAmountWithoutGST(0);
+      setGSTAmount(0);
+      setCGST(0);
+      setSGST(0);
+    }
+  }, [discount, products, unloading, transportation, handlingCharge]);
+  
 
 
   
@@ -1430,7 +1434,7 @@ setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
                     <input
                       type="number"
                       min={0}
-                      value={(product.quantity * product.sellingPriceinQty / totalAmount * discount).toFixed(2)}
+                      value={((product.quantity * product.sellingPriceinQty / totalAmount) * discount).toFixed(2)}
                       readOnly
                       className="w-20 border border-gray-300 px-2 py-1 rounded-md text-xs text-center bg-gray-100"
                     />
