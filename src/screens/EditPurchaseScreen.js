@@ -485,7 +485,7 @@ export default function EditPurchaseScreen() {
       let billPriceInNumbers = parsedBillPrice;
       let cashPriceInNumbers = parsedCashPrice;
 
-      if (updatedItems[index].unit === "BOX") {
+      if (updatedItems[index].pUnit === "BOX") {
         quantityInNumbers = parsedQuantity * psRatio;
         billPriceInNumbers = parsedBillPrice / psRatio;
         cashPriceInNumbers = parsedCashPrice / psRatio;
@@ -618,7 +618,7 @@ export default function EditPurchaseScreen() {
         category: item.category,
         quantity: item.quantity,
         quantityInNumbers: item.quantityInNumbers,
-        pUnit: item.unit,
+        pUnit: item.pUnit,
         sUnit: item.sUnit,
         psRatio: item.psRatio,
         length: item.length,
@@ -1017,7 +1017,26 @@ export default function EditPurchaseScreen() {
                           </tr>
                         </thead>
                         <tbody className="text-gray-600 text-xs">
-                          {items.map((item, index) => (
+                          {items.map((item, index) =>{
+function preciseAdd(...numbers) {
+  return numbers
+      .reduce((acc, num) => acc + Math.round(num * 100), 0) / 100;
+}
+
+const parsedbillprice = parseFloat(item.billPriceInNumbers) || 0; // e.g., 14.13
+const parsedcashprice = parseFloat(item.cashPriceInNumbers) || 0; // e.g., 16.67
+const quantity = parseFloat(item.quantityInNumbers) || 0; // e.g., 1, 150
+
+// Compute precise unit price
+const totalUnitPrice = preciseAdd(parsedbillprice, parsedcashprice); // Should now be 30.80
+
+// Compute final amount
+const totalamount = parseFloat((quantity * totalUnitPrice).toFixed(2));
+
+console.log({ totalUnitPrice, totalamount });
+
+
+                          return(
                             <tr
                               key={index}
                               className={`border-b hover:bg-gray-100 ${
@@ -1044,7 +1063,7 @@ export default function EditPurchaseScreen() {
                                   className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                                 />
                               </td>
-                              <td className="px-4 py-2">{item.unit}</td>
+                              <td className="px-4 py-2">{item.pUnit}</td>
                               <td className="px-4 py-2">
                                 <input
                                   type="number"
@@ -1087,12 +1106,9 @@ export default function EditPurchaseScreen() {
                                 {item.cashPriceInNumbers.toFixed(2)}
                               </td>
                               <td className="px-4 py-2">
-                                {(
-                                  item.quantityInNumbers *
-                                  (item.billPriceInNumbers +
-                                    item.cashPriceInNumbers +
-                                    perItemOtherExpense)
-                                ).toFixed(2)}
+                                {
+                            totalamount
+                                }
                               </td>
                               <td className="px-4 py-2 text-center">
                                 <button
@@ -1106,7 +1122,8 @@ export default function EditPurchaseScreen() {
                                 </button>
                               </td>
                             </tr>
-                          ))}
+                          )
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1153,7 +1170,7 @@ export default function EditPurchaseScreen() {
                                 }
                                 className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                               />{" "}
-                              {item.unit}
+                              {item.pUnit}
                             </p>
                             <p className="text-xs">
                               Bill Price:{" "}
