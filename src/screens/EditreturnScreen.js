@@ -69,14 +69,23 @@ export default function ReturnEditScreen() {
     try {
       const { data } = await api.get(`/api/billing/getinvoice/${billingNo}`); // Adjust the endpoint as per your backend
   
+
       // Map billing products to return products to calculate returnPrice
       const updatedProducts = returnProducts.map((returnProduct) => {
         const billingProduct = data.products.find((prod) => prod.item_id === returnProduct.item_id);
+              // Calculate Total Quantity
+      const totalQtyProducts = returnProducts.reduce(
+        (acc, product) => acc + parseFloat(product.quantity || 0),
+        0
+      );
+
+      // Calculate Per Item Discount
+      const calculatedPerItemDiscount = totalQtyProducts > 0 ? (parseFloat(data.discount) || 0) / totalQtyProducts : 0;
         if (billingProduct) {
           return {
             ...returnProduct,
-            initialQuantity: parseFloat(billingProduct.quantity) || 0, // Original Billing Quantity
-            returnPrice: parseFloat((billingProduct.sellingPrice || 0)).toFixed(2), // Assuming sellingPrice exists
+            initialQuantity: parseFloat(billingProduct.quantity) || 0,
+            returnPrice: parseFloat((parseFloat(billingProduct.sellingPriceinQty) - calculatedPerItemDiscount).toFixed(2))
           };
         } else {
           return {

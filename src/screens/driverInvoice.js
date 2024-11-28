@@ -179,6 +179,8 @@ const DriverBillingPage = () => {
           };
         });
 
+        const getPaymentMethod = accounts.map((acc) => acc.accountId);
+
         // Add the new bill to the assigned bills list
         setAssignedBills((prevBills) => [
           ...prevBills,
@@ -192,7 +194,7 @@ const DriverBillingPage = () => {
               billingData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0,
             deliveredProducts,
             paymentAmount: null,
-            paymentMethod: "Cash",
+            paymentMethod: getPaymentMethod[0],
             kmTravelled: "",
             startingKm: "",
             endKm: "",
@@ -341,6 +343,9 @@ const DriverBillingPage = () => {
       const response = await api.get(`/api/billing/${bill._id}`);
       const updatedBillData = response.data;
 
+
+      const getPaymentMethod = accounts.map((acc) => acc.accountId);
+
       setAssignedBills((prevBills) => {
         const updatedBills = [...prevBills];
         updatedBills[billIndex] = {
@@ -353,7 +358,7 @@ const DriverBillingPage = () => {
           receivedAmount:
             updatedBillData.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0,
           paymentAmount: 0,
-          paymentMethod: "Cash",
+          paymentMethod: getPaymentMethod[0],
         };
         return updatedBills;
       });
