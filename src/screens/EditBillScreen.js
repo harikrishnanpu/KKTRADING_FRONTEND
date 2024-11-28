@@ -569,7 +569,6 @@ useEffect(() => {
   }, [discount, products, unloading, transportation, handlingCharge]);
   
 
-
   
   
 
@@ -1434,7 +1433,7 @@ useEffect(() => {
                     <input
                       type="number"
                       min={0}
-                      value={((product.quantity * product.sellingPriceinQty / totalAmount) * discount).toFixed(2)}
+                      value={(((product.quantity * product.sellingPriceinQty) / totalAmount) * discount).toFixed(2)}
                       readOnly
                       className="w-20 border border-gray-300 px-2 py-1 rounded-md text-xs text-center bg-gray-100"
                     />
@@ -1543,10 +1542,10 @@ useEffect(() => {
                   )
                   .map((product, index) => {
                     // Calculate product total and proportional discount
-                    const productTotal = product.quantity * product.sellingPriceinQty;
-                    const proportionalDiscount =
-                      totalAmount > 0 ? (productTotal / totalAmount) * discount : 0;
-                    const netTotal = productTotal - proportionalDiscount;
+                    // const productTotal = (product.quantity * product.sellingPriceinQty) - (product.quantity * perItemDiscount)
+                    // const proportionalDiscount =
+                    //   totalAmount > 0 ? (productTotal / totalAmount) * discount : 0;
+                    // const netTotal = productTotal - proportionalDiscount;
 
                     return (
                       <tr
@@ -1591,13 +1590,13 @@ useEffect(() => {
                           ₹{parseFloat(product.sellingPriceinQty).toFixed(2)}
                         </td>
                         <td className="px-2 py-2 text-xs">
-                          ₹{productTotal.toFixed(2)}
+                          ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}
                         </td>
                         <td className="px-2 py-2 text-xs text-center">
-                          ₹{proportionalDiscount.toFixed(2)}
+                          ₹ {(product.quantity * perItemDiscount).toFixed(2)}
                         </td>
                         <td className="px-2 py-2 text-xs">
-                          ₹{netTotal.toFixed(2)}
+                          ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * perItemDiscount)).toFixed(2)}
                         </td>
                         <td className="px-3 py-2 text-xs text-center">
                           <button
