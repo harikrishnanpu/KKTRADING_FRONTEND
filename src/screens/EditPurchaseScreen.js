@@ -23,6 +23,8 @@ export default function EditPurchaseScreen() {
   const [invoiceNo, setInvoiceNo] = useState("");
   const [billingDate, setBillingDate] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
+  const [lastItemId, setLastItemId] = useState("");
+  const [itemstock,setItemStock] = useState('0');
 
   // Item Information
   const [items, setItems] = useState([]);
@@ -38,7 +40,7 @@ export default function EditPurchaseScreen() {
   const [categories, setCategories] = useState([]);
 
   // Item Additional Information
-  const [sUnit, setSUnit] = useState("");
+  const [sUnit, setSUnit] = useState("NOS");
   const [psRatio, setPsRatio] = useState("");
   const [length, setLength] = useState("");
   const [breadth, setBreadth] = useState("");
@@ -89,6 +91,11 @@ export default function EditPurchaseScreen() {
   const logisticAmountRef = useRef();
   const localCompanyRef = useRef();
   const localAmountRef = useRef();
+  const itemSunitRef = useRef();
+  const itemlengthRef = useRef();
+  const itemBreadthRef = useRef();
+  const itemSizeRef = useRef();
+  const itemPsRatioRef = useRef();
 
   // Effect to auto-hide messages after 3 seconds
   useEffect(() => {
@@ -141,6 +148,7 @@ export default function EditPurchaseScreen() {
       try {
         setLoading(true);
         const { data } = await api.get(`/api/orders/purchase/${id}`);
+        const response = await api.get('/api/products/lastadded/id');
         // Populate state with fetched data
         setSellerId(data.sellerId);
         setSellerName(data.sellerName);
@@ -150,6 +158,7 @@ export default function EditPurchaseScreen() {
         setPurchaseId(data.purchaseId);
         setBillingDate(data.billingDate ? data.billingDate.substring(0, 10) : "");
         setInvoiceDate(data.invoiceDate ? data.invoiceDate.substring(0, 10) : "");
+        setLastItemId(response?.data)
 
         // Map items to include calculated fields
         const mappedItems = data.items.map((item) => {
@@ -264,6 +273,8 @@ export default function EditPurchaseScreen() {
     if (value.trim() === "") {
       setSellerSuggestions([]);
       setSellerId("");
+      setSellerAddress("");
+      setSellerGst("");
       return;
     }
     try {
@@ -406,11 +417,12 @@ export default function EditPurchaseScreen() {
     setItemCashPrice("");
     setItemUnit("");
     setItemQuantity("");
-    setSUnit("");
+    setSUnit("NOS");
     setPsRatio("");
     setLength("");
     setBreadth("");
     setSize("");
+    setItemStock("0");
   };
 
   // Function to handle searching for an item by ID
@@ -436,6 +448,7 @@ export default function EditPurchaseScreen() {
         setSize(data.size);
         setSUnit(data.sUnit);
         setItemUnit(data.pUnit);
+        setItemStock(data.countInStock);
         itemNameRef.current?.focus();
       } else {
         setError("Item not found.");
@@ -504,9 +517,10 @@ export default function EditPurchaseScreen() {
     let billPartTotal = 0;
     let cashPartTotal = 0;
 
+
     items.forEach((item) => {
-      billPartTotal += item.quantityInNumbers * item.billPriceInNumbers;
-      cashPartTotal += item.quantityInNumbers * item.cashPriceInNumbers;
+      billPartTotal += item.quantityInNumbers * parseFloat(item.billPriceInNumbers).toFixed(2);
+      cashPartTotal += item.quantityInNumbers * parseFloat(item.cashPriceInNumbers).toFixed(2);
     });
 
     // GST rate for items is 18%
@@ -675,7 +689,7 @@ export default function EditPurchaseScreen() {
     try {
       setLoading(true);
       // Direct API call to update purchase
-      const response = await api.put(`/api/products/purchase/${id}`, purchaseData);
+      const response = await api.put(`/api/products/purchase/${purchaseId}`, purchaseData);
       if (response.status === 200) {
         alert("Purchase updated successfully!");
         navigate("/allpurchases"); // Navigate to purchase listing page
@@ -734,7 +748,7 @@ export default function EditPurchaseScreen() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto mt-8 p-6 bg-white shadow-md rounded-md">
+      <div className={`${currentStep !== 3 && 'max-w-3xl'} mx-auto mt-8 p-6 bg-white shadow-md rounded-md`}>
         {/* Step Indicator */}
         <div className="flex justify-between mb-5">
           <div className="text-left">
@@ -772,7 +786,7 @@ export default function EditPurchaseScreen() {
         </div>
 
         {/* Total Amount Display */}
-        {(currentStep === 3 || currentStep === 4) && (
+        {(currentStep === 4) && (
           <div className="bg-gray-100 p-4 rounded-lg shadow-inner mb-4">
             <div className="flex justify-between">
               <p className="text-xs font-bold">Bill Part Total:</p>
@@ -836,6 +850,7 @@ export default function EditPurchaseScreen() {
                       onKeyDown={(e) => changeRef(e, sellerNameRef)}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100 focus:outline-none text-xs"
                       required
+                      readOnly
                       disabled
                     />
                   </div>
@@ -850,7 +865,7 @@ export default function EditPurchaseScreen() {
                       value={sellerName}
                       placeholder="Enter Supplier Name"
                       onChange={handleSellerNameChange}
-                      onKeyDown={(e) => changeRef(e, invoiceNoRef)}
+                      onKeyDown={(e) =>{ changeRef(e, invoiceNoRef); if(!sellerId && e.key === "Enter"){ generateSellerId()  } }}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       required
                     />
@@ -885,7 +900,7 @@ export default function EditPurchaseScreen() {
                       value={sellerId}
                       placeholder="Supplier ID"
                       onChange={(e) => setSellerId(e.target.value)}
-                      onKeyDown={(e) => changeRef(e, invoiceNoRef)}
+                      onKeyDown={(e) =>{ changeRef(e, invoiceNoRef); }}
                       className="w-full border border-gray-300 px-3 py-2 rounded-md bg-gray-100 focus:outline-none text-xs"
                       readOnly
                     />
@@ -981,526 +996,553 @@ export default function EditPurchaseScreen() {
 
             {/* Step 3: Add/Edit Items */}
             {currentStep === 3 && (
-              <div>
-                <h2 className="text-sm font-bold text-gray-900">Add/Edit Items</h2>
-                {/* Table of Added Items */}
-                {items.length > 0 && (
-                  <div className="mt-6">
-                    {/* Responsive Table for Desktop */}
-                    <div className="overflow-x-auto hidden md:block">
-                      <table className="min-w-full table-auto bg-white shadow-md rounded-md">
-                        <thead>
-                          <tr className="bg-red-500 text-white text-xs">
-                            <th className="px-4 py-2 text-left">Item ID</th>
-                            <th className="px-4 py-2 text-left">Name</th>
-                            <th className="px-4 py-2 text-left">Brand</th>
-                            <th className="px-4 py-2 text-left">Category</th>
-                            <th className="px-4 py-2 text-left">Quantity</th>
-                            <th className="px-4 py-2 text-left">Unit</th>
-                            <th className="px-4 py-2 text-left">
-                              Bill Price (₹)
-                            </th>
-                            <th className="px-4 py-2 text-left">
-                              Cash Price (₹)
-                            </th>
-                            <th className="px-4 py-2 text-left">
-                              Quantity (NOS)
-                            </th>
-                            <th className="px-4 py-2 text-left">
-                              Bill Price per NOS (₹)
-                            </th>
-                            <th className="px-4 py-2 text-left">
-                              Cash Price per NOS (₹)
-                            </th>
-                            <th className="px-4 py-2 text-left">Total (₹)</th>
-                            <th className="px-4 py-2 text-center">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-gray-600 text-xs">
-                          {items.map((item, index) =>{
-function preciseAdd(...numbers) {
-  return numbers
-      .reduce((acc, num) => acc + Math.round(num * 100), 0) / 100;
-}
+  <div className="flex flex-col min-h-screen">
+    <h2 className="text-sm font-bold text-gray-900 p-4">Add/Edit Items</h2>
+    {/* Items Table */}
+    {items.length > 0 && (
+      <div className="flex-1 overflow-auto p-4">
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <table className="min-w-full table-auto bg-white shadow-md rounded-md">
+            <thead>
+              <tr className="bg-red-500 text-white text-xs">
+                <th className="px-2 py-2 text-left">Item ID</th>
+                <th className="px-2 py-2 text-left">Name</th>
+                <th className="px-2 py-2 text-left">Brand</th>
+                <th className="px-2 py-2 text-left">Category</th>
+                <th className="px-2 py-2 text-left">Quantity</th>
+                <th className="px-2 py-2 text-left">Unit</th>
+                <th className="px-2 py-2 text-left">Bill Price (₹)</th>
+                <th className="px-2 py-2 text-left">Cash Price (₹)</th>
+                <th className="px-2 py-2 text-left">Quantity (NOS)</th>
+                <th className="px-2 py-2 text-left">Bill Price per NOS (₹)</th>
+                <th className="px-2 py-2 text-left">Cash Price per NOS (₹)</th>
+                <th className="px-2 py-2 text-left">Total (₹)</th>
+                <th className="px-2 py-2 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-600 text-xs">
+              {items.map((item, index) => {
+                function preciseAdd(...numbers) {
+                  return (
+                    numbers.reduce((acc, num) => acc + Math.round(num * 100), 0) /
+                    100
+                  );
+                }
 
-const parsedbillprice = parseFloat(item.billPriceInNumbers) || 0; // e.g., 14.13
-const parsedcashprice = parseFloat(item.cashPriceInNumbers) || 0; // e.g., 16.67
-const quantity = parseFloat(item.quantityInNumbers) || 0; // e.g., 1, 150
+                const parsedbillprice =
+                  parseFloat(item.billPriceInNumbers) || 0;
+                const parsedcashprice =
+                  parseFloat(item.cashPriceInNumbers) || 0;
+                const quantity = parseFloat(item.quantityInNumbers) || 0;
 
-// Compute precise unit price
-const totalUnitPrice = preciseAdd(parsedbillprice, parsedcashprice); // Should now be 30.80
+                const totalUnitPrice = preciseAdd(
+                  parsedbillprice,
+                  parsedcashprice
+                );
 
-// Compute final amount
-const totalamount = parseFloat((quantity * totalUnitPrice).toFixed(2));
+                const totalamount = parseFloat(
+                  (quantity * totalUnitPrice).toFixed(2)
+                );
 
-console.log({ totalUnitPrice, totalamount });
-
-
-                          return(
-                            <tr
-                              key={index}
-                              className={`border-b hover:bg-gray-100 ${
-                                index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                              }`}
-                            >
-                              <td className="px-4 py-2">{item.itemId}</td>
-                              <td className="px-4 py-2">{item.name}</td>
-                              <td className="px-4 py-2">{item.brand}</td>
-                              <td className="px-4 py-2">{item.category}</td>
-                              <td className="px-4 py-2">
-                                <input
-                                  type="number"
-                                  value={item.quantity}
-                                  min="1"
-                                  step="0.01"
-                                  onChange={(e) =>
-                                    handleItemFieldChange(
-                                      index,
-                                      "quantity",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                />
-                              </td>
-                              <td className="px-4 py-2">{item.pUnit}</td>
-                              <td className="px-4 py-2">
-                                <input
-                                  type="number"
-                                  value={item.billPrice}
-                                  min="0"
-                                  step="0.01"
-                                  onChange={(e) =>
-                                    handleItemFieldChange(
-                                      index,
-                                      "billPrice",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                />
-                              </td>
-                              <td className="px-4 py-2">
-                                <input
-                                  type="number"
-                                  value={item.cashPrice}
-                                  min="0"
-                                  step="0.01"
-                                  onChange={(e) =>
-                                    handleItemFieldChange(
-                                      index,
-                                      "cashPrice",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                />
-                              </td>
-                              <td className="px-4 py-2">
-                                {item.quantityInNumbers.toFixed(2)}
-                              </td>
-                              <td className="px-4 py-2">
-                                {item.billPriceInNumbers.toFixed(2)}
-                              </td>
-                              <td className="px-4 py-2">
-                                {item.cashPriceInNumbers.toFixed(2)}
-                              </td>
-                              <td className="px-4 py-2">
-                                {
-                            totalamount
-                                }
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                <button
-                                  onClick={() => removeItem(index)}
-                                  className="text-red-600 hover:text-red-800 text-xs"
-                                >
-                                  <i
-                                    className="fa fa-trash"
-                                    aria-hidden="true"
-                                  ></i>
-                                </button>
-                              </td>
-                            </tr>
-                          )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Responsive Cards for Mobile */}
-                    <div className="block md:hidden mt-4">
-                      <div className="space-y-4">
-                        {items.map((item, index) => (
-                          <div
-                            key={index}
-                            className="bg-white shadow-lg rounded-lg p-4 border"
-                          >
-                            <div className="flex justify-between items-center mb-2">
-                              <p className="text-xs font-bold">
-                                {item.name} - {item.itemId}
-                              </p>
-                              <button
-                                onClick={() => removeItem(index)}
-                                className="text-red-600 hover:text-red-800 text-xs"
-                              >
-                                <i
-                                  className="fa fa-trash"
-                                  aria-hidden="true"
-                                ></i>
-                              </button>
-                            </div>
-                            <p className="text-xs">Brand: {item.brand}</p>
-                            <p className="text-xs">
-                              Category: {item.category}
-                            </p>
-                            <p className="text-xs">
-                              Quantity:{" "}
-                              <input
-                                type="number"
-                                value={item.quantity}
-                                min="1"
-                                step="0.01"
-                                onChange={(e) =>
-                                  handleItemFieldChange(
-                                    index,
-                                    "quantity",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                              />{" "}
-                              {item.pUnit}
-                            </p>
-                            <p className="text-xs">
-                              Bill Price:{" "}
-                              <input
-                                type="number"
-                                value={item.billPrice}
-                                min="0"
-                                step="0.01"
-                                onChange={(e) =>
-                                  handleItemFieldChange(
-                                    index,
-                                    "billPrice",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                              />
-                            </p>
-                            <p className="text-xs">
-                              Cash Price:{" "}
-                              <input
-                                type="number"
-                                value={item.cashPrice}
-                                min="0"
-                                step="0.01"
-                                onChange={(e) =>
-                                  handleItemFieldChange(
-                                    index,
-                                    "cashPrice",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                              />
-                            </p>
-                            <p className="text-xs">
-                              Quantity (NOS):{" "}
-                              {item.quantityInNumbers.toFixed(2)}
-                            </p>
-                            <p className="text-xs">
-                              Bill Price per NOS: ₹
-                              {item.billPriceInNumbers.toFixed(2)}
-                            </p>
-                            <p className="text-xs">
-                              Cash Price per NOS: ₹
-                              {item.cashPriceInNumbers.toFixed(2)}
-                            </p>
-                            <p className="text-xs">
-                              Total: ₹
-                              {(
-                                item.quantityInNumbers *
-                                (item.billPriceInNumbers +
-                                  item.cashPriceInNumbers +
-                                  perItemOtherExpense)
-                              ).toFixed(2)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Item Adding Form */}
-                <div className="mt-4 space-y-4">
-                  {/* Item ID and Search */}
-                  <div className="flex flex-col">
-                    <label className="mb-1 text-xs text-gray-700">Item ID</label>
-                    <div className="flex">
-                      <input
-                        type="text"
-                        ref={itemIdRef}
-                        value={itemId}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleSearchItem();
-                          }
-                        }}
-                        onChange={(e) => setItemId(e.target.value)}
-                        className="w-1/2 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSearchItem}
-                        className="ml-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-xs"
-                      >
-                        <i className="fa fa-search" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Item Name and Brand */}
-                  <div className="flex flex-col md:flex-row gap-2">
-                    <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Item Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Item Name"
-                        ref={itemNameRef}
-                        value={itemName}
-                        onChange={(e) => setItemName(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemBrandRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Item Brand
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter Item Brand"
-                        ref={itemBrandRef}
-                        value={itemBrand}
-                        onChange={(e) => setItemBrand(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemCategoryRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Item Category and Add Category */}
-                  <div className="flex flex-col md:flex-row gap-2">
-                    <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Item Category
-                      </label>
-                      <select
-                        value={itemCategory}
-                        ref={itemCategoryRef}
-                        onChange={(e) => setItemCategory(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemBillPriceRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        required
-                      >
-                        <option value="" disabled>
-                          Select Category
-                        </option>
-                        {categories.map((category, index) => (
-                          <option key={index} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={addCategory}
-                        className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs"
-                      >
-                        Add Category
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Item Prices */}
-                  <div className="flex flex-col md:flex-row gap-2">
-                    <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Bill Part Price (₹)
-                      </label>
+                return (
+                  <tr
+                    key={index}
+                    className={`border-b hover:bg-gray-100 ${
+                      index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    }`}
+                  >
+                    <td className="px-2 py-2">{item.itemId}</td>
+                    <td className="px-2 py-2">{item.name}</td>
+                    <td className="px-2 py-2">{item.brand}</td>
+                    <td className="px-2 py-2">{item.category}</td>
+                    <td className="px-2 py-2">
                       <input
                         type="number"
-                        placeholder="Enter Bill Part Price"
-                        value={itemBillPrice}
-                        ref={itemBillPriceRef}
-                        onChange={(e) => setItemBillPrice(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemCashPriceRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Cash Part Price (₹)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Cash Part Price"
-                        value={itemCashPrice}
-                        ref={itemCashPriceRef}
-                        onChange={(e) => setItemCashPrice(e.target.value)}
-                        onKeyDown={(e) => changeRef(e, itemUnitRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Item Unit, Quantity, and Dimensions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">Unit</label>
-                      <select
-                        value={itemUnit}
-                        onChange={(e) => setItemUnit(e.target.value)}
-                        ref={itemUnitRef}
-                        onKeyDown={(e) => changeRef(e, itemQuantityRef)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        required
-                      >
-                        <option value="" disabled>
-                          Select Unit
-                        </option>
-                        <option value="SQFT">SQFT</option>
-                        <option value="BOX">BOX</option>
-                        <option value="NOS">NOS</option>
-                        <option value="GSQFT">GSQFT</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Quantity"
-                        value={itemQuantity}
-                        ref={itemQuantityRef}
-                        onChange={(e) => setItemQuantity(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            addItem();
-                          }
-                        }}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        value={item.quantity}
                         min="1"
                         step="0.01"
-                        required
+                        onChange={(e) =>
+                          handleItemFieldChange(
+                            index,
+                            "quantity",
+                            e.target.value
+                          )
+                        }
+                        className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       />
-                    </div>
-
-                    {/* Dimensions and Ratios */}
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        S Unit
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Enter S Unit"
-                        value={sUnit}
-                        onChange={(e) => setSUnit(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                      />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        P/S Ratio
-                      </label>
+                    </td>
+                    <td className="px-2 py-2">{item.pUnit}</td>
+                    <td className="px-2 py-2">
                       <input
                         type="number"
-                        placeholder="Enter P/S Ratio"
-                        value={psRatio}
-                        onChange={(e) => setPsRatio(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        value={item.billPrice}
                         min="0"
                         step="0.01"
+                        onChange={(e) =>
+                          handleItemFieldChange(
+                            index,
+                            "billPrice",
+                            e.target.value
+                          )
+                        }
+                        className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Length (m)
-                      </label>
+                    </td>
+                    <td className="px-2 py-2">
                       <input
                         type="number"
-                        placeholder="Enter Length"
-                        value={length}
-                        onChange={(e) => setLength(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        value={item.cashPrice}
                         min="0"
                         step="0.01"
+                        onChange={(e) =>
+                          handleItemFieldChange(
+                            index,
+                            "cashPrice",
+                            e.target.value
+                          )
+                        }
+                        className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                       />
-                    </div>
+                    </td>
+                    <td className="px-2 py-2">
+                      {item.quantityInNumbers.toFixed(2)}
+                    </td>
+                    <td className="px-2 py-2">
+                      {item.billPriceInNumbers.toFixed(2)}
+                    </td>
+                    <td className="px-2 py-2">
+                      {item.cashPriceInNumbers.toFixed(2)}
+                    </td>
+                    <td className="px-2 py-2">{totalamount.toFixed(2)}</td>
+                    <td className="px-2 py-2 text-center">
+                      <button
+                        onClick={() => removeItem(index)}
+                        className="text-red-600 hover:text-red-800 text-xs"
+                      >
+                        <i className="fa fa-trash" aria-hidden="true"></i>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Breadth (m)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Breadth"
-                        value={breadth}
-                        onChange={(e) => setBreadth(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-700 mb-1">
-                        Size (m)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Enter Size"
-                        value={size}
-                        onChange={(e) => setSize(e.target.value)}
-                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-center">
+        {/* Mobile Cards */}
+        <div className="block md:hidden">
+          <div className="space-y-4">
+            {items.map((item, index) => (
+              <div
+                key={index}
+                className="bg-white shadow-lg rounded-lg p-4 border"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-xs font-bold">
+                    {item.name} - {item.itemId}
+                  </p>
                   <button
-                    type="button"
-                    onClick={addItem}
-                    className="mt-4 bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 text-xs"
+                    onClick={() => removeItem(index)}
+                    className="text-red-600 hover:text-red-800 text-xs"
                   >
-                    Add Item
+                    <i className="fa fa-trash" aria-hidden="true"></i>
                   </button>
                 </div>
+                <p className="text-xs">Brand: {item.brand}</p>
+                <p className="text-xs">Category: {item.category}</p>
+                <p className="text-xs">
+                  Quantity:{" "}
+                  <input
+                    type="number"
+                    value={item.quantity}
+                    min="1"
+                    step="0.01"
+                    onChange={(e) =>
+                      handleItemFieldChange(index, "quantity", e.target.value)
+                    }
+                    className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  />{" "}
+                  {item.pUnit}
+                </p>
+                <p className="text-xs">
+                  Bill Price:{" "}
+                  <input
+                    type="number"
+                    value={item.billPrice}
+                    min="0"
+                    step="0.01"
+                    onChange={(e) =>
+                      handleItemFieldChange(
+                        index,
+                        "billPrice",
+                        e.target.value
+                      )
+                    }
+                    className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  />
+                </p>
+                <p className="text-xs">
+                  Cash Price:{" "}
+                  <input
+                    type="number"
+                    value={item.cashPrice}
+                    min="0"
+                    step="0.01"
+                    onChange={(e) =>
+                      handleItemFieldChange(
+                        index,
+                        "cashPrice",
+                        e.target.value
+                      )
+                    }
+                    className="w-16 border border-gray-300 px-1 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  />
+                </p>
+                <p className="text-xs">
+                  Quantity (NOS): {item.quantityInNumbers.toFixed(2)}
+                </p>
+                <p className="text-xs">
+                  Bill Price per NOS: ₹{item.billPriceInNumbers.toFixed(2)}
+                </p>
+                <p className="text-xs">
+                  Cash Price per NOS: ₹{item.cashPriceInNumbers.toFixed(2)}
+                </p>
+                <p className="text-xs">
+                  Total: ₹
+                  {(
+                    item.quantityInNumbers *
+                    (item.billPriceInNumbers + item.cashPriceInNumbers)
+                  ).toFixed(2)}
+                </p>
               </div>
-            )}
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Input Section */}
+    <div className="p-4 md:fixed bottom-0 left-0 right-0 bg-white shadow-inner">
+      <div className="md:flex justify-between space-x-2">
+        {/* Left Section: Input Fields */}
+        <div className="flex-1">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="flex flex-col">
+                <label className="mb-1 flex items-center text-xs text-gray-700">
+                  <span>Item ID</span>
+                  <span className="italic ml-auto text-gray-300">
+                    Last Item: {lastItemId || "Not found"}
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  ref={itemIdRef}
+                  value={itemId}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearchItem();
+                    }
+                  }}
+                  onChange={(e) => setItemId(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">Item Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter Item Name"
+                  ref={itemNameRef}
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                  onKeyDown={(e) => changeRef(e, itemBrandRef)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">Item Brand</label>
+                <input
+                  type="text"
+                  placeholder="Enter Item Brand"
+                  ref={itemBrandRef}
+                  value={itemBrand}
+                  onChange={(e) => setItemBrand(e.target.value)}
+                  onKeyDown={(e) => changeRef(e, itemCategoryRef)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">
+                  Item Category
+                </label>
+                <select
+                  value={itemCategory}
+                  ref={itemCategoryRef}
+                  onChange={(e) => setItemCategory(e.target.value)}
+                  onKeyDown={(e) => changeRef(e, itemSunitRef)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  required
+                >
+                  <option value="" disabled>
+                    Select Category
+                  </option>
+                  {categories.map((category, index) => (
+                    <option key={index} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">S Unit</label>
+                <select
+                  value={sUnit}
+                  onChange={(e) => setSUnit(e.target.value)}
+                  ref={itemSunitRef}
+                  onKeyDown={(e) => changeRef(e, itemPsRatioRef)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  required
+                >
+                  <option value="NOS">NOS</option>
+                  <option value="SQFT">SQFT</option>
+                  <option value="BOX">BOX</option>
+                  <option value="GSQFT">GSQFT</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Dimensions and Ratios */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">P/S Ratio</label>
+                <input
+                  type="number"
+                  placeholder="Enter P/S Ratio"
+                  value={psRatio}
+                  ref={itemPsRatioRef}
+                  onKeyDown={(e) => changeRef(e, itemlengthRef)}
+                  onChange={(e) => setPsRatio(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">Length</label>
+                <input
+                  type="number"
+                  placeholder="Enter Length"
+                  value={length}
+                  ref={itemlengthRef}
+                  onKeyDown={(e) => changeRef(e, itemBreadthRef)}
+                  onChange={(e) => setLength(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">Breadth</label>
+                <input
+                  type="number"
+                  ref={itemBreadthRef}
+                  placeholder="Enter Breadth"
+                  value={breadth}
+                  onKeyDown={(e) => changeRef(e, itemSizeRef)}
+                  onChange={(e) => setBreadth(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">Size</label>
+                <input
+                  type="text"
+                  placeholder="Enter Size"
+                  value={size}
+                  ref={itemSizeRef}
+                  onKeyDown={(e) => changeRef(e, itemUnitRef)}
+                  onChange={(e) => setSize(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">P Unit</label>
+                <select
+                  value={itemUnit}
+                  onChange={(e) => setItemUnit(e.target.value)}
+                  ref={itemUnitRef}
+                  onKeyDown={(e) => changeRef(e, itemQuantityRef)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  required
+                >
+                  <option value="" disabled>
+                    Select Unit
+                  </option>
+                  <option value="SQFT">SQFT</option>
+                  <option value="BOX">BOX</option>
+                  <option value="NOS">NOS</option>
+                  <option value="GSQFT">GSQFT</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Quantity and Prices */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">Quantity</label>
+                <input
+                  type="number"
+                  placeholder="Enter Quantity"
+                  value={itemQuantity}
+                  ref={itemQuantityRef}
+                  onChange={(e) => setItemQuantity(e.target.value)}
+                  onKeyDown={(e) => changeRef(e, itemBillPriceRef)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  min="1"
+                  step="0.01"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">
+                  Bill Part Price (₹)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Enter Bill Part Price"
+                  value={itemBillPrice}
+                  ref={itemBillPriceRef}
+                  onChange={(e) => setItemBillPrice(e.target.value)}
+                  onKeyDown={(e) => changeRef(e, itemCashPriceRef)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-700 mb-1">
+                  Cash Part Price (₹)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Enter Cash Part Price"
+                  value={itemCashPrice}
+                  ref={itemCashPriceRef}
+                  onChange={(e) => setItemCashPrice(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      addItem();
+                    }
+                  }}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 text-xs w-full md:w-auto"
+                >
+                  Add Item
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Middle Section: Stock and GST Info */}
+        <div className="hidden lg:block w-44">
+          <div className="bg-gray-100 p-6 h-full rounded-lg shadow-inner">
+            <div className="">
+            <div className="flex justify-between">
+              <p className="text-sm font-bold">GST:</p>
+              <p className="text-sm">18%</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs font-bold">Added Products:</p>
+              <p className="text-xs">{items?.length}</p>
+            </div>
+            </div>
+            <div className="mt-16 bg-gray-300 p-5 rounded-lg">
+            <div className="flex justify-between">
+              <p className="text-xs font-bold">Current Item</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs font-bold">Stock:</p>
+              <p className="text-xs">{itemstock.toString().slice(0,8)} {sUnit}</p>
+            </div>
+              </div>
+          </div>
+        </div>
+
+        {/* Right Section: Summary */}
+        <div className="w-full md:w-60 mt-4 md:mt-0">
+          <div className="bg-gray-100 w-full p-4 space-y-2 rounded-lg shadow-inner">
+            <div className="flex justify-between">
+              <p className="text-xs font-bold">Bill Part Total:</p>
+              <p className="text-xs">{billPartTotal.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs">Amount without GST:</p>
+              <p className="text-xs">{amountWithoutGSTItems.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs">CGST (9%):</p>
+              <p className="text-xs">{cgstItems.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="text-xs">SGST (9%):</p>
+              <p className="text-xs">{sgstItems.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-xs font-bold">Cash Part Total:</p>
+              <p className="text-xs">{cashPartTotal.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-xs font-bold">Purchase Amount:</p>
+              <p className="text-xs font-bold">
+                {totalPurchaseAmount.toFixed(2)}
+              </p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-xs font-bold">Total Other Expenses:</p>
+              <p className="text-xs">{totalOtherExpenses.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between mt-2">
+              <p className="text-sm font-bold">Grand Total:</p>
+              <p className="text-sm font-bold">
+                {grandTotalPurchaseAmount.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
 
             {/* Step 4: Transportation Details */}
             {currentStep === 4 && (

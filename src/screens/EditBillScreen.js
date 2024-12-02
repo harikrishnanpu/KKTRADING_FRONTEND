@@ -26,6 +26,7 @@ export default function EditBillScreen() {
   const [paymentStatus, setPaymentStatus] = useState('Unpaid');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [customerContactNumber, setCustomerContactNumber] = useState('');
   const [marketedBy, setMarketedBy] = useState('');
   const [discount, setDiscount] = useState(0);
@@ -56,6 +57,11 @@ export default function EditBillScreen() {
   const [salesmanPhoneNumber, setSalesmanPhoneNumber] = useState('');
   const [salesmen, setSalesmen] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [itemName, setItemName] = useState('');
+  const [itemCategory, setItemCategory] = useState('');
+  const [itemBrand, setItemBrand] = useState('');
+  const [outofStockProduct,setOutofstockProduct] = useState(null);
+
 
   // Stepper Control
   const [step, setStep] = useState(1);
@@ -72,17 +78,23 @@ export default function EditBillScreen() {
   const invoiceNoRef = useRef();
   const customerNameRef = useRef();
   const customerAddressRef = useRef();
-  const customerContactNumberRef = useRef();
   const salesmanNameRef = useRef();
   const invoiceDateRef = useRef();
   const expectedDeliveryDateRef = useRef();
   const deliveryStatusRef = useRef();
   const paymentStatusRef = useRef();
   const itemIdRef = useRef();
+  const itemIdMobileRef = useRef();
   const itemQuantityRef = useRef();
-  const outOfStockRef = useRef();
+  const itemQuantityMobileRef = useRef();
+  const outofStockRef = useRef();
+  const itemUnitRef = useRef();
+  const itemUnitMobileRef = useRef();
   const sellingPriceRef = useRef();
+  const sellingPriceMobileRef = useRef();
+  const customerContactNumberRef = useRef();
   const marketedByRef = useRef();
+  const outOfStockRef = useRef(); 
   const unloadingRef = useRef();
   const transportationRef = useRef();
   const handlingChargeRef = useRef();
@@ -90,6 +102,9 @@ export default function EditBillScreen() {
   const receivedAmountRef = useRef();
   const receivedDateRef = useRef();
   const paymentMethodRef = useRef();
+  const itemNameRef = useRef();
+  const itemBrandRef = useRef();
+  const itemCategoryRef = useRef();
 
 
   const [billingsuggestions,setBillingSuggestions] = useState([]);
@@ -236,6 +251,7 @@ useEffect(() => {
       setCustomerName(data.customerName);
       setCustomerAddress(data.customerAddress);
       setCustomerContactNumber(data.customerContactNumber);
+      setCustomerId(data.customerId);
       setMarketedBy(data.marketedBy);
       setDiscount(parseFloat(data.discount) || 0); // Ensure numeric
       setReceivedAmount(parseFloat(data.paymentAmount) || 0); // Ensure numeric
@@ -268,7 +284,8 @@ useEffect(() => {
 
       // Calculate per item discount
       const calculatedPerItemDiscount = totalQuantity > 0 ? parseFloat(data.discount) / totalQuantity : 0;
-      setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
+      
+  setPerItemDiscount(parseFloat((Math.ceil(parseFloat(calculatedPerItemDiscount) * 10) / 10).toPrecision(8)));
 
     } catch (error) {
       console.error('Error fetching billing details:', error);
@@ -285,23 +302,26 @@ useEffect(() => {
 
 
   // Fetch Suggestions for Item ID
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (itemId.length >= 2) {
-        try {
-          const { data } = await api.get(`/api/products/search/itemId?query=${itemId}`);
-          setSuggestions(data);
-        } catch (err) {
-          console.error('Error fetching suggestions:', err);
-          setError('Error fetching product suggestions.');
-          setSuggestions([]);
-        }
-      } else {
+  const itemIdChange = async (e) => {
+    const newValue = e.target.value;
+    setItemId(newValue); // Update the item ID as the user types
+
+    if (!newValue.trim()) {
         setSuggestions([]);
-      }
-    };
-    fetchSuggestions();
-  }, [itemId]);
+        setError('');
+        return; // Skip empty input to prevent unnecessary API calls
+    }
+
+    try {
+        const { data } = await api.get(`/api/products/search/itemId?query=${newValue}`);
+        setSuggestions(data);
+        setError(''); // Clear errors on successful fetch
+    } catch (err) {
+        console.error('Error fetching suggestions:', err);
+        setSuggestions([]);
+        setError('Error fetching product suggestions.');
+    }
+};
 
   // Handle Salesman Selection
   const handleSalesmanChange = (e) => {
@@ -329,7 +349,7 @@ useEffect(() => {
       if (data.countInStock <= 0) {
         setOutOfStockProduct(data);
         setQuantity(1);
-        setItemId('');
+        setItemId(data.item_id);
         setSuggestions([]);
         setShowOutOfStockModal(true);
         outOfStockRef.current?.focus();
@@ -340,8 +360,8 @@ useEffect(() => {
       setQuantity(1);
       setSellingPrice(data.price);
       setFetchQuantity(data.countInStock);
-      itemQuantityRef.current?.focus();
-      setItemId('');
+      itemNameRef.current?.focus();
+      setItemId(data.item_id);
       setSuggestions([]);
     } catch (err) {
       console.error('Error adding product:', err);
@@ -430,6 +450,10 @@ useEffect(() => {
     setQuantity(1);
     setUnit('NOS');
     setSellingPrice('');
+    setItemId('');
+    setItemName('');
+    setItemBrand('');
+    setItemCategory('');
     setError('');
   };
 
@@ -595,6 +619,7 @@ useEffect(() => {
       customerName,
       customerAddress,
       customerContactNumber,
+      customerId,
       salesmanPhoneNumber,
       marketedBy,
       unloading,
@@ -823,8 +848,12 @@ useEffect(() => {
     const value = e.target.value;
     setCustomerName(value);
 
+
     if (value.trim() === "") {
       setCustomerSuggestions([]);
+      setCustomerAddress("");
+      setCustomerContactNumber("");
+      setCustomerId("");
       return;
     }
 
@@ -864,7 +893,7 @@ useEffect(() => {
     <div className="container mx-auto p-2">
       {/* Header */}
       <div
-        className="flex max-w-4xl mx-auto items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 cursor-pointer"
+        className={`flex mx-auto ${step == 4 ? 'w-full' : 'max-w-2xl'} items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 cursor-pointer"`}
         onClick={() => navigate('/')}
       >
         <div className="text-center">
@@ -885,48 +914,68 @@ useEffect(() => {
       )}
 
       {/* Main Form */}
-      <div className="max-w-4xl mx-auto mt-5 bg-white shadow-lg rounded-lg p-4">
+      <div className={`mx-auto ${step == 4 ? 'w-full' : 'max-w-2xl'} mt-5 mb-3 bg-white shadow-lg rounded-lg p-4`}>
         {/* Form Header */}
-        <div className="flex justify-between mb-4">
-          <p className="text-sm font-bold mb-5 text-gray-500">
-            <i className="fa fa-list" /> Editing Billing
-          </p>
-          <div className="flex space-x-2">
-          <button
-            onClick={generatePDF}
-            className={`bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
-              products.length === 0 || !userInfo.isAdmin
-                ? 'opacity-70 cursor-not-allowed'
-                : 'hover:bg-red-600'
-            }`}
-            disabled={products.length === 0 || !userInfo.isAdmin}
-          >
-            <i className="fa fa-download" />
-          </button>
-          <button
-            onClick={printInvoice}
-            className={`bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
-              products.length === 0 || !userInfo.isAdmin
-                ? 'opacity-70 cursor-not-allowed'
-                : 'hover:bg-red-600'
-            }`}
-            disabled={products.length === 0 || !userInfo.isAdmin}
-          >
-            <i className="fa fa-print" />
-          </button>
-          <button
-  onClick={openSummaryModal} 
-  className={`bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
-    products.length === 0
-      ? 'opacity-70 cursor-not-allowed'
-      : 'hover:bg-red-600'
-  }`}
-  disabled={products.length === 0}
->
-  Submit
-</button>
+         {/* Header with Actions */}
+         <div className="flex justify-between">
+          <div className='text-left'>
 
-        </div>
+              {/* Step Navigation */}
+       {step === 4 && <div className="flex justify-between mb-8">
+          <div className='space-x-4 mx-2 flex'>
+          <p className="text-sm font-bold text-gray-500 mt-2">
+            <i className="fa fa-list" />  
+          </p>
+         <button
+            disabled={step === 1}
+            onClick={prevStep}
+            className={`${
+              step === 1
+              ? 'bg-gray-300 text-gray-500 text-xs font-bold py-2 px-4 rounded-lg cursor-not-allowed'
+              : 'bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600'
+            }`}
+            >
+            Previous
+          </button> 
+            </div>
+        </div> }
+
+          </div>
+          <div className="text-right">
+            <button
+              onClick={generatePDF}
+              className={`mb-2 bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg mr-2 ${
+                products.length === 0 ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-600'
+              }`}
+              disabled={products.length === 0 || !userInfo.isAdmin}
+            >
+              <i className='fa fa-download' />
+            </button>
+
+            <button
+              onClick={printInvoice}
+              className={`mb-2 bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg mr-2 ${
+                products.length === 0 ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-600'
+              }`}
+              disabled={products.length === 0 || !userInfo.isAdmin}
+            >
+              <i className='fa fa-print' />
+            </button>
+
+
+            <button
+              onClick={() => setShowSummaryModal(true)}
+              className={`mb-2 bg-red-500 text-xs text-white font-bold py-2 px-4 rounded-lg ${
+                products.length === 0 ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-600'
+              }`}
+              disabled={products.length === 0}
+            >
+              Submit
+            </button>
+            <p className="text-xs text-gray-400">
+              Fill all fields before submission
+            </p>
+          </div>
         </div>
 
         {/* Step 1: Customer Information */}
@@ -995,10 +1044,19 @@ useEffect(() => {
                       setCustomerName(selectedCustomer.customerName);
                       setCustomerContactNumber(selectedCustomer.customerContactNumber);
                       setCustomerAddress(selectedCustomer.customerAddress);
+                      setCustomerId(selectedCustomer.customerId);
                       customerAddressRef.current?.focus();
                       setCustomerSuggestionIndex(-1);
                       setCustomerSuggestions([]);
                     } else {
+                      if(!customerId){
+                        const generatecustomerid = async ()=>{
+                          const { data } = await api.get('/api/billing/lastOrder/id');
+                          const nextCustomer =  "CUS00" + parseInt(parseInt(data.lastCustomerId.slice(3), 10) + 1);
+                           setCustomerId(nextCustomer)
+                        }
+                        generatecustomerid()
+                      }
                       customerContactNumberRef.current?.focus();
                     }
                   }
@@ -1015,6 +1073,7 @@ useEffect(() => {
                         setCustomerName(customer.customerName);
                         setCustomerContactNumber(customer.customerContactNumber);
                         setCustomerAddress(customer.customerAddress);
+                        setCustomerId(customer.customerId)
                         customerAddressRef.current?.focus();
                         setCustomerSuggestionIndex(-1);
                         setCustomerSuggestions([]);
@@ -1056,6 +1115,21 @@ useEffect(() => {
                 placeholder="Enter Customer Address"
               />
             </div>
+
+
+            <div className="mb-4">
+              <label className="block text-xs text-gray-700">
+                Customer ID
+              </label>
+              <input
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                onKeyDown={(e) => { changeRef(e, salesmanNameRef); }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                placeholder="Enter Customer ID"
+              />
+            </div>
+
           </div>
         )}
 
@@ -1161,117 +1235,278 @@ useEffect(() => {
 
         {/* Step 4: Add Products */}
         {step === 4 && (
-  <div className="mb-6">
-    {/* Display Total Amount */}
-    <div className="mb-4 bg-gray-100 flex justify-between items-center text-center rounded-lg p-5">
-      <div className="text-gray-600">
-        <p className="text-sm font-bold">Total</p>
-        <p className="text-sm font-bold">Bill Amount:</p>
-      </div>
-      <h2 className="text-md font-bold text-gray-700">
-        INR. {parseFloat(grandTotal).toFixed(2)}
-        <p className="font-bold" style={{ fontSize: '9px' }}>
-          Discount: {parseFloat(discount || 0).toFixed(2)}
-        </p>
-      </h2>
-    </div>
+  <div>
+    <div className="flex flex-col min-h-screen">
+      {/* Desktop Layout */}
+      <div className="hidden md:flex flex-col flex-1">
+        {/* Top Section: Total and Added Products */}
+        <div className="flex flex-col flex-1 overflow-y-auto p-6">
+          
+        {products.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-sm font-semibold mb-2">Added Products: {products.length}</h2>
 
-    <div>
-      {/* Item ID Input */}
-      <div className="mb-4 relative">
-        <label className="block text-xs text-gray-700">Item ID</label>
-        <input
-          type="text"
-          ref={itemIdRef}
-          value={itemId}
-          onChange={(e) => setItemId(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              setSelectedSuggestionIndex((prev) =>
-                prev < suggestions.length - 1 ? prev + 1 : prev
-              );
-            } else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              setSelectedSuggestionIndex((prev) =>
-                prev > 0 ? prev - 1 : prev
-              );
-            } else if (e.key === 'Enter') {
-              if (
-                selectedSuggestionIndex >= 0 &&
-                selectedSuggestionIndex < suggestions.length
-              ) {
-                e.preventDefault();
-                addProductByItemId(suggestions[selectedSuggestionIndex]);
-              }
-            }
-          }}
-          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-          placeholder="Enter Item ID or Name"
-        />
-        {error && <p className="text-red-500 mt-1 text-xs">{error}</p>}
-
-        {/* Suggestions Dropdown */}
-        {suggestions.length > 0 && (
-          <div className="absolute z-10 mt-1 w-full bg-white border rounded-md max-h-60 overflow-y-auto">
-            {suggestions.map((suggestion, index) => (
-              <div
-                key={index}
-                onClick={() => addProductByItemId(suggestion)}
-                className={`p-2 text-xs cursor-pointer hover:bg-gray-100 ${
-                  index === selectedSuggestionIndex ? 'bg-gray-200' : ''
-                }`}
-              >
-                {suggestion.name} - {suggestion.item_id}
+              {/* Filter Input */}
+              <div className="mb-4 flex items-center">
+                <input
+                  type="text"
+                  placeholder="Search added products..."
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                />
+                <i className="fa fa-search bg-red-500 p-2 text-white rounded-lg ml-2 items-center" />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Selected Product Details */}
-      {selectedProduct && (
-        <div className="p-4 border border-gray-200 rounded-lg shadow-md bg-white mb-4">
-          <div className="flex justify-between items-center">
-            <p className="text-xs font-bold truncate">
-              {selectedProduct.name.slice(0, 25)}... ID: {selectedProduct.item_id}
-            </p>
-            <p
-              className={`text-xs font-bold px-2 py-1 rounded ${
-                fetchQuantity > 10
-                  ? 'bg-green-300 text-green-700'
-                  : fetchQuantity > 0
-                  ? 'bg-yellow-300 text-yellow-700'
-                  : 'bg-red-300 text-red-700'
-              }`}
-            >
-              {fetchQuantity > 10
-                ? 'In Stock'
-                : fetchQuantity > 0
-                ? 'Low Stock'
-                : 'Out of Stock'}
-            </p>
+              {/* Product Table */}
+              <div className="overflow-x-auto rounded-md">
+                <table className="table-auto w-full border-collapse rounded-xl shadow-md">
+                  <thead>
+                    <tr className="bg-red-500 text-white text-xs">
+                      <th className="px-2 py-2 text-left">
+                        <i className="fa fa-cube" aria-hidden="true"></i> Name
+                      </th>
+                      <th className="px-2 py-2 text-center">Quantity</th>
+                      <th className="px-2 py-2 text-left">Unit</th>
+                      <th className="px-2 py-2 text-center">Selling Price</th>
+                      <th className="px-2 py-2 text-center">Quantity <br /> (per Nos)</th>
+                      <th className="px-2 py-2 text-center">Rate+T <br /> (per Nos)</th>
+                      <th className="px-2 py-2 text-left">Total</th>
+                      <th className="px-2 py-2 text-center">Discount</th>
+                      <th className="px-2 py-2 text-left">Net Total</th>
+                      <th className="px-2 py-2 text-center">
+                        <i className="fa fa-trash" aria-hidden="true"></i>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-x">
+                    {products
+                      .filter(
+                        (product) =>
+                          product.name.toLowerCase().includes(filterText.toLowerCase()) ||
+                          product.item_id.toLowerCase().includes(filterText.toLowerCase())
+                      )
+                      .sort((a, b) => b.originalIndex - a.originalIndex)
+                      .map((product, index) => (
+                        <tr
+                          key={index}
+                          className={`divide-x ${
+                            index % 2 === 0 ? 'bg-gray-100' : 'bg-white'
+                          } border-b hover:bg-red-50 transition duration-150`}
+                        >
+                          <td className="px-4 py-4 text-xs font-medium">
+                            {product.name} - {product.item_id}
+                          </td>
+                          <td className="px-2 py-2 text-center text-xs">
+                            <input
+                              type="number"
+                              min={1}
+                              value={product.enteredQty}
+                              onChange={(e) =>
+                                handleEditProduct(index, 'enteredQty', e.target.value)
+                              }
+                              className="w-16 text-center px-2 py-1 border rounded-md"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-xs">{product.unit}</td>
+                          <td className="px-2 py-2 text-xs text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              value={product.sellingPrice}
+                              onChange={(e) =>
+                                handleEditProduct(index, 'sellingPrice', e.target.value)
+                              }
+                              className="w-16 text-center px-2 py-1 border rounded-md"
+                            />
+                            <p className="text-center mt-2">
+                              {product.unit === 'NOS' ? '(NOS)' : '(SQFT)'}
+                            </p>
+                          </td>
+                          <td className="px-2 py-2 text-center text-xs">
+                            {product.quantity}
+                          </td>
+                          <td className="px-2 py-2 text-xs">
+                            ₹{(product.sellingPriceinQty).toFixed(2)}
+                          </td>
+                          <td className="px-2 py-2 text-xs">
+                            ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}
+                          </td>
+                          <td className="px-2 py-2 text-xs text-center">
+                            {(product.quantity * perItemDiscount).toFixed(2)}
+                          </td>
+                          <td className="px-2 py-2 text-xs">
+                            ₹{(
+                              product.quantity * product.sellingPriceinQty -
+                              product.quantity * perItemDiscount
+                            ).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-center">
+                            <button
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Are you sure you want to delete ${product.name} from the bill?`
+                                  )
+                                )
+                                  deleteProduct(index);
+                              }}
+                              className="text-red-500 font-bold hover:text-red-700"
+                            >
+                              <i className="fa fa-trash" aria-hidden="true"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           </div>
-          <p className="text-xs font-bold truncate mb-2">
-            Size: {selectedProduct.size}
-          </p>
-          <p
-            className={`text-xs font-bold text-gray-500 mb-2 ${
-              fetchQuantity > 10
-                ? 'text-green-700'
-                : fetchQuantity > 0
-                ? 'text-yellow-700'
-                : 'text-red-700'
-            }`}
-          >
-            In stock: {fetchQuantity || 'error'} {unit}
-          </p>
+        <div className="flex flex-col flex-1 overflow-y-auto p-6">
+          {/* Display Total Amount */}
+          {/* <div className="mb-6 bg-gray-100 flex justify-between items-center text-center rounded-lg p-5">
+            <div className="text-gray-600">
+              <p className="text-sm font-bold">Total</p>
+              <p className="text-sm font-bold">Bill Amount:</p>
+            </div>
+            <h2 className="text-md font-bold text-gray-700">
+              INR. {parseFloat(grandTotal).toFixed(2)}
+              <p className="font-bold" style={{ fontSize: '9px' }}>
+                Discount: {parseFloat(discount || 0).toFixed(2)}
+              </p>
+            </h2>
+          </div> */}
+
+
+          <div className="fixed bottom-0 left-0 right-0 bg-white p-6 border-t shadow-lg">
+          <div className="flex justify-between">
+            <div className='w-5/6'>
+            <div className='grid grid-cols-4 mb-4 md:grid-cols-4 gap-4'>
+            {/* Item ID Input */}
+            <div className="flex flex-col flex-1">
+              <label className="block text-gray-700 text-xs mb-1">Item ID</label>
+              <input
+                type="text"
+                ref={itemIdRef}
+                value={itemId}
+                onChange={(e) => {
+                  itemIdChange(e)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSelectedSuggestionIndex((prev) =>
+                      prev < suggestions.length - 1 ? prev + 1 : prev
+                    );
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
+                  } else if (e.key === 'Enter') {
+                    if (
+                      selectedSuggestionIndex >= 0 &&
+                      selectedSuggestionIndex < suggestions.length
+                    ) {
+                      e.preventDefault();
+                      addProductByItemId(suggestions[selectedSuggestionIndex]);
+                      // Populate additional fields
+                      const selected = suggestions[selectedSuggestionIndex];
+                      setItemId(selected.item_id)
+                      setItemName(selected.name);
+                      setItemCategory(selected.category);
+                      setItemBrand(selected.brand);
+                      itemNameRef.current?.focus();
+                    }
+                  }
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                placeholder="Enter Item ID or Name"
+              />
+              {error && <p className="text-red-500 mt-1 text-xs">{error}</p>}
+
+              {/* Suggestions Dropdown */}
+              {suggestions.length > 0 && (
+                <div className="mt-2 bg-white border rounded-md max-h-60 divide-y overflow-y-auto">
+                  {suggestions.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      onClick={() => {
+                        addProductByItemId(suggestion);
+                        setItemName(suggestion.name);
+                        setItemCategory(suggestion.category);
+                        setItemBrand(suggestion.brand);
+                        itemNameRef.current?.focus();
+                      }}
+                      className={`p-4 text-xs cursor-pointer hover:bg-gray-100 ${
+                        index === selectedSuggestionIndex ? 'bg-gray-200' : ''
+                      }`}
+                    >
+                      {suggestion.name} - {suggestion.item_id}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Item Name Input */}
+            <div className="flex flex-col flex-1">
+              <label className="block text-gray-700 text-xs mb-1">Item Name</label>
+              <input
+                type="text"
+                value={itemName}
+                ref={itemNameRef}
+                onChange={(e) => setItemName(e.target.value)}
+                onKeyDown={(e)=> changeRef(e, itemCategoryRef)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                placeholder="Item Name"
+                disabled={!selectedProduct}
+              />
+            </div>
+
+            {/* Item Category Input */}
+            <div className="flex flex-col flex-1">
+              <label className="block text-gray-700 text-xs mb-1">Item Category</label>
+              <input
+                type="text"
+                ref={itemCategoryRef}
+                value={itemCategory}
+                onChange={(e) => setItemCategory(e.target.value)}
+                onKeyDown={(e)=>  changeRef(e, itemBrandRef)}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                placeholder="Item Category"
+                disabled={!selectedProduct}
+              />
+            </div>
+
+            {/* Item Brand Input */}
+            <div className="flex flex-col flex-1">
+              <label className="block text-gray-700 text-xs mb-1">Item Brand</label>
+              <input
+                type="text"
+                value={itemBrand}
+                ref={itemBrandRef}
+                onChange={(e) => setItemBrand(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key == 'Enter') {
+                    itemQuantityRef.current.focus();
+                  }
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                placeholder="Item Brand"
+                disabled={!selectedProduct}
+              />
+            </div>
+          </div>
+
+        
+
+          <div className='grid grid-cols-4 md:grid-cols-4 gap-4'>
 
           {/* Quantity and Unit */}
-          <div className="mb-4">
-            <label className="block text-xs mb-1 text-gray-700">
-              Quantity
-            </label>
+          <div className="flex flex-col flex-1">
+            <label className="block text-gray-700 text-xs mb-1">Quantity</label>
             <div className="flex">
               <input
                 type="number"
@@ -1279,18 +1514,20 @@ useEffect(() => {
                 max={fetchQuantity}
                 value={quantity}
                 onChange={(e) =>
-                  setQuantity(Math.min(parseFloat(e.target.value) || 0, fetchQuantity))
+                  setQuantity(Math.min(parseFloat(e.target.value), fetchQuantity))
                 }
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    sellingPriceRef.current.focus();
+                    itemUnitRef.current.focus();
                   }
                 }}
                 className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               />
               <select
+              ref={itemUnitRef}
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
+                onKeyDown={(e)=> changeRef(e, sellingPriceRef)}
                 className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               >
                 <option value="SQFT">SQFT</option>
@@ -1303,10 +1540,8 @@ useEffect(() => {
           </div>
 
           {/* Selling Price */}
-          <div className="mb-4">
-            <label className="block text-xs mb-1 text-gray-700">
-              Selling Price
-            </label>
+          <div className="flex flex-col flex-1">
+            <label className="block text-gray-700 text-xs mb-1">Selling Price</label>
             <input
               type="number"
               ref={sellingPriceRef}
@@ -1322,308 +1557,409 @@ useEffect(() => {
             />
           </div>
 
-          {/* Add Item Button */}
-          <button
-            className="bg-red-500 text-xs w-full text-white font-bold py-2 px-4 rounded focus:outline-none hover:bg-red-600"
-            onClick={handleAddProductWithQuantity}
-          >
-            Add Item
-          </button>
-          <p
-            onClick={() => {
-              setOutOfStockProduct(selectedProduct);
-              setQuantity(0);
-              setItemId('');
-              setSuggestions([]);
-              setShowOutOfStockModal(true);
-              outOfStockRef.current?.focus();
-            }}
-            className="text-xs cursor-pointer text-gray-500 text-center font-bold my-5"
-          >
-            Update Stock
-          </p>
-        </div>
-      )}
+          <div className='flex justify-between gap-2 mx-2 mt-auto'>
 
-      {/* Added Products Table - Mobile View */}
-      {products.length > 0 && (
-        <div className="mt-6 md:hidden">
-          <h2 className="text-sm border-t text-gray-600 pt-5 font-bold mb-4">
-            Added Products: {products.length}
+<div className={`text-center ${
+        selectedProduct &&  fetchQuantity > 10
+            ? ' text-green-600'
+            : selectedProduct && fetchQuantity > 0
+            ? ' text-yellow-600'
+            : 'text-red-600'
+        } items-center flex justify-center bg-gray-100 p-2 rounded-lg w-1/3 h-20 `}>
+  <div className='p-2'>
+  <p className='font-bold  text-sm'>Stock:</p>
+  <p
+        className={`text-sm mt-1 truncate font-bold rounded`}
+      >
+        {selectedProduct ? fetchQuantity : '0'}
+      </p>
+  </div>
+    </div> 
+
+ <div className={`text-center items-center flex justify-center bg-gray-100 p-2 rounded-lg w-2/3 h-20 `}>
+  <div className='p-2'>
+  <p className='font-bold text-gray-500 text-sm'>Net Amount:</p>
+  <p className='font-bold text-sm mx-5'>{quantity > 0 && sellingPrice > 0 ? (quantity * sellingPrice).toFixed(2) : '0.00'}</p>
+  </div>
+    </div> 
+  </div>
+
+
+          <div className="flex flex-col flex-1 mt-auto">
+            {/* Add Item Button */}
+            <button
+              className="bg-red-500 text-xs w-full text-white font-bold py-2 px-4 rounded focus:outline-none hover:bg-red-600"
+              onClick={handleAddProductWithQuantity}
+            >
+              Add Item
+            </button>
+            {/* Update Stock Button */}
+            <button
+                onClick={() => {
+                  setOutofstockProduct(selectedProduct);
+                  setQuantity(0);
+                  setItemId('');
+                  setItemName('');
+                  setItemCategory('');
+                  setItemBrand('');
+                  setSuggestions([]);
+                  setShowOutOfStockModal(true);
+                  outofStockRef.current?.focus();
+                }}
+                className="text-xs text-gray-500 font-bold py-2 px-4 rounded focus:outline-none hover:text-gray-700"
+              >
+                Update Stock
+              </button>
+          </div>
+          </div>
+          </div>
+
+
+          <div className='flex flex-col flex-1 ml-2'>
+
+          <div className="mb-4 bg-gray-100 w-100 items-center text-center rounded-lg p-6">
+          <div className="text-gray-600">
+            <p className="text-sm font-bold">Total</p>
+            <p className="text-sm font-bold">Bill Amount:</p>
+          </div>
+          <h2 className="text-md font-bold text-gray-700">
+            INR. {(parseFloat(grandTotal)).toFixed(2)}
+            <p className="font-bold" style={{ fontSize: '9px' }}>
+              Discount: {parseFloat(discount || 0)?.toFixed(2)}
+            </p>
           </h2>
-          <div className="mb-4 flex items-center">
+        </div>
+
+            </div>
+
+
+          </div>
+          </div>
+        </div>
+      </div>
+      
+
+      {/* Mobile Layout */}
+      <div className="md:hidden flex flex-col flex-1 p-6">
+        {/* Item Inputs */}
+        <div>
+          {/* Item ID Input */}
+          <div className="mb-4 relative">
+            <label className="block text-xs text-gray-700">Item ID</label>
             <input
               type="text"
-              placeholder="Filter by product name or ID"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
+              ref={itemIdMobileRef}
+              value={itemId}
+              onChange={(e) => itemIdChange(e)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setSelectedSuggestionIndex((prev) =>
+                    prev < suggestions.length - 1 ? prev + 1 : prev
+                  );
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
+                } else if (e.key === 'Enter') {
+                  if (
+                    selectedSuggestionIndex >= 0 &&
+                    selectedSuggestionIndex < suggestions.length
+                  ) {
+                    e.preventDefault();
+                    addProductByItemId(suggestions[selectedSuggestionIndex]);
+                  }
+                }
+              }}
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              placeholder="Enter Item ID or Name"
             />
-            <i className="fa fa-search bg-red-500 p-3 text-white rounded-lg ml-2 items-center" />
+            {error && <p className="text-red-500 mt-1 text-xs">{error}</p>}
+
+            {/* Suggestions Dropdown */}
+            {suggestions.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded-md max-h-60 divide-y overflow-y-auto">
+                {suggestions.map((suggestion, index) => (
+                  <div
+                    key={index}
+                    onClick={() => {
+                      addProductByItemId(suggestion);
+                      setItemName(suggestion.name);
+                      setItemCategory(suggestion.category);
+                      setItemBrand(suggestion.brand);
+                    }}
+                    className={`p-4 text-xs cursor-pointer hover:bg-gray-100 ${
+                      index === selectedSuggestionIndex ? 'bg-gray-200' : ''
+                    }`}
+                  >
+                    {suggestion.name} - {suggestion.item_id}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {products
-            .filter(
-              (product) =>
-                product.name.toLowerCase().includes(filterText.toLowerCase()) ||
-                product.item_id.toLowerCase().includes(filterText.toLowerCase())
-            )
-            .map((product, index) => (
-              <div
-                key={index}
-                className="mb-4 bg-white border border-gray-200 rounded-lg shadow-md flex flex-col space-y-2"
+
+          {/* Selected Product Details */}
+          {selectedProduct && (
+            <div className="p-4 border border-gray-200 rounded-lg shadow-md bg-white mb-4">
+              <div className="flex justify-between items-center">
+                <p className="text-xs font-bold truncate">
+                  {selectedProduct.name.slice(0, 25)}... ID: {selectedProduct.item_id}
+                </p>
+                <p
+                  className={`text-xs font-bold px-2 py-1 rounded ${
+                    fetchQuantity > 10
+                      ? 'bg-green-300 text-green-700'
+                      : fetchQuantity > 0
+                      ? 'bg-yellow-300 text-yellow-700'
+                      : 'bg-red-300 text-red-700'
+                  }`}
+                >
+                  {fetchQuantity > 10
+                    ? 'In Stock'
+                    : fetchQuantity > 0
+                    ? 'Low Stock'
+                    : 'Out of Stock'}
+                </p>
+              </div>
+              <p className="text-xs font-bold truncate mb-2">
+                Size: {selectedProduct.size}
+              </p>
+              <p
+                className={`text-xs font-bold text-gray-500 mb-2 ${
+                  fetchQuantity > 10
+                    ? 'text-green-700'
+                    : fetchQuantity > 0
+                    ? 'text-yellow-700'
+                    : 'text-red-700'
+                }`}
               >
-                <div className="flex justify-between rounded-t-lg bg-red-500 p-2 items-center">
-                  <p className="text-xs text-white font-bold truncate">
-                    {product.name.slice(0, 20)}... - {product.item_id}
-                  </p>
-                  <button
-                    onClick={() => {
-                      if (
-                        window.confirm(`Are you sure you want to delete ${product.name} from the bill?`)
-                      )
-                        deleteProduct(index);
-                    }}
-                    className="text-white text-xs font-bold hover:text-white"
-                  >
-                    <i className="fa fa-trash" aria-hidden="true"></i>
-                  </button>
-                </div>
-                <div className="flex flex-col px-4 py-3 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold">Quantity:</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={product.enteredQty}
-                      onChange={(e) =>
-                        handleEditProduct(index, 'enteredQty', e.target.value)
+                In stock: {fetchQuantity || 'error'} {unit}
+              </p>
+
+              {/* Quantity and Unit */}
+              <div className="mb-4">
+                <label className="block text-xs mb-1 text-gray-700">Quantity</label>
+                <div className="flex">
+                  <input
+                    type="number"
+                    ref={itemQuantityMobileRef}
+                    max={fetchQuantity}
+                    value={quantity}
+                    onChange={(e) =>
+                      setQuantity(Math.min(parseFloat(e.target.value) || 0, fetchQuantity))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        sellingPriceRef.current.focus();
                       }
-                      className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs text-center"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold">Unit:</span>
-                    <select
-                      value={product.unit}
-                      onChange={(e) => setUnit(e.target.value)}
-                      className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                    >
-                      <option value="SQFT">SQFT</option>
-                      <option value="GSQFT">Granite SQFT</option>
-                      <option value="BOX">BOX</option>
-                      <option value="NOS">NOS</option>
-                      <option value="TNOS">Tiles NOS</option>
-                    </select>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold">Selling Price:</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={product.sellingPrice}
-                      onChange={(e) =>
-                        handleEditProduct(index, 'sellingPrice', e.target.value)
-                      }
-                      className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs text-center"
-                      placeholder="Price"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold">Discount:</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={(((product.quantity * product.sellingPriceinQty) / totalAmount) * discount).toFixed(2)}
-                      readOnly
-                      className="w-20 border border-gray-300 px-2 py-1 rounded-md text-xs text-center bg-gray-100"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold">Net Total:</span>
-                    <span className="text-xs font-bold">
-                      ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * product.sellingPriceinQty / totalAmount * discount)).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex justify-between px-4 py-2">
-                  <div className="flex items-center">
-                    <span className="text-xs font-semibold">Total:</span>
-                    <span className="text-xs ml-2">
-                      ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-xs font-semibold">Discount:</span>
-                    <span className="text-xs ml-2">
-                      ₹{((product.quantity * product.sellingPriceinQty) / totalAmount * discount).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-xs font-semibold">Net Total:</span>
-                    <span className="text-xs ml-2">
-                      ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * product.sellingPriceinQty / totalAmount * discount)).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Are you sure you want to delete ${product.name} from the bill?`
-                        )
-                      )
-                        deleteProduct(index);
                     }}
-                    className="text-red-500 font-bold hover:text-red-700"
+                    className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  />
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                   >
-                    <i className="fa fa-trash" aria-hidden="true"></i> Delete
-                  </button>
+                    <option value="SQFT">SQFT</option>
+                    <option value="GSQFT">Granite SQFT</option>
+                    <option value="BOX">BOX</option>
+                    <option value="NOS">NOS</option>
+                    <option value="TNOS">Tiles NOS</option>
+                  </select>
                 </div>
               </div>
-            ))}
-        </div>
-      )}
 
-      {/* Added Products Table - Desktop View */}
-      {products.length > 0 && (
-        <div className="hidden md:block mt-6">
-          <h2 className="text-sm font-semibold mb-2">
-            Added Products: {products.length}
-          </h2>
+              {/* Selling Price */}
+              <div className="mb-4">
+                <label className="block text-xs mb-1 text-gray-700">
+                  Selling Price
+                </label>
+                <input
+                  type="number"
+                  ref={sellingPriceMobileRef}
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddProductWithQuantity();
+                    }
+                  }}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  placeholder="Enter Selling Price"
+                />
+              </div>
 
-          {/* Filter Input */}
-          <div className="mb-4 flex items-center">
-            <input
-              type="text"
-              placeholder="Search added products..."
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-            />
-            <i className="fa fa-search bg-red-500 p-2 text-white rounded-lg ml-2 items-center" />
-          </div>
+              {/* Action Buttons */}
+              <button
+                className="bg-red-500 text-xs w-full text-white font-bold py-2 px-4 rounded focus:outline-none hover:bg-red-600"
+                onClick={handleAddProductWithQuantity}
+              >
+                Add Item
+              </button>
+              <p
+                onClick={() => {
+                  setOutofstockProduct(selectedProduct);
+                  setQuantity(0);
+                  setItemId('');
+                  setItemName('');
+                  setItemCategory('');
+                  setItemBrand('');
+                  setSuggestions([]);
+                  setShowOutOfStockModal(true);
+                  outofStockRef.current?.focus();
+                }}
+                className="text-xs cursor-pointer text-gray-500 text-center font-bold my-5"
+              >
+                Update Stock
+              </p>
+            </div>
+          )}
 
-          {/* Product Table */}
-          <div className="overflow-x-auto rounded-md">
-            <table className="table-auto w-full border-collapse rounded-xl shadow-md">
-              <thead>
-                <tr className="bg-red-500 text-white text-xs">
-                  <th className="px-2 py-2 text-left">
-                    <i className="fa fa-cube" aria-hidden="true"></i> Name
-                  </th>
-                  <th className="px-2 py-2 text-center">Quantity</th>
-                  <th className="px-2 py-2 text-left">Unit</th>
-                  <th className="px-2 py-2 text-center">
-                    Selling Price
-                    <br />
-                    {/* Adjust unit display based on product */}
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    Quantity <br /> (per Nos)
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    Rate+T <br /> (per Nos)
-                  </th>
-                  <th className="px-2 py-2 text-left">Total</th>
-                  <th className="px-2 py-2 text-center">Discount</th>
-                  <th className="px-2 py-2 text-left">Net Total</th>
-                  <th className="px-2 py-2 text-center">
-                    <i className="fa fa-trash" aria-hidden="true"></i>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-x">
-                {products
-                  .filter(
-                    (product) =>
-                      product.name.toLowerCase().includes(filterText.toLowerCase()) ||
-                      product.item_id.toLowerCase().includes(filterText.toLowerCase())
-                  )
-                  .map((product, index) => {
-                    // Calculate product total and proportional discount
-                    // const productTotal = (product.quantity * product.sellingPriceinQty) - (product.quantity * perItemDiscount)
-                    // const proportionalDiscount =
-                    //   totalAmount > 0 ? (productTotal / totalAmount) * discount : 0;
-                    // const netTotal = productTotal - proportionalDiscount;
-
-                    return (
-                      <tr
-                        key={index}
-                        className={`divide-x ${
-                          index % 2 === 0 ? 'bg-gray-100' : 'bg-white'
-                        } border-b hover:bg-red-50 transition duration-150`}
+          {/* Added Products List */}
+          {products.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-sm font-semibold mb-4">Added Products: {products.length}</h2>
+              <div className="mb-4 flex items-center">
+                <input
+                  type="text"
+                  placeholder="Filter by product name or ID"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                />
+                <i className="fa fa-search bg-red-500 p-3 text-white rounded-lg ml-2 items-center" />
+              </div>
+              {products
+                .filter(
+                  (product) =>
+                    product.name.toLowerCase().includes(filterText.toLowerCase()) ||
+                    product.item_id.toLowerCase().includes(filterText.toLowerCase())
+                )
+                .map((product, index) => (
+                  <div
+                    key={index}
+                    className="mb-4 bg-white border border-gray-200 rounded-lg shadow-md flex flex-col space-y-2"
+                  >
+                    <div className="flex justify-between rounded-t-lg bg-red-500 p-2 items-center">
+                      <p className="text-xs text-white font-bold truncate">
+                        {product.name.slice(0, 20)}... - {product.item_id}
+                      </p>
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Are you sure you want to delete ${product.name} from the bill?`
+                            )
+                          )
+                            deleteProduct(index);
+                        }}
+                        className="text-white text-xs font-bold hover:text-white"
                       >
-                        <td className="px-4 py-4 text-xs font-medium">
-                          {product.name} - {product.item_id}
-                        </td>
-                        <td className="px-2 py-2 text-center text-xs">
-                          <input
-                            type="number"
-                            min={1}
-                            value={product.enteredQty}
-                            onChange={(e) =>
-                              handleEditProduct(index, 'enteredQty', e.target.value)
-                            }
-                            className="w-16 text-center px-2 py-1 border rounded-md"
-                          />
-                        </td>
-                        <td className="px-2 py-2 text-xs">{product.unit}</td>
-                        <td className="px-2 py-2 text-xs text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            value={product.sellingPrice}
-                            onChange={(e) =>
-                              handleEditProduct(index, 'sellingPrice', e.target.value)
-                            }
-                            className="w-16 text-center px-2 py-1 border rounded-md"
-                          />
-                          <p className="text-center mt-2">
-                            {product.unit === 'NOS' ? '(NOS)' : '(SQFT)'}
-                          </p>
-                        </td>
-                        <td className="px-2 py-2 text-center text-xs">
-                          {product.quantity}
-                        </td>
-                        <td className="px-2 py-2 text-xs">
-                          ₹{parseFloat(product.sellingPriceinQty).toFixed(2)}
-                        </td>
-                        <td className="px-2 py-2 text-xs">
+                        <i className="fa fa-trash" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    <div className="flex flex-col px-4 py-3 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold">Quantity:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={product.enteredQty}
+                          onChange={(e) =>
+                            handleEditProduct(index, 'enteredQty', e.target.value)
+                          }
+                          className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs text-center"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold">Unit:</span>
+                        <select
+                          value={product.unit}
+                          onChange={(e) => setUnit(e.target.value)}
+                          className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                        >
+                          <option value="SQFT">SQFT</option>
+                          <option value="GSQFT">Granite SQFT</option>
+                          <option value="BOX">BOX</option>
+                          <option value="NOS">NOS</option>
+                          <option value="TNOS">Tiles NOS</option>
+                        </select>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold">Selling Price:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={product.sellingPrice}
+                          onChange={(e) =>
+                            handleEditProduct(index, 'sellingPrice', e.target.value)
+                          }
+                          className="w-20 border border-gray-300 px-2 py-1 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs text-center"
+                          placeholder="Price"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold">Discount:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={(((product.quantity * product.sellingPriceinQty) / totalAmount) * discount).toFixed(2)}
+                          readOnly
+                          className="w-20 border border-gray-300 px-2 py-1 rounded-md text-xs text-center bg-gray-100"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold">Net Total:</span>
+                        <span className="text-xs font-bold">
+                          ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * product.sellingPriceinQty / totalAmount * discount)).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between px-4 py-2">
+                      <div className="flex items-center">
+                        <span className="text-xs font-semibold">Total:</span>
+                        <span className="text-xs ml-2">
                           ₹{(product.quantity * product.sellingPriceinQty).toFixed(2)}
-                        </td>
-                        <td className="px-2 py-2 text-xs text-center">
-                          ₹ {(product.quantity * perItemDiscount).toFixed(2)}
-                        </td>
-                        <td className="px-2 py-2 text-xs">
-                          ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * perItemDiscount)).toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-center">
-                          <button
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Are you sure you want to delete ${product.name} from the bill?`
-                                )
-                              )
-                                deleteProduct(index);
-                            }}
-                            className="text-red-500 font-bold hover:text-red-700"
-                          >
-                            <i className="fa fa-trash" aria-hidden="true"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs font-semibold">Discount:</span>
+                        <span className="text-xs ml-2">
+                          ₹{((product.quantity * product.sellingPriceinQty) / totalAmount * discount).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs font-semibold">Net Total:</span>
+                        <span className="text-xs ml-2">
+                          ₹{((product.quantity * product.sellingPriceinQty) - (product.quantity * product.sellingPriceinQty / totalAmount * discount)).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Are you sure you want to delete ${product.name} from the bill?`
+                            )
+                          )
+                            deleteProduct(index);
+                        }}
+                        className="text-red-500 font-bold hover:text-red-700"
+                      >
+                        <i className="fa fa-trash" aria-hidden="true"></i> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   </div>
 )}
+
 
 
 

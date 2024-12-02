@@ -33,7 +33,16 @@ export default function SummaryModal({
   remark,
   setRemark,
   grandTotal,
-  accounts
+  accounts,
+  discountRef,
+  paymentMethodRef,
+  receivedDateRef,
+  unloadingRef,
+  transportationRef,
+  handlingRef,
+  remarkRef,
+  changeRef,
+  receivedAmountRef,
 }) {
   const remainingAmount = (parseFloat(parseFloat(totalAmount) - discount) - parseFloat(receivedAmount)).toFixed(2);
 
@@ -46,6 +55,9 @@ export default function SummaryModal({
     setFetchedReceivedAmount(receivedAmount);
     setFetchedRemainingAmount((parseFloat(parseFloat(totalAmount) - discount) - parseFloat(receivedAmount)).toFixed(2));
   },[discount])
+
+
+
 
   const mainRef = useRef();
 
@@ -85,7 +97,9 @@ export default function SummaryModal({
             <label className="block text-xs">Discount</label>
             <input
               type="number"
+              ref={discountRef}
               value={discount || 0}
+              onKeyDown={(e)=> changeRef(e, receivedAmountRef)}
               onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               placeholder="Enter Discount"
@@ -96,9 +110,11 @@ export default function SummaryModal({
 
             <label className="block text-xs">Received Amount</label>
             <input
+            ref={receivedAmountRef}
               type="number"
               placeholder="Enter Received Amount"
               value={receivedAmount || 0}
+              onKeyDown={(e)=> changeRef(e, paymentMethodRef)}
               onChange={(e) =>
                 setReceivedAmount(Math.min(parseFloat(e.target.value) || 0, parseFloat(fetchedRemainingAmount)))
               }
@@ -110,7 +126,10 @@ export default function SummaryModal({
 
             <label className="block text-xs">Payment Method</label>
             <select
+            ref={paymentMethodRef}
               value={paymentMethod}
+              onKeyDown={(e)=> changeRef(e, receivedDateRef)}
+
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             >
@@ -126,6 +145,8 @@ export default function SummaryModal({
 
             <label className="block text-xs">Received Date</label>
             <input
+            ref={receivedDateRef}
+            onKeyDown={(e)=> changeRef(e, unloadingRef)}
               type="date"
               value={receivedDate}
               onChange={(e) => setReceivedDate(e.target.value)}
@@ -139,6 +160,8 @@ export default function SummaryModal({
 <label className="block text-xs">Unloading Charge</label>
 <input
   type="number"
+  onKeyDown={(e)=> changeRef(e, transportationRef)}
+  ref={unloadingRef}
   placeholder="Enter Unloading Charge"
   value={unloading || 0}
   onChange={(e) =>
@@ -153,6 +176,8 @@ export default function SummaryModal({
 <label className="block text-xs">Transportation Charge</label>
 <input
   type="number"
+  onKeyDown={(e)=> changeRef(e, handlingRef)}
+  ref={transportationRef}
   placeholder="Enter Received Amount"
   value={transportation || 0}
   onChange={(e) =>
@@ -169,11 +194,13 @@ export default function SummaryModal({
 <label className="block text-xs">Handling / Other Charges</label>
 <input
   type="number"
+  ref={handlingRef}
   placeholder="Enter Handling Charge"
   value={handling || 0}
   onChange={(e) =>
     setHandling(parseFloat(e.target.value))
   }
+  onKeyDown={(e)=> changeRef(e, remarkRef)}
   className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
 />
 </div>
@@ -181,11 +208,17 @@ export default function SummaryModal({
 <div>
 
 <label className="block text-xs">Bill Remark</label>
-<textarea
+<input
   type="text"
+  ref={remarkRef}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      onSubmit(); // Corrected to match the prop name
+    }
+  }}
   placeholder="Enter Remark"
   value={remark}
-  onChange={(e) =>
+  onChange={(e) => 
     setRemark(e.target.value)
   }
   className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"

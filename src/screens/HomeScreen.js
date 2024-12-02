@@ -123,7 +123,7 @@ export default function HomeScreen() {
 
             <CardSection title="Reports">
             <ActionButton href="/sales-report" title="Sales Report" />
-            <ActionButton href="/daily-transactions" title="Daily Transactions" />
+            <ActionButton href="/purchase-report" title="Purchase Report" />
             </CardSection>
 
             <CardSection title="Site Reports">
@@ -136,17 +136,33 @@ export default function HomeScreen() {
             <ActionButton href="/payment-accounts" title="Accounts" />
             </CardSection>
 
+            <CardSection title="Customer Accounts">
+            <ActionButton href="/create-customer-account" title="Create Account" />
+            <ActionButton href="/customer-accounts" title="Customer Accounts" />
+            </CardSection>
+
+            <CardSection title="Supplier Accounts">
+            <ActionButton href="/create-seller-account" title="Create Account" />
+            <ActionButton href="/seller-accounts" title="Supplier Accounts" />
+            </CardSection>
+
+            <CardSection title="Accounts">
+            <ActionButton href="/create-account" title="Create Account" />
+            <ActionButton href="/payment-accounts" title="Accounts" />
+            <ActionButton href="/daily-transactions" title="Daily Transactions" />
+            </CardSection>
+
            {userInfo.isAdmin && <CardSection title="Admin Panel">
               <ActionButton href={userInfo?.isAdmin ? '/support' : '/chat'} title="Inbox" />
               <ActionButton href="/dashboard" title="Dashboard" />
               <ActionButton href="https://kktrading-backend.vercel.app/export" title="Export All" />
             </CardSection> }
 
-            <CardSection title="Edit Billings">
+            {/* <CardSection title="Edit Billings">
             <ActionButton href="/bills/edit" title="Edit Bills" />
             <ActionButton href="/purchase/edit" title="Edit Purchases" />
             <ActionButton href="/return/edit" title="Edit Returns" />
-            </CardSection>
+            </CardSection> */}
 
           </div>
         </div>

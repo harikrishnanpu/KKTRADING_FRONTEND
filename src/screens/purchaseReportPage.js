@@ -1,29 +1,24 @@
+// PurchaseReport.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api';
 import { useSelector } from 'react-redux';
-import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-const SalesReport = () => {
+const PurchaseReport = () => {
   const navigate = useNavigate();
-  const [billings, setBillings] = useState([]);
-  const [filteredBillings, setFilteredBillings] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [filteredPurchases, setFilteredPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const today = new Date().toISOString().split('T')[0];
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [salesmanName, setSalesmanName] = useState('');
+  const [sellerName, setSellerName] = useState('');
   const [invoiceNo, setInvoiceNo] = useState('');
-  const [paymentStatus, setPaymentStatus] = useState('');
-  const [deliveryStatus, setDeliveryStatus] = useState('');
   const [itemName, setItemName] = useState('');
   const [amountThreshold, setAmountThreshold] = useState('');
-  const [sortField, setSortField] = useState('billingAmount');
+  const [sortField, setSortField] = useState('totals.totalPurchaseAmount');
   const [sortDirection, setSortDirection] = useState('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -32,13 +27,13 @@ const SalesReport = () => {
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
 
-  const fetchBillings = async () => {
+  const fetchPurchases = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/api/billing/sort/sales-report/');
-      setBillings(response.data);
+      const response = await api.get('/api/purchases/sort/purchase-report/');
+      setPurchases(response.data);
     } catch (err) {
-      setError('Failed to fetch billings.');
+      setError('Failed to fetch purchases.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -46,65 +41,46 @@ const SalesReport = () => {
   };
 
   useEffect(() => {
-    fetchBillings();
+    fetchPurchases();
   }, []);
 
   // Function to handle filtering
-  const filterBillings = () => {
-    let filtered = billings;
+  const filterPurchases = () => {
+    let filtered = purchases;
 
     // Filter by date range
     if (fromDate) {
       filtered = filtered.filter(
-        (billing) => new Date(billing.invoiceDate).toISOString().split('T')[0] >= fromDate
+        (purchase) =>
+          new Date(purchase.invoiceDate).toISOString().split('T')[0] >= fromDate
       );
     }
     if (toDate) {
       filtered = filtered.filter(
-        (billing) => new Date(billing.invoiceDate).toISOString().split('T')[0] <= toDate
+        (purchase) =>
+          new Date(purchase.invoiceDate).toISOString().split('T')[0] <= toDate
       );
     }
 
-    // Filter by customer name
-    if (customerName) {
-      filtered = filtered.filter((billing) =>
-        billing.customerName.toLowerCase().includes(customerName.toLowerCase())
-      );
-    }
-
-    // Filter by salesman name
-    if (salesmanName) {
-      filtered = filtered.filter((billing) =>
-        billing.salesmanName.toLowerCase().includes(salesmanName.toLowerCase())
+    // Filter by seller name
+    if (sellerName) {
+      filtered = filtered.filter((purchase) =>
+        purchase.sellerName.toLowerCase().includes(sellerName.toLowerCase())
       );
     }
 
     // Filter by invoice number
     if (invoiceNo) {
-      filtered = filtered.filter((billing) =>
-        billing.invoiceNo.toLowerCase().includes(invoiceNo.toLowerCase())
-      );
-    }
-
-    // Filter by payment status
-    if (paymentStatus) {
-      filtered = filtered.filter(
-        (billing) => billing.paymentStatus.toLowerCase() === paymentStatus.toLowerCase()
-      );
-    }
-
-    // Filter by delivery status
-    if (deliveryStatus) {
-      filtered = filtered.filter(
-        (billing) => billing.deliveryStatus.toLowerCase() === deliveryStatus.toLowerCase()
+      filtered = filtered.filter((purchase) =>
+        purchase.invoiceNo.toLowerCase().includes(invoiceNo.toLowerCase())
       );
     }
 
     // Filter by item name
     if (itemName) {
-      filtered = filtered.filter((billing) =>
-        billing.products.some((product) =>
-          product.name.toLowerCase().includes(itemName.toLowerCase())
+      filtered = filtered.filter((purchase) =>
+        purchase.items.some((item) =>
+          item.name.toLowerCase().includes(itemName.toLowerCase())
         )
       );
     }
@@ -112,15 +88,15 @@ const SalesReport = () => {
     // Filter by amount threshold
     if (amountThreshold) {
       filtered = filtered.filter(
-        (billing) => billing.billingAmount >= parseFloat(amountThreshold)
+        (purchase) => purchase.totals.totalPurchaseAmount >= parseFloat(amountThreshold)
       );
     }
 
     // Sort by selected field
     if (sortField) {
       filtered.sort((a, b) => {
-        const fieldA = a[sortField];
-        const fieldB = b[sortField];
+        const fieldA = getFieldValue(a, sortField);
+        const fieldB = getFieldValue(b, sortField);
 
         if (sortDirection === 'asc') {
           if (fieldA < fieldB) return -1;
@@ -134,66 +110,64 @@ const SalesReport = () => {
       });
     }
 
-    setFilteredBillings(filtered);
+    setFilteredPurchases(filtered);
   };
 
-  // Update filtered billings whenever filters change
+  // Helper function to get nested field value
+  const getFieldValue = (obj, field) => {
+    return field.split('.').reduce((o, i) => (o ? o[i] : null), obj);
+  };
+
+  // Update filtered purchases whenever filters change
   useEffect(() => {
-    filterBillings();
+    filterPurchases();
   }, [
     fromDate,
     toDate,
-    customerName,
-    salesmanName,
+    sellerName,
     invoiceNo,
-    paymentStatus,
-    deliveryStatus,
     itemName,
     amountThreshold,
     sortField,
     sortDirection,
-    billings,
+    purchases,
   ]);
 
-  // Compute total amount of filtered billings
+  // Compute total amount of filtered purchases
   useEffect(() => {
-    const total = filteredBillings.reduce(
-      (sum, billing) => sum + (billing.billingAmount - billing.discount),
+    const total = filteredPurchases.reduce(
+      (sum, purchase) => sum + (purchase.totals.totalPurchaseAmount || 0),
       0
     );
     setTotalAmount(total);
-  }, [filteredBillings]);
+  }, [filteredPurchases]);
 
   // Suggestions for autocomplete
-  const [customerSuggestions, setCustomerSuggestions] = useState([]);
-  const [salesmanSuggestions, setSalesmanSuggestions] = useState([]);
+  const [sellerSuggestions, setSellerSuggestions] = useState([]);
   const [invoiceSuggestions, setInvoiceSuggestions] = useState([]);
   const [itemSuggestions, setItemSuggestions] = useState([]);
 
   useEffect(() => {
-    const customerNames = [...new Set(billings.map((b) => b.customerName))];
-    setCustomerSuggestions(customerNames);
+    const sellerNames = [...new Set(purchases.map((p) => p.sellerName))];
+    setSellerSuggestions(sellerNames);
 
-    const salesmanNames = [...new Set(billings.map((b) => b.salesmanName))];
-    setSalesmanSuggestions(salesmanNames);
-
-    const invoiceNumbers = [...new Set(billings.map((b) => b.invoiceNo))];
+    const invoiceNumbers = [...new Set(purchases.map((p) => p.invoiceNo))];
     setInvoiceSuggestions(invoiceNumbers);
 
     const items = [
       ...new Set(
-        billings.flatMap((b) => b.products.map((p) => p.name))
+        purchases.flatMap((p) => p.items.map((i) => i.name))
       ),
     ];
     setItemSuggestions(items);
-  }, [billings]);
+  }, [purchases]);
 
-  const paginateBillings = () => {
+  const paginatePurchases = () => {
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredBillings.slice(start, start + itemsPerPage);
+    return filteredPurchases.slice(start, start + itemsPerPage);
   };
 
-  const totalPages = Math.ceil(filteredBillings.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredPurchases.length / itemsPerPage);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -203,38 +177,28 @@ const SalesReport = () => {
 
   const generatePDF = () => {
     const doc = new jsPDF();
-    doc.text('Sales Report', 14, 15);
+    doc.text('Purchase Report', 14, 15);
     doc.setFontSize(12);
     doc.text(`Date Range: ${fromDate || 'All'} to ${toDate || 'All'}`, 14, 25);
-    doc.text(`Customer Name: ${customerName || 'All'}`, 14, 32);
+    doc.text(`Seller Name: ${sellerName || 'All'}`, 14, 32);
     doc.text(`Total Amount: Rs. ${totalAmount.toFixed(2)}`, 14, 39);
 
     const tableColumn = [
       'Invoice No',
       'Invoice Date',
-      'Salesman Name',
-      'Customer Name',
-      'Billing Amount',
-      'Discount',
-      'Net Amount',
-      'Payment Status',
-      'Delivery Status',
+      'Seller Name',
+      'Total Purchase Amount',
     ];
     const tableRows = [];
 
-    filteredBillings.forEach((billing) => {
-      const billingData = [
-        billing.invoiceNo,
-        new Date(billing.invoiceDate).toLocaleDateString(),
-        billing.salesmanName,
-        billing.customerName,
-        `Rs. ${billing.billingAmount.toFixed(2)}`,
-        `Rs. ${billing.discount.toFixed(2)}`,
-        `Rs. ${(billing.billingAmount - billing.discount).toFixed(2)}`,
-        billing.paymentStatus,
-        billing.deliveryStatus,
+    filteredPurchases.forEach((purchase) => {
+      const purchaseData = [
+        purchase.invoiceNo,
+        new Date(purchase.invoiceDate).toLocaleDateString(),
+        purchase.sellerName,
+        `Rs. ${purchase.totals.totalPurchaseAmount.toFixed(2)}`,
       ];
-      tableRows.push(billingData);
+      tableRows.push(purchaseData);
     });
 
     doc.autoTable({
@@ -244,7 +208,7 @@ const SalesReport = () => {
       styles: { fontSize: 8 },
     });
 
-    doc.save('sales_report.pdf');
+    doc.save('purchase_report.pdf');
   };
 
   return (
@@ -253,7 +217,7 @@ const SalesReport = () => {
       <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-3 rounded-lg mb-2 relative">
         <div onClick={() => navigate('/')} className="text-center cursor-pointer">
           <h2 className="text-base font-bold text-red-600">KK TRADING</h2>
-          <p className="text-gray-400 text-xs font-bold">Sales Report</p>
+          <p className="text-gray-400 text-xs font-bold">Purchase Report</p>
         </div>
         <i className="fa fa-file-text text-gray-500 text-lg" />
       </div>
@@ -280,33 +244,17 @@ const SalesReport = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold mb-1">Customer Name</label>
+            <label className="block text-xs font-bold mb-1">Seller Name</label>
             <input
               type="text"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              list="customerSuggestions"
+              value={sellerName}
+              onChange={(e) => setSellerName(e.target.value)}
+              list="sellerSuggestions"
               className="w-full border border-gray-300 rounded p-1 text-xs"
-              placeholder="Enter Customer Name"
+              placeholder="Enter Seller Name"
             />
-            <datalist id="customerSuggestions">
-              {customerSuggestions.map((name, index) => (
-                <option key={index} value={name} />
-              ))}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1">Salesman Name</label>
-            <input
-              type="text"
-              value={salesmanName}
-              onChange={(e) => setSalesmanName(e.target.value)}
-              list="salesmanSuggestions"
-              className="w-full border border-gray-300 rounded p-1 text-xs"
-              placeholder="Enter Salesman Name"
-            />
-            <datalist id="salesmanSuggestions">
-              {salesmanSuggestions.map((name, index) => (
+            <datalist id="sellerSuggestions">
+              {sellerSuggestions.map((name, index) => (
                 <option key={index} value={name} />
               ))}
             </datalist>
@@ -326,32 +274,6 @@ const SalesReport = () => {
                 <option key={index} value={no} />
               ))}
             </datalist>
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1">Payment Status</label>
-            <select
-              value={paymentStatus}
-              onChange={(e) => setPaymentStatus(e.target.value)}
-              className="w-full border border-gray-300 rounded p-1 text-xs"
-            >
-              <option value="">All</option>
-              <option value="Paid">Paid</option>
-              <option value="Partial">Partial</option>
-              <option value="Unpaid">Unpaid</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1">Delivery Status</label>
-            <select
-              value={deliveryStatus}
-              onChange={(e) => setDeliveryStatus(e.target.value)}
-              className="w-full border border-gray-300 rounded p-1 text-xs"
-            >
-              <option value="">All</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Partially Delivered">Partially Delivered</option>
-              <option value="Pending">Pending</option>
-            </select>
           </div>
           <div>
             <label className="block text-xs font-bold mb-1">Item Name</label>
@@ -386,10 +308,11 @@ const SalesReport = () => {
               onChange={(e) => setSortField(e.target.value)}
               className="w-full border border-gray-300 rounded p-1 text-xs"
             >
-              <option value="billingAmount">Billing Amount</option>
+              <option value="totals.totalPurchaseAmount">
+                Total Purchase Amount
+              </option>
               <option value="invoiceDate">Invoice Date</option>
-              <option value="customerName">Customer Name</option>
-              <option value="salesmanName">Salesman Name</option>
+              <option value="sellerName">Seller Name</option>
             </select>
           </div>
           <div>
@@ -432,9 +355,9 @@ const SalesReport = () => {
           {error && (
             <p className="text-red-500 text-center mb-2 text-xs">{error}</p>
           )}
-          {filteredBillings.length === 0 ? (
+          {filteredPurchases.length === 0 ? (
             <p className="text-center text-gray-500 text-xs">
-              No billings found for the selected criteria.
+              No purchases found for the selected criteria.
             </p>
           ) : (
             <>
@@ -445,38 +368,24 @@ const SalesReport = () => {
                     <tr className="divide-y">
                       <th className="px-2 py-1 text-left">Invoice No</th>
                       <th className="px-2 py-1">Invoice Date</th>
-                      <th className="px-2 py-1">Salesman Name</th>
-                      <th className="px-2 py-1">Customer Name</th>
-                      <th className="px-2 py-1">Billing Amount</th>
-                      <th className="px-2 py-1">Discount</th>
-                      <th className="px-2 py-1">Net Amount</th>
-                      <th className="px-2 py-1">Payment Status</th>
-                      <th className="px-2 py-1">Delivery Status</th>
+                      <th className="px-2 py-1">Seller Name</th>
+                      <th className="px-2 py-1">Total Purchase Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {paginateBillings().map((billing) => (
+                    {paginatePurchases().map((purchase) => (
                       <tr
-                        key={billing.invoiceNo}
+                        key={purchase.purchaseId}
                         className="hover:bg-gray-100 divide-y divide-x"
                       >
-                        <td className="px-2 py-1 text-center">{billing.invoiceNo}</td>
+                        <td className="px-2 py-1 text-center">{purchase.invoiceNo}</td>
                         <td className="px-2 py-1">
-                          {new Date(billing.invoiceDate).toLocaleDateString()}
+                          {new Date(purchase.invoiceDate).toLocaleDateString()}
                         </td>
-                        <td className="px-2 py-1">{billing.salesmanName}</td>
-                        <td className="px-2 py-1">{billing.customerName}</td>
+                        <td className="px-2 py-1">{purchase.sellerName}</td>
                         <td className="px-2 py-1">
-                          Rs. {billing.billingAmount.toFixed(2)}
+                          Rs. {purchase.totals.totalPurchaseAmount.toFixed(2)}
                         </td>
-                        <td className="px-2 py-1">
-                          Rs. {billing.discount.toFixed(2)}
-                        </td>
-                        <td className="px-2 py-1">
-                          Rs. {(billing.billingAmount - billing.discount).toFixed(2)}
-                        </td>
-                        <td className="px-2 py-1">{billing.paymentStatus}</td>
-                        <td className="px-2 py-1">{billing.deliveryStatus}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -485,38 +394,26 @@ const SalesReport = () => {
 
               {/* Cards for Small Screens */}
               <div className="md:hidden">
-                {paginateBillings().map((billing) => (
+                {paginatePurchases().map((purchase) => (
                   <div
-                    key={billing.invoiceNo}
+                    key={purchase.purchaseId}
                     className="bg-white rounded-lg shadow-md p-2 mb-2"
                   >
                     <div className="flex justify-between items-center">
                       <p className="text-sm font-bold text-red-600">
-                        Invoice No: {billing.invoiceNo}
+                        Invoice No: {purchase.invoiceNo}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {new Date(billing.invoiceDate).toLocaleDateString()}
+                        {new Date(purchase.invoiceDate).toLocaleDateString()}
                       </p>
                     </div>
                     <p className="text-gray-600 text-xs mt-1">
-                      Customer: {billing.customerName}
-                    </p>
-                    <p className="text-gray-600 text-xs mt-1">
-                      Salesman: {billing.salesmanName}
-                    </p>
-                    <p className="text-gray-600 text-xs mt-1">
-                      Payment Status: {billing.paymentStatus}
-                    </p>
-                    <p className="text-gray-600 text-xs mt-1">
-                      Delivery Status: {billing.deliveryStatus}
+                      Seller: {purchase.sellerName}
                     </p>
                     <div className="flex justify-between mt-2">
                       <p className="text-gray-600 text-xs font-bold">
-                        Billing Amount: Rs. {billing.billingAmount.toFixed(2)}
-                      </p>
-                      <p className="text-gray-600 text-xs font-bold">
-                        Net Amount: Rs.{' '}
-                        {(billing.billingAmount - billing.discount).toFixed(2)}
+                        Total Amount: Rs.{' '}
+                        {purchase.totals.totalPurchaseAmount.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -559,4 +456,4 @@ const SalesReport = () => {
   );
 };
 
-export default SalesReport;
+export default PurchaseReport;

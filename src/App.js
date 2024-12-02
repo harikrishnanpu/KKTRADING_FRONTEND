@@ -62,6 +62,13 @@ import PurchaseInfo from './screens/purchaseInfo';
 import SiteReportPage from './screens/siteReportingScreen';
 import SiteReportListPage from './screens/siteReportListScreen';
 import SiteReportEditPage from './screens/editSiteReportPage';
+import CustomerAccountForm from './screens/createCustomerAccount';
+import CustomerAccountList from './screens/customerAccounts';
+import CustomerAccountEdit from './screens/customerAccountEditScreen';
+import SupplierAccountForm from './screens/createSupplierAcccont';
+import SupplierAccountEdit from './screens/SupplierAccountEditScreen';
+import SupplierAccountList from './screens/supplierAccounts';
+import PurchaseReport from './screens/purchaseReportPage';
 
 
 function App() {
@@ -141,6 +148,7 @@ useEffect(() => {
             <Route path="/purchase/edit/:id" element={<EditPurchaseScreen />}></Route>
             <Route path="/purchase/edit" element={<EditPurchaseScreen />}></Route>
             <Route path="/allpurchases" element={<AllPurchases />}></Route>
+            <Route path="/purchase-report" element={<PurchaseReport />}></Route>
             <Route path="/returns" element={<ReturnsPage />}></Route>
             <Route path="/return/edit/:id" element={<ReturnEditScreen />}></Route>
             <Route path="/return/edit" element={<ReturnEditScreen />}></Route>
@@ -164,6 +172,12 @@ useEffect(() => {
             <Route path="/purchase-payments" element={<EditPurchasePaymentPage />}></Route>
             <Route path="/create-account" element={<PaymentAccountForm />}></Route>
             <Route path="/payment-accounts" element={<PaymentAccountsList />}></Route>
+            <Route path="/create-customer-account" element={<CustomerAccountForm />}></Route>
+            <Route path="/customer-accounts" element={<CustomerAccountList />}></Route>
+            <Route path="/create-seller-account" element={<SupplierAccountForm />}></Route>
+            <Route path="/seller/edit/:id" element={<SupplierAccountEdit />}></Route>
+            <Route path="/seller-accounts" element={<SupplierAccountList />}></Route>
+            <Route path="/customer/edit/:id" element={<CustomerAccountEdit />}></Route>
             <Route path="/transport-payments" element={<EditTransportPaymentPage />}></Route>
             <Route path="/purchases" element={<PurchaseInfo />}></Route>
             <Route path="/purchases/:id" element={<PurchaseInfo />}></Route>

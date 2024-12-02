@@ -114,6 +114,7 @@ export default function OutOfStockModal({
             value={newQuantity}
             ref={stockRef}
             onChange={(e) => setNewQuantity(e.target.value)}
+            onKeyDown={(e)=> {if(e.key === "Enter") handleUpdate()}}
             className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             min="1"
             placeholder="Enter New Quantity"

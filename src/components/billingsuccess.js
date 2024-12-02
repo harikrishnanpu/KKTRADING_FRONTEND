@@ -15,6 +15,8 @@ const BillingSuccess = ({estimationNo, isAdmin}) => {
     }
   };
 
+ console.log(estimationNo)
+
 
   useEffect(()=>{
     setTimeout(()=>{
@@ -35,7 +37,7 @@ const BillingSuccess = ({estimationNo, isAdmin}) => {
         
         {/* Success Message */}
         {!isAdmin && <div style={{textAlign:'center'}}>  <h2 className="text-sm font-bold text-red-800 mb-4">
-          Successfully Submitted Estimate
+          Successfully Submitted
         </h2>
         <p className="text-gray-600 italic text-gray-300 animate-pulse mb-6 text-xs text-center">
           Your Estimation Bill Is Successfully Submitted To The Admin Panel for Review
