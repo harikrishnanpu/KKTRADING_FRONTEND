@@ -399,7 +399,21 @@ export default function BillingScreen() {
 
       setSelectedProduct(data);
       setQuantity(1);
-      setSellingPrice((parseFloat(data.price) / 0.80).toFixed(2));
+      
+      const parsedArea = parseFloat(data.length * data.breadth )
+      if(data.category === "TILES"){
+        if(unit === "SQFT"){
+        setSellingPrice((parseFloat((data.price) / 0.80) / parsedArea).toFixed(2));
+        } else if(unit === "BOX"){
+          setSellingPrice((parseFloat((data.price) / 0.80) * data.psRatio).toFixed(2));
+        } else {
+          setSellingPrice(parseFloat((data.price).toFixed(2)));
+        }
+      }else if(data.category === "GRANITE"){
+        setSellingPrice((parseFloat(data.price) / 0.65).toFixed(2));
+      }else {
+        setSellingPrice((parseFloat(data.price) / 0.70).toFixed(2));
+      }
       setItemId(data.item_id);
       setFetchQuantity(data.countInStock);
       setSuggestions([]);
