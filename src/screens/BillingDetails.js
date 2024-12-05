@@ -183,10 +183,12 @@ const BillingList = () => {
   
   }
 
+  const userId = userInfo._id; 
+
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this billing?')) {
       try {
-        await api.delete(`/api/billing/billings/delete/${id}`,{userId: userInfo._id});
+        await api.delete(`/api/billing/billings/delete/${id}?userId=${userId}`);
         setBillings(billings.filter((billing) => billing._id !== id));
       } catch (error) {
         setError('Error occurred while deleting the billing.');
