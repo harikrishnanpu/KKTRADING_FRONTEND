@@ -463,9 +463,9 @@ export default function PurchasePage() {
     });
 
     // GST rate for items is 18%
-    const gstRateItems = 0.18;
+    const gstRateItems = 1.18;
 
-    const amountWithoutGSTItems = billPartTotal / (1 + gstRateItems);
+    const amountWithoutGSTItems = billPartTotal / (gstRateItems);
     const gstAmountItems = billPartTotal - amountWithoutGSTItems;
     const cgstItems = gstAmountItems / 2;
     const sgstItems = gstAmountItems / 2;
@@ -475,11 +475,11 @@ export default function PurchasePage() {
     const localAmountValue = parseFloat(localAmount || 0);
     const totalTransportationCharges = logisticAmountValue + localAmountValue;
 
-    // GST rate for transportation is 5%
-    const gstRateTransport = 0.05;
+    // GST rate for transportation is 18%
+    const gstRateTransport = 1.18;
 
     const amountWithoutGSTTransport =
-      totalTransportationCharges / (1 + gstRateTransport);
+      totalTransportationCharges / (gstRateTransport);
     const gstAmountTransport =
       totalTransportationCharges - amountWithoutGSTTransport;
     const cgstTransport = gstAmountTransport / 2;
