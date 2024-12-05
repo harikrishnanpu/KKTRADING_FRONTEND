@@ -941,8 +941,12 @@ useEffect(() => {
     setCustomerName(value);
     
     // If the input is empty, clear suggestions and exit
+
     if (value.trim() === "") {
       setCustomerSuggestions([]);
+      setCustomerAddress("");
+      setCustomerContactNumber("");
+      setCustomerId("");
       return;
     }
     
@@ -1150,6 +1154,14 @@ useEffect(() => {
         setCustomerSuggesstionIndex(-1); // Reset the index after selection
         setCustomerSuggestions([]); // Clear suggestions after selection
       }else{
+        if(!customerId){
+          const generatecustomerid = async ()=>{
+            const { data } = await api.get('/api/billing/lastOrder/id');
+            const nextCustomer =  "CUS00" + parseInt(parseInt(data.lastCustomerId.slice(3), 10) + 1);
+             setCustomerId(nextCustomer)
+          }
+          generatecustomerid()
+        }
         customerContactNumberRef.current?.focus();
       }
     }

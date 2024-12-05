@@ -69,6 +69,9 @@ import SupplierAccountForm from './screens/createSupplierAcccont';
 import SupplierAccountEdit from './screens/SupplierAccountEditScreen';
 import SupplierAccountList from './screens/supplierAccounts';
 import PurchaseReport from './screens/purchaseReportPage';
+import TransportPaymentEdit from './screens/editTransportAccounts';
+import TransportPaymentForm from './screens/createTransportAccounts';
+import TransportPaymentList from './screens/transportPaymentsList';
 
 
 function App() {
@@ -185,32 +188,55 @@ useEffect(() => {
             <Route path="/report-site" element={<SiteReportPage />}></Route>
             <Route path="/report/edit/:id" element={<SiteReportEditPage />}></Route>
             <Route path="/all-sites" element={<SiteReportListPage />}></Route>
+            <Route path="/all-transport-payments" element={<TransportPaymentList />}></Route>
+            <Route path="/create-transport-payments" element={<TransportPaymentForm />}></Route>
+            <Route path="/transport-payments/edit/:id" element={<TransportPaymentEdit />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}
             ></Route>
-            <Route path="/search/name" element={<SearchScreen />} exact></Route>
-            <Route
-              path="/search/name/:name"
-              element={<SearchScreen />}
-              exact
-            ></Route>
-            <Route
-              path="/search/category/:category"
-              element={<SearchScreen />}
-              exact
-            ></Route>
 
-            <Route
-              path="/search/category/:category/name/:name"
-              element={<SearchScreen />}
-              exact
-            ></Route>
-            <Route
-              path="/search/category/:category/name/:name/min/:min/max/:max/rating/:rating/order/:order/pageNumber/:pageNumber"
-              element={<SearchScreen />}
-              exact
-            ></Route>
+ {/* Basic Search */}
+ <Route path="/search/name" element={<SearchScreen />} exact />
+        <Route path="/search/name/:name" element={<SearchScreen />} exact />
+
+        {/* Category-Based Search */}
+        <Route path="/search/category/:category" element={<SearchScreen />} exact />
+        <Route path="/search/category/:category/name/:name" element={<SearchScreen />} exact />
+
+        {/* Brand-Based Search */}
+        <Route path="/search/category/:category/brand/:brand" element={<SearchScreen />} exact />
+        <Route path="/search/category/:category/brand/:brand/name/:name" element={<SearchScreen />} exact />
+
+        {/* Size-Based Search */}
+        <Route path="/search/category/:category/brand/:brand/size/:size" element={<SearchScreen />} exact />
+        <Route path="/search/category/:category/brand/:brand/size/:size/name/:name" element={<SearchScreen />} exact />
+
+        {/* Price, Rating, and Sorting */}
+        <Route
+          path="/search/category/:category/brand/:brand/size/:size/name/:name/min/:min/max/:max"
+          element={<SearchScreen />}
+        />
+        <Route
+          path="/search/category/:category/brand/:brand/size/:size/name/:name/min/:min/max/:max/rating/:rating"
+          element={<SearchScreen />}
+        />
+        <Route
+          path="/search/category/:category/brand/:brand/size/:size/name/:name/min/:min/max/:max/rating/:rating/order/:order"
+          element={<SearchScreen />}
+        />
+
+        {/* Full Combination with Pagination */}
+        <Route
+          path="/search/category/:category/brand/:brand/size/:size/name/:name/min/:min/max/:max/rating/:rating/order/:order/pageNumber/:pageNumber"
+          element={<SearchScreen />}
+        />
+
+
+<Route
+          path="/search/category/:category/brand/:brand/size/:size/name/:name/min/:min/max/:max/rating/:rating/order/:order/inStock/:inStock/countInStockMin/:countInStockMin/pageNumber/:pageNumber"
+          element={<SearchScreen />}
+        />
 
             <Route
               path="/profile"

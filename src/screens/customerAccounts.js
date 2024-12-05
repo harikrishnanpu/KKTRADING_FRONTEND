@@ -243,7 +243,7 @@ const CustomerAccountList = () => {
                       key={account._id}
                       className="hover:bg-gray-100 divide-y divide-x"
                     >
-                      <td className="px-4 py-2 text-xs font-bold text-red-600">
+                      <td onClick={()=> navigate(`/customer/edit/${account._id}`)} className="px-4 py-2 text-xs font-bold text-red-600">
                         {account.accountId}
                       </td>
                       <td className="px-2 py-2 text-xs">

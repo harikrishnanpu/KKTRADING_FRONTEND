@@ -9,6 +9,7 @@ export default function CustomerAccountForm() {
 
   const [customerName, setCustomerName] = useState('');
   const [customerContactNumber, setCustomerContactNumber] = useState('');
+  const [customerId, setcustomerId] = useState('');
   const [bills, setBills] = useState([
     { invoiceNo: '', billAmount: '', invoiceDate: '' },
   ]);
@@ -24,6 +25,8 @@ export default function CustomerAccountForm() {
 
   // Refs for managing focus
   const customerNameRef = useRef();
+  const customerNumberRef = useRef();
+  const customerIdRef = useRef();
   const billRefs = useRef([]);
   const paymentRefs = useRef([]);
 
@@ -133,6 +136,7 @@ export default function CustomerAccountForm() {
     const payload = {
       customerName: customerName.trim(),
       customerContactNumber: customerContactNumber.trim(),
+      customerId: customerId.trim(),
       bills: bills.map((bill) => ({
         invoiceNo: bill.invoiceNo.trim(),
         billAmount: parseFloat(bill.billAmount),
@@ -214,7 +218,17 @@ export default function CustomerAccountForm() {
             ref={customerNameRef}
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
-            onKeyDown={(e) => changeRef(e, billRefs.current[0])}
+            onKeyDown={(e) => { 
+              const generatecustomerid = async ()=>{
+                const { data } = await api.get('/api/billing/lastOrder/id');
+                const nextCustomer =  "CUS00" + parseInt(parseInt(data.lastCustomerId.slice(3), 10) + 1);
+                 setcustomerId(nextCustomer)
+              }
+              if(e.key === "Enter"){
+                generatecustomerid()
+              }
+              changeRef(e, customerNumberRef)
+            }}
             className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             placeholder="Enter Customer Name"
             required
@@ -225,8 +239,23 @@ export default function CustomerAccountForm() {
           <label className="block text-xs text-gray-700 mb-2">Customer Number <span className="text-red-500">*</span></label>
           <input
             type="text"
+            ref={customerNumberRef}
             value={customerContactNumber} 
             onChange={(e) => setCustomerContactNumber(e.target.value)}
+            onKeyDown={(e) => changeRef(e, customerIdRef)}
+            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            placeholder="Enter Customer Name"
+            required
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-xs text-gray-700 mb-2">Customer ID <span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            ref={customerIdRef}
+            value={customerId} 
+            onChange={(e) => setcustomerId(e.target.value)}
             onKeyDown={(e) => changeRef(e, billRefs.current[0])}
             className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             placeholder="Enter Customer Name"
@@ -241,7 +270,7 @@ export default function CustomerAccountForm() {
             <div key={index} className="border border-gray-200 p-4 rounded-lg mb-4">
               <div className="flex justify-between items-center mb-2">
                 <h4 className="text-xs font-semibold text-gray-600">Bill {index + 1}</h4>
-                {bills.length > 1 && (
+            
                   <button
                     type="button"
                     onClick={() => removeBill(index)}
@@ -249,7 +278,6 @@ export default function CustomerAccountForm() {
                   >
                     Remove
                   </button>
-                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -299,7 +327,7 @@ export default function CustomerAccountForm() {
           <button
             type="button"
             onClick={addBill}
-            className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
+            className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
           >
             Add Another Bill
           </button>
@@ -312,7 +340,6 @@ export default function CustomerAccountForm() {
             <div key={index} className="border border-gray-200 p-4 rounded-lg mb-4">
               <div className="flex justify-between items-center mb-2">
                 <h4 className="text-xs font-semibold text-gray-600">Payment {index + 1}</h4>
-                {payments.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removePayment(index)}
@@ -320,7 +347,6 @@ export default function CustomerAccountForm() {
                   >
                     Remove
                   </button>
-                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
@@ -380,7 +406,7 @@ export default function CustomerAccountForm() {
           <button
             type="button"
             onClick={addPayment}
-            className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
+            className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
           >
             Add Another Payment
           </button>
@@ -389,7 +415,7 @@ export default function CustomerAccountForm() {
 
       {/* Success Message */}
       {showSuccessMessage && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded shadow-md">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-md">
           {showSuccessMessage}
         </div>
       )}

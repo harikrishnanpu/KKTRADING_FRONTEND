@@ -105,7 +105,7 @@ export default function EditBillScreen() {
   const itemNameRef = useRef();
   const itemBrandRef = useRef();
   const itemCategoryRef = useRef();
-
+  const remarkRef = useRef();
 
   const [billingsuggestions,setBillingSuggestions] = useState([]);
   const [selectedBillingSuggestions,setSelectedBillingSuggestions] = useState();
@@ -889,6 +889,26 @@ useEffect(() => {
     }
   };
 
+
+  const [lastKeyWasEnter, setLastKeyWasEnter] = useState(false);
+
+  const handleDoubleClick = (event) => {
+    if (event.key === 'Enter') {
+      if (lastKeyWasEnter) {
+        setShowSummaryModal(true);
+        setLastKeyWasEnter(false); // Reset after handling
+      } else {
+        setLastKeyWasEnter(true);
+        // Optional: Reset after a delay to avoid indefinite waiting
+        setTimeout(() => setLastKeyWasEnter(false), 1000); // 1-second timeout
+      }
+    }
+  };
+
+  useEffect(()=>{
+    discountRef.current?.focus();
+  },[showSummaryModal])
+
   return (
     <div className="container mx-auto p-2">
       {/* Header */}
@@ -1381,260 +1401,252 @@ useEffect(() => {
           </div> */}
 
 
-          <div className="fixed bottom-0 left-0 right-0 bg-white p-6 border-t shadow-lg">
+<div className="fixed bottom-0 left-0 right-0 bg-white px-4 pt-4 pb-4 border-t shadow-inner">
           <div className="flex justify-between">
-            <div className='w-5/6'>
-            <div className='grid grid-cols-4 mb-4 md:grid-cols-4 gap-4'>
-            {/* Item ID Input */}
-            <div className="flex flex-col flex-1">
-              <label className="block text-gray-700 text-xs mb-1">Item ID</label>
-              <input
-                type="text"
-                ref={itemIdRef}
-                value={itemId}
-                onChange={(e) => {
-                  itemIdChange(e)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setSelectedSuggestionIndex((prev) =>
-                      prev < suggestions.length - 1 ? prev + 1 : prev
-                    );
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
-                  } else if (e.key === 'Enter') {
-                    if (
-                      selectedSuggestionIndex >= 0 &&
-                      selectedSuggestionIndex < suggestions.length
-                    ) {
-                      e.preventDefault();
-                      addProductByItemId(suggestions[selectedSuggestionIndex]);
-                      // Populate additional fields
-                      const selected = suggestions[selectedSuggestionIndex];
-                      setItemId(selected.item_id)
-                      setItemName(selected.name);
-                      setItemCategory(selected.category);
-                      setItemBrand(selected.brand);
-                      itemNameRef.current?.focus();
-                    }
-                  }
-                }}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                placeholder="Enter Item ID or Name"
-              />
-              {error && <p className="text-red-500 mt-1 text-xs">{error}</p>}
-
-              {/* Suggestions Dropdown */}
-              {suggestions.length > 0 && (
-                <div className="mt-2 bg-white border rounded-md max-h-60 divide-y overflow-y-auto">
-                  {suggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      onClick={() => {
-                        addProductByItemId(suggestion);
-                        setItemName(suggestion.name);
-                        setItemCategory(suggestion.category);
-                        setItemBrand(suggestion.brand);
-                        itemNameRef.current?.focus();
-                      }}
-                      className={`p-4 text-xs cursor-pointer hover:bg-gray-100 ${
-                        index === selectedSuggestionIndex ? 'bg-gray-200' : ''
-                      }`}
-                    >
-                      {suggestion.name} - {suggestion.item_id}
+            <div className="w-4/5">
+              <div className="grid grid-cols-4 gap-2">
+                {/* Item ID Input */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-700 text-xs mb-1">Item ID</label>
+                  <input
+                    type="text"
+                    ref={itemIdRef}
+                    value={itemId}
+                    onChange={(e) => itemIdChange(e)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setSelectedSuggestionIndex((prev) =>
+                          prev < suggestions.length - 1 ? prev + 1 : prev
+                        );
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
+                      } else if (e.key === 'Enter') {
+                        if (
+                          selectedSuggestionIndex >= 0 &&
+                          selectedSuggestionIndex < suggestions.length
+                        ) {
+                          e.preventDefault();
+                          addProductByItemId(suggestions[selectedSuggestionIndex]);
+                          const selected = suggestions[selectedSuggestionIndex];
+                          setItemId(selected.item_id);
+                          setItemName(selected.name);
+                          setItemCategory(selected.category);
+                          setItemBrand(selected.brand);
+                          itemNameRef.current?.focus();
+                        } else {
+                          handleDoubleClick(e)
+                        }
+                      }
+                    }}
+                    className="w-full border border-gray-300 px-2 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                    placeholder="Enter Item ID or Name"
+                  />
+                  {error && <p className="text-red-500 truncate text-xs">{error}</p>}
+                  {/* Suggestions Dropdown */}
+                  {suggestions.length > 0 && (
+                    <div className="mt-1 bg-white border rounded-md max-h-40 divide-y overflow-y-auto">
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            addProductByItemId(suggestion);
+                            setItemName(suggestion.name);
+                            setItemCategory(suggestion.category);
+                            setItemBrand(suggestion.brand);
+                            setSuggestions([]);
+                            itemNameRef.current?.focus();
+                          }}
+                          className={`p-2 text-xs cursor-pointer hover:bg-gray-100 ${
+                            index === selectedSuggestionIndex ? 'bg-gray-200' : ''
+                          }`}
+                        >
+                          {suggestion.name} - {suggestion.item_id}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
+
+                {/* Item Name Input */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-700 text-xs mb-1">Item Name</label>
+                  <input
+                    type="text"
+                    value={itemName}
+                    ref={itemNameRef}
+                    onChange={(e) => setItemName(e.target.value)}
+                    onKeyDown={(e) => changeRef(e, itemCategoryRef)}
+                    className="w-full border border-gray-300 px-2 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                    placeholder="Item Name"
+                    disabled={!selectedProduct}
+                  />
+                </div>
+
+                {/* Item Category Input */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-700 text-xs mb-1">Category</label>
+                  <input
+                    type="text"
+                    ref={itemCategoryRef}
+                    value={itemCategory}
+                    onChange={(e) => setItemCategory(e.target.value)}
+                    onKeyDown={(e) => changeRef(e, itemBrandRef)}
+                    className="w-full border border-gray-300 px-2 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                    placeholder="Item Category"
+                    disabled={!selectedProduct}
+                  />
+                </div>
+
+                {/* Item Brand Input */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-700 text-xs mb-1">Brand</label>
+                  <input
+                    type="text"
+                    value={itemBrand}
+                    ref={itemBrandRef}
+                    onChange={(e) => setItemBrand(e.target.value)}
+                    onKeyDown={(e) => changeRef(e, itemUnitRef)}
+                    className="w-full border border-gray-300 px-2 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                    placeholder="Item Brand"
+                    disabled={!selectedProduct}
+                  />
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-5 gap-2 mt-2">
+                {/* Unit */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-700 text-xs mb-1">Unit</label>
+                  <select
+                    ref={itemUnitRef}
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    onKeyDown={(e) => changeRef(e, itemQuantityRef)}
+                    className="w-full border border-gray-300 px-2 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  >
+                    <option value="SQFT">SQFT</option>
+                    <option value="GSQFT">Granite SQFT</option>
+                    <option value="BOX">BOX</option>
+                    <option value="NOS">NOS</option>
+                    <option value="TNOS">Tiles NOS</option>
+                  </select>
+                </div>
+
+                {/* Quantity */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-700 text-xs mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    ref={itemQuantityRef}
+                    max={fetchQuantity}
+                    value={quantity}
+                    onChange={(e) =>
+                      setQuantity(Math.min(parseFloat(e.target.value), fetchQuantity))
+                    }
+                    onKeyDown={(e) => changeRef(e, sellingPriceRef)}
+                    className="w-full border border-gray-300 px-2 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                  />
+                </div>
+
+                {/* Selling Price */}
+                <div className="flex flex-col">
+                  <label className="block text-gray-700 text-xs mb-1">Selling Price</label>
+                  <input
+                    type="number"
+                    ref={sellingPriceRef}
+                    value={sellingPrice}
+                    onChange={(e) => setSellingPrice(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddProductWithQuantity();
+                      }
+                    }}
+                    className="w-full border border-gray-300 px-2 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+                    placeholder="Enter Selling Price"
+                  />
+                </div>
+
+                {/* Stock Status */}
+                <div
+                  className={`flex flex-col items-center justify-center bg-gray-50 p-2 rounded-md ${
+                    selectedProduct && fetchQuantity > 10
+                      ? 'text-green-600'
+                      : selectedProduct && fetchQuantity > 0
+                      ? 'text-yellow-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  <p className="text-xs font-bold">Stock:</p>
+                  <p className="text-xs font-bold">
+                    {selectedProduct ? fetchQuantity : '0'} {unit}
+                  </p>
+                </div>
+
+                {/* Net Amount */}
+                <div className="flex flex-col items-center justify-center bg-gray-50 p-2 rounded-md">
+                  <p className="text-xs font-bold text-gray-500">Net Amount:</p>
+                  <p className="text-xs font-bold">
+                    ₹
+                    {quantity > 0 && sellingPrice > 0
+                      ? (quantity * sellingPrice).toFixed(2)
+                      : '0.00'}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* Item Name Input */}
-            <div className="flex flex-col flex-1">
-              <label className="block text-gray-700 text-xs mb-1">Item Name</label>
-              <input
-                type="text"
-                value={itemName}
-                ref={itemNameRef}
-                onChange={(e) => setItemName(e.target.value)}
-                onKeyDown={(e)=> changeRef(e, itemCategoryRef)}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                placeholder="Item Name"
-                disabled={!selectedProduct}
-              />
-            </div>
+              {/* Action Buttons */}
+              <div className="text-center md:hidden lg:block bg-gray-100 ml-2 items-center text-center rounded-lg p-4 h-full shadow-inner">
+                <div className='mb-2 mt-2'>
+                  <p className='text-xs font-bold'>Added Products</p>
+                  <p className='text-xs font-bold'>{products?.length}</p>
+                  </div>
+                
+                <div>
+                <button
+                  className="bg-red-500 text-xs text-white font-bold py-1 px-3 rounded focus:outline-none hover:bg-red-600"
+                  onClick={handleAddProductWithQuantity}
+                >
+                  Add Item
+                </button>
+                <button
+                  onClick={() => {
+                    setOutofstockProduct(selectedProduct);
+                    setQuantity(0);
+                    setItemId('');
+                    setItemName('');
+                    setItemCategory('');
+                    setItemBrand('');
+                    setSuggestions([]);
+                    setShowOutOfStockModal(true);
+                    outofStockRef.current?.focus();
+                  }}
+                  className="text-xs text-gray-500 font-bold hover:text-gray-700"
+                >
+                  Update Stock
+                </button>
+                </div>
+              </div>
 
-            {/* Item Category Input */}
-            <div className="flex flex-col flex-1">
-              <label className="block text-gray-700 text-xs mb-1">Item Category</label>
-              <input
-                type="text"
-                ref={itemCategoryRef}
-                value={itemCategory}
-                onChange={(e) => setItemCategory(e.target.value)}
-                onKeyDown={(e)=>  changeRef(e, itemBrandRef)}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                placeholder="Item Category"
-                disabled={!selectedProduct}
-              />
-            </div>
+            {/* Total Amount Display */}
+              <div className="bg-gray-100 ml-2 w-60  items-center text-center rounded-lg p-4 h-full shadow-inner">
+                <div className="text-gray-600 mt-2">
+                  <p className="text-sm font-bold">Total</p>
+                  <p className="text-xs font-bold">Bill Amount:</p>
+                </div>
+                <h2 className="text-sm font-bold text-gray-700">
+                  INR {(parseFloat(grandTotal)).toFixed(2)}
+                  <p className="font-bold text-xs">
+                    Discount: {parseFloat(discount || 0)?.toFixed(2)}
+                  </p>
+                </h2>
+              </div>
 
-            {/* Item Brand Input */}
-            <div className="flex flex-col flex-1">
-              <label className="block text-gray-700 text-xs mb-1">Item Brand</label>
-              <input
-                type="text"
-                value={itemBrand}
-                ref={itemBrandRef}
-                onChange={(e) => setItemBrand(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key == 'Enter') {
-                    itemQuantityRef.current.focus();
-                  }
-                }}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                placeholder="Item Brand"
-                disabled={!selectedProduct}
-              />
-            </div>
           </div>
-
-        
-
-          <div className='grid grid-cols-4 md:grid-cols-4 gap-4'>
-
-          {/* Quantity and Unit */}
-          <div className="flex flex-col flex-1">
-            <label className="block text-gray-700 text-xs mb-1">Quantity</label>
-            <div className="flex">
-              <input
-                type="number"
-                ref={itemQuantityRef}
-                max={fetchQuantity}
-                value={quantity}
-                onChange={(e) =>
-                  setQuantity(Math.min(parseFloat(e.target.value), fetchQuantity))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    itemUnitRef.current.focus();
-                  }
-                }}
-                className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-              />
-              <select
-              ref={itemUnitRef}
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                onKeyDown={(e)=> changeRef(e, sellingPriceRef)}
-                className="w-full ml-4 border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-              >
-                <option value="SQFT">SQFT</option>
-                <option value="GSQFT">Granite SQFT</option>
-                <option value="BOX">BOX</option>
-                <option value="NOS">NOS</option>
-                <option value="TNOS">Tiles NOS</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Selling Price */}
-          <div className="flex flex-col flex-1">
-            <label className="block text-gray-700 text-xs mb-1">Selling Price</label>
-            <input
-              type="number"
-              ref={sellingPriceRef}
-              value={sellingPrice}
-              onChange={(e) => setSellingPrice(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleAddProductWithQuantity();
-                }
-              }}
-              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-              placeholder="Enter Selling Price"
-            />
-          </div>
-
-          <div className='flex justify-between gap-2 mx-2 mt-auto'>
-
-<div className={`text-center ${
-        selectedProduct &&  fetchQuantity > 10
-            ? ' text-green-600'
-            : selectedProduct && fetchQuantity > 0
-            ? ' text-yellow-600'
-            : 'text-red-600'
-        } items-center flex justify-center bg-gray-100 p-2 rounded-lg w-1/3 h-20 `}>
-  <div className='p-2'>
-  <p className='font-bold  text-sm'>Stock:</p>
-  <p
-        className={`text-sm mt-1 truncate font-bold rounded`}
-      >
-        {selectedProduct ? fetchQuantity : '0'}
-      </p>
-  </div>
-    </div> 
-
- <div className={`text-center items-center flex justify-center bg-gray-100 p-2 rounded-lg w-2/3 h-20 `}>
-  <div className='p-2'>
-  <p className='font-bold text-gray-500 text-sm'>Net Amount:</p>
-  <p className='font-bold text-sm mx-5'>{quantity > 0 && sellingPrice > 0 ? (quantity * sellingPrice).toFixed(2) : '0.00'}</p>
-  </div>
-    </div> 
-  </div>
-
-
-          <div className="flex flex-col flex-1 mt-auto">
-            {/* Add Item Button */}
-            <button
-              className="bg-red-500 text-xs w-full text-white font-bold py-2 px-4 rounded focus:outline-none hover:bg-red-600"
-              onClick={handleAddProductWithQuantity}
-            >
-              Add Item
-            </button>
-            {/* Update Stock Button */}
-            <button
-                onClick={() => {
-                  setOutofstockProduct(selectedProduct);
-                  setQuantity(0);
-                  setItemId('');
-                  setItemName('');
-                  setItemCategory('');
-                  setItemBrand('');
-                  setSuggestions([]);
-                  setShowOutOfStockModal(true);
-                  outofStockRef.current?.focus();
-                }}
-                className="text-xs text-gray-500 font-bold py-2 px-4 rounded focus:outline-none hover:text-gray-700"
-              >
-                Update Stock
-              </button>
-          </div>
-          </div>
-          </div>
-
-
-          <div className='flex flex-col flex-1 ml-2'>
-
-          <div className="mb-4 bg-gray-100 w-100 items-center text-center rounded-lg p-6">
-          <div className="text-gray-600">
-            <p className="text-sm font-bold">Total</p>
-            <p className="text-sm font-bold">Bill Amount:</p>
-          </div>
-          <h2 className="text-md font-bold text-gray-700">
-            INR. {(parseFloat(grandTotal)).toFixed(2)}
-            <p className="font-bold" style={{ fontSize: '9px' }}>
-              Discount: {parseFloat(discount || 0)?.toFixed(2)}
-            </p>
-          </h2>
         </div>
-
-            </div>
-
-
-          </div>
-          </div>
         </div>
       </div>
       
@@ -2028,6 +2040,15 @@ useEffect(() => {
     receivedDate={receivedDate}
     setReceivedDate={setReceivedDate}
     grandTotal={grandTotal}
+    discountRef={discountRef}
+    paymentMethodRef={paymentMethodRef}
+    receivedDateRef={receivedDateRef}
+    remarkRef={remarkRef}
+    unloadingRef={unloadingRef}
+    receivedAmountRef={receivedAmountRef}
+    transportationRef={transportationRef}
+    handlingRef={handlingChargeRef}
+    changeRef={changeRef}
     onClose={() => setShowSummaryModal(false)}
     onSubmit={submitBillingData} 
     isSubmitting={isSubmitting}

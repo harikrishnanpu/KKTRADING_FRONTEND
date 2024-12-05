@@ -146,6 +146,11 @@ export default function HomeScreen() {
             <ActionButton href="/seller-accounts" title="Supplier Accounts" />
             </CardSection>
 
+            <CardSection title="Transportation Accounts">
+            <ActionButton href="/create-transport-payments" title="Create Accounts" />
+            <ActionButton href="/all-transport-payments" title="Transportation Accounts" />
+            </CardSection>
+
             <CardSection title="Accounts">
             <ActionButton href="/create-account" title="Create Account" />
             <ActionButton href="/payment-accounts" title="Accounts" />

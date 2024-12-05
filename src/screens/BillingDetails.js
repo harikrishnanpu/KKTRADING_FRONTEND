@@ -170,7 +170,7 @@ const BillingList = () => {
       })),
     };
 
-    api.post('https://kktrading-backend.vercel.app/generate-invoice-html', formData)
+    api.post('/generate-invoice-html', formData)
     .then(response => {
       const htmlContent = response.data; // Extract the HTML content
       const printWindow = window.open('', '', 'height=800,width=600');
@@ -186,7 +186,7 @@ const BillingList = () => {
   const handleRemove = async (id) => {
     if (window.confirm('Are you sure you want to remove this billing?')) {
       try {
-        await api.delete(`/api/billing/billings/delete/${id}`);
+        await api.delete(`/api/billing/billings/delete/${id}`,{userId: userInfo._id});
         setBillings(billings.filter((billing) => billing._id !== id));
       } catch (error) {
         setError('Error occurred while deleting the billing.');
