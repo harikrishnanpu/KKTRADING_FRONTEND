@@ -285,7 +285,7 @@ useEffect(() => {
       // Calculate per item discount
       const calculatedPerItemDiscount = totalQuantity > 0 ? parseFloat(data.discount) / totalQuantity : 0;
       
-  setPerItemDiscount(parseFloat((Math.ceil(parseFloat(calculatedPerItemDiscount) * 10) / 10).toPrecision(8)));
+      setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
 
     } catch (error) {
       console.error('Error fetching billing details:', error);

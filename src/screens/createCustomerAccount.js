@@ -1,5 +1,5 @@
 // CustomerAccountForm.js
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api';
 import { useSelector } from 'react-redux';
@@ -19,6 +19,8 @@ export default function CustomerAccountForm() {
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
   const [showErrorMessage, setShowErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accounts,setAccounts] = useState([]);
+
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
@@ -29,6 +31,22 @@ export default function CustomerAccountForm() {
   const customerIdRef = useRef();
   const billRefs = useRef([]);
   const paymentRefs = useRef([]);
+
+
+  useEffect(()=>{
+    const fetchAccounts = async () => {
+      try {
+        const response = await api.get('/api/accounts/allaccounts');  
+        setAccounts(response.data); // Set the accounts in state
+      } catch (err) {
+        console.error(err);
+      } finally {
+        //no
+      }
+    };
+
+    fetchAccounts();
+  },[])
 
   // Handler to update bills
   const handleBillChange = (index, field, value) => {
@@ -379,6 +397,22 @@ export default function CustomerAccountForm() {
                     className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
                   />
                 </div>
+                <div>
+
+<label className="block text-xs">Payment Method</label>
+<select
+  value={payment.method}
+  onChange={(e) => handlePaymentChange(index, 'method' , e.target.value)}
+  className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+>
+{accounts.map((acc) => (
+<option key={acc.accountId} value={acc.accountId}>
+{acc.accountName}
+</option>
+))}
+</select>
+
+</div>
                 <div>
                   <label className="block text-xs text-gray-700 mb-1">Submitted By <span className="text-red-500">*</span></label>
                   <input

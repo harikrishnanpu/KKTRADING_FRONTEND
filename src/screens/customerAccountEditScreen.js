@@ -52,22 +52,10 @@ const CustomerAccountEdit = () => {
 
   useEffect(() => {
 
-
-
     const fetchAccounts = async () => {
       setLoading(true); // Set loading state
       try {
-        const response = await api.get('/api/accounts/allaccounts');
-        const getPaymentMethod = response.data.map((acc) => acc.accountId);
-    
-        // Check if there are any accounts and set the first account as the default
-        // if (getPaymentMethod.length > 0) {
-        //   const firstAccountId = getPaymentMethod[0];
-        //   handlePaymentChange(firstAccountId); // Set the first account as default
-        // } else {
-        //   setPaymentMethod(null); // Handle case where there are no accounts
-        // }
-    
+        const response = await api.get('/api/accounts/allaccounts');  
         setAccounts(response.data); // Set the accounts in state
       } catch (err) {
         setError('Failed to fetch payment accounts.'); // Set error message
