@@ -1,21 +1,21 @@
 // src/components/SupplierAccountForm.js
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api'; // Adjust the path based on your project structure
 import { useSelector } from 'react-redux';
 
 export default function SupplierAccountForm() {
   const navigate = useNavigate();
-
-  const [supplierId, setSupplierId] = useState('');
-  const [supplierName, setSupplierName] = useState('');
-  const [supplierAddress, setSupplierAddress] = useState('');
-  const [bills, setBills] = useState([
-    { invoiceNo: '', billAmount: '', invoiceDate: '' },
-  ]);
-  const [payments, setPayments] = useState([
-    { amount: '', date: '', submittedBy: '', remark: '' },
-  ]);
+  const [sellerId, setsellerId] = useState('');
+  const [sellerName, setsellerName] = useState('');
+  const [sellerAddress, setsellerAddress] = useState('');
+  const [bills, setBills] = useState([{}]);
+  const [payments, setPayments] = useState([{}]);
+  const [loading, setLoading] = useState(true);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [paymentAccounts, setPaymentAccounts] = useState([]); // Added to store payment accounts
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
   const [showErrorMessage, setShowErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,11 +24,30 @@ export default function SupplierAccountForm() {
   const { userInfo } = userSignin;
 
   // Refs for managing focus
-  const supplierIdRef = useRef();
-  const supplierNameRef = useRef();
+  const sellerIdRef = useRef();
+  const sellerNameRef = useRef();
   const supplierContactRef = useRef();
   const billRefs = useRef([]);
   const paymentRefs = useRef([]);
+
+
+
+  useEffect(()=>{
+    const fetchAccounts = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get('/api/accounts/allaccounts');
+        setPaymentAccounts(response.data);
+      } catch (err) {
+        setError('Failed to fetch payment accounts.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAccounts();
+  },[])
 
   // Handler to update bills
   const handleBillChange = (index, field, value) => {
@@ -79,27 +98,27 @@ export default function SupplierAccountForm() {
 
   // Validation before submission
   const validateForm = () => {
-    if (!supplierId.trim()) {
+    if (!sellerId.trim()) {
       setShowErrorMessage('Supplier ID is required.');
       return false;
     }
 
-    if (!supplierName.trim()) {
+    if (!sellerName.trim()) {
       setShowErrorMessage('Supplier Name is required.');
       return false;
     }
 
-    if (!supplierAddress.trim()) {
+    if (!sellerAddress.trim()) {
       setShowErrorMessage('Supplier Contact Number is required.');
       return false;
     }
 
     // Validate Supplier Contact Number (10-digit number)
-    const contactRegex = /^\d{10}$/;
-    if (!contactRegex.test(supplierAddress.trim())) {
-      setShowErrorMessage('Supplier Contact Number must be a 10-digit number.');
-      return false;
-    }
+    // const contactRegex = /^\d{10}$/;
+    // if (!contactRegex.test(sellerAddress.trim())) {
+    //   setShowErrorMessage('Supplier Contact Number must be a 10-digit number.');
+    //   return false;
+    // }
 
     // Validate bills
     for (let i = 0; i < bills.length; i++) {
@@ -127,21 +146,21 @@ export default function SupplierAccountForm() {
     }
 
     // Validate payments
-    for (let i = 0; i < payments.length; i++) {
-      const payment = payments[i];
-      if (payment.amount === '' || isNaN(payment.amount) || Number(payment.amount) < 0) {
-        setShowErrorMessage(`Valid Payment Amount is required for Payment ${i + 1}.`);
-        return false;
-      }
-      if (!payment.submittedBy.trim()) {
-        setShowErrorMessage(`Submitted By is required for Payment ${i + 1}.`);
-        return false;
-      }
-      if (payment.date && isNaN(Date.parse(payment.date))) {
-        setShowErrorMessage(`Valid Payment Date is required for Payment ${i + 1}.`);
-        return false;
-      }
-    }
+    // for (let i = 0; i < payments.length; i++) {
+    //   const payment = payments[i];
+    //   if (payment.amount === '' || isNaN(payment.amount) || Number(payment.amount) < 0) {
+    //     setShowErrorMessage(`Valid Payment Amount is required for Payment ${i + 1}.`);
+    //     return false;
+    //   }
+    //   if (!payment.submittedBy.trim()) {
+    //     setShowErrorMessage(`Submitted By is required for Payment ${i + 1}.`);
+    //     return false;
+    //   }
+    //   if (payment.date && isNaN(Date.parse(payment.date))) {
+    //     setShowErrorMessage(`Valid Payment Date is required for Payment ${i + 1}.`);
+    //     return false;
+    //   }
+    // }
 
     setShowErrorMessage('');
     return true;
@@ -159,19 +178,20 @@ export default function SupplierAccountForm() {
 
     // Prepare data for API
     const payload = {
-      supplierId: supplierId.trim(),
-      supplierName: supplierName.trim(),
-      supplierAddress: supplierAddress.trim(),
+      sellerId: sellerId.trim(),
+      sellerName: sellerName.trim(),
+      sellerAddress: sellerAddress.trim(),
       bills: bills.map((bill) => ({
         invoiceNo: bill.invoiceNo.trim(),
         billAmount: parseFloat(bill.billAmount),
         invoiceDate: bill.invoiceDate ? new Date(bill.invoiceDate) : new Date(),
       })),
       payments: payments.map((payment) => ({
-        amount: parseFloat(payment.amount),
+        amount: parseFloat(payment.amount) || 0,
         date: payment.date ? new Date(payment.date) : new Date(),
-        submittedBy: payment.submittedBy.trim(),
-        remark: payment.remark.trim(),
+        submittedBy: payment.submittedBy|| userInfo.name,
+        method: payment.method,
+        remark: payment.remark || 'no payments',
       })),
       userId: userInfo?._id,
     };
@@ -183,9 +203,9 @@ export default function SupplierAccountForm() {
         setShowSuccessMessage('Supplier account created successfully.');
         setShowErrorMessage('');
         // Reset form
-        setSupplierId('');
-        setSupplierName('');
-        setSupplierAddress('');
+        setsellerId('');
+        setsellerName('');
+        setsellerAddress('');
         setBills([{ invoiceNo: '', billAmount: '', invoiceDate: '' }]);
         setPayments([{ amount: '', date: '', submittedBy: '', remark: '' }]);
         // Optionally, navigate to another page after a delay
@@ -209,6 +229,18 @@ export default function SupplierAccountForm() {
     }
   };
 
+
+  const generateSellerId = async () => {
+    try {
+      const lastId =
+        "KKSELLER" + Date.now().toString();
+        setsellerId(lastId);
+    } catch (err) {
+      setError("Error generating seller ID");
+      showErrorMessage(true);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6">
       {/* Top Banner */}
@@ -221,221 +253,246 @@ export default function SupplierAccountForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto mt-5 bg-white shadow-lg rounded-lg p-8">
-        <div className='flex justify-between mb-4'>
-          <p className='text-sm font-bold mb-5 text-gray-500'> <i className='fa fa-truck'/> Create Supplier Account</p>
-          <div className='text-right'>
+          {/* Supplier Information */}
+
+          <div className="mb-6">
+            <label className="block text-xs text-gray-700 mb-2">
+              Supplier Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              ref={sellerNameRef}
+              value={sellerName}
+              onChange={(e) => setsellerName(e.target.value)}
+              onKeyDown={(e) => {
+                if(e.key === "Enter" && sellerName){
+                  generateSellerId();
+                }
+                 changeRef(e, supplierContactRef)
+              }}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              placeholder="Enter Supplier Name"
+              required
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs text-gray-700 mb-2">
+              Supplier ID <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              ref={sellerIdRef}
+              value={sellerId}
+              onChange={(e) => setsellerId(e.target.value)}
+              onKeyDown={(e) => changeRef(e, sellerNameRef)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              placeholder="Enter Supplier ID"
+              required
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs text-gray-700 mb-2">
+              Supplier Address <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              ref={supplierContactRef}
+              value={sellerAddress}
+              onChange={(e) => setsellerAddress(e.target.value)}
+              onKeyDown={(e) => changeRef(e, billRefs.current[0])}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              placeholder="Enter Supplier Addresss"
+              required
+            />
+          </div>
+
+          {/* Bills Section */}
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-gray-700 mb-2">Bills</h3>
+            {bills.map((bill, index) => (
+              <div key={index} className="border border-gray-200 p-4 rounded-lg mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-xs font-semibold text-gray-600">Bill {index + 1}</h4>
+                  {bills.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeBill(index)}
+                      className="text-red-500 text-sm"
+                      aria-label={`Remove Bill ${index + 1}`}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">
+                      Invoice Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={bill.invoiceNo}
+                      onChange={(e) => handleBillChange(index, 'invoiceNo', e.target.value)}
+                      ref={(el) => (billRefs.current[index] = el)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const nextField = billRefs.current[index + 1] || paymentRefs.current[0];
+                          nextField?.focus();
+                        }
+                      }}
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                      placeholder="Enter Invoice Number"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">
+                      Bill Amount (₹) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={bill.billAmount}
+                      onChange={(e) => handleBillChange(index, 'billAmount', e.target.value)}
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                      placeholder="Enter Bill Amount"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">Invoice Date</label>
+                    <input
+                      type="date"
+                      value={bill.invoiceDate ? bill.invoiceDate.slice(0, 10) : ''}
+                      onChange={(e) => handleBillChange(index, 'invoiceDate', e.target.value)}
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addBill}
+              className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
+            >
+              Add Another Bill
+            </button>
+          </div>
+
+          {/* Payments Section */}
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-gray-700 mb-2">Payments</h3>
+            {payments.map((payment, index) => (
+              <div key={index} className="border border-gray-200 p-4 rounded-lg mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-xs font-semibold text-gray-600">Payment {index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removePayment(index)}
+                      className="text-red-500 text-sm"
+                      aria-label={`Remove Payment ${index + 1}`}
+                    >
+                      Remove
+                    </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">
+                      Payment Amount (₹) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={payment.amount}
+                      onChange={(e) => handlePaymentChange(index, 'amount', e.target.value)}
+                      ref={(el) => (paymentRefs.current[index] = el)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const nextField = paymentRefs.current[index + 1] || null;
+                          nextField?.focus();
+                        }
+                      }}
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                      placeholder="Enter Payment Amount"
+                      
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">Payment Date</label>
+                    <input
+                      type="date"
+                      value={payment.date ? payment.date.slice(0, 10) : ''}
+                      onChange={(e) => handlePaymentChange(index, 'date', e.target.value)}
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">
+                      Payment From <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={payment.method}
+                      onChange={(e) => handlePaymentChange(index, 'method', e.target.value)}
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                      
+                    >
+                      <option value="">Select Account</option>
+                      {paymentAccounts.map((account) => (
+                        <option key={account.accountId} value={account.accountId}>
+                          {account.accountName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-700 mb-1">Remark</label>
+                    <input
+                      type="text"
+                      value={payment.remark}
+                      onChange={(e) => handlePaymentChange(index, 'remark', e.target.value)}
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                      placeholder="Enter Remark"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addPayment}
+              className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
+            >
+              Add Another Payment
+            </button>
+          </div>
+
+          {/* Submit Button */}
+          <div className="text-right">
             <button
               type="submit"
-              disabled={isSubmitting}
-              className={`mb-2 bg-red-500 text-sm text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              disabled={formSubmitting}
+              className={`bg-red-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:bg-red-600 ${
+                formSubmitting ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              {isSubmitting ? 'Creating...' : 'Create Account'}
+              {formSubmitting ? 'Updating...' : 'Update Account'}
             </button>
-            <p className='text-xs text-gray-400'>Fill all required fields before submission</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Fill all required fields before submission
+            </p>
           </div>
-        </div>
-
-        {/* Supplier Information */}
-        <div className="mb-6">
-          <label className="block text-xs text-gray-700 mb-2">Supplier ID <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            ref={supplierIdRef}
-            value={supplierId}
-            onChange={(e) => setSupplierId(e.target.value)}
-            onKeyDown={(e) => changeRef(e, supplierNameRef)}
-            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-            placeholder="Enter Supplier ID"
-            required
-          />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-xs text-gray-700 mb-2">Supplier Name <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            ref={supplierNameRef}
-            value={supplierName}
-            onChange={(e) => setSupplierName(e.target.value)}
-            onKeyDown={(e) => changeRef(e, supplierContactRef)}
-            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-            placeholder="Enter Supplier Name"
-            required
-          />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-xs text-gray-700 mb-2">Supplier Address <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            ref={supplierContactRef}
-            value={supplierAddress}
-            onChange={(e) => setSupplierAddress(e.target.value)}
-            onKeyDown={(e) => changeRef(e, billRefs.current[0])}
-            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-            placeholder="Enter Supplier Address"
-            required
-          />
-        </div>
-
-        {/* Bills Section */}
-        <div className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-2">Bills</h3>
-          {bills.map((bill, index) => (
-            <div key={index} className="border border-gray-200 p-4 rounded-lg mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="text-xs font-semibold text-gray-600">Bill {index + 1}</h4>
-                {bills.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeBill(index)}
-                    className="text-red-500 text-sm"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-700 mb-1">Invoice Number <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={bill.invoiceNo}
-                    onChange={(e) => handleBillChange(index, 'invoiceNo', e.target.value)}
-                    ref={(el) => (billRefs.current[index] = el)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const nextField = billRefs.current[index + 1] || paymentRefs.current[0];
-                        nextField?.focus();
-                      }
-                    }}
-                    className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                    placeholder="Enter Invoice Number"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-700 mb-1">Bill Amount <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={bill.billAmount}
-                    onChange={(e) => handleBillChange(index, 'billAmount', e.target.value)}
-                    className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                    placeholder="Enter Bill Amount"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-700 mb-1">Invoice Date</label>
-                  <input
-                    type="date"
-                    value={bill.invoiceDate ? bill.invoiceDate.slice(0, 10) : ''}
-                    onChange={(e) => handleBillChange(index, 'invoiceDate', e.target.value)}
-                    className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addBill}
-            className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
-          >
-            Add Another Bill
-          </button>
-        </div>
-
-        {/* Payments Section */}
-        <div className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-2">Payments</h3>
-          {payments.map((payment, index) => (
-            <div key={index} className="border border-gray-200 p-4 rounded-lg mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="text-xs font-semibold text-gray-600">Payment {index + 1}</h4>
-                {payments.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removePayment(index)}
-                    className="text-red-500 text-sm"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-700 mb-1">Payment Amount <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={payment.amount}
-                    onChange={(e) => handlePaymentChange(index, 'amount', e.target.value)}
-                    ref={(el) => (paymentRefs.current[index] = el)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const nextField = paymentRefs.current[index + 1] || null;
-                        nextField?.focus();
-                      }
-                    }}
-                    className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                    placeholder="Enter Payment Amount"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-700 mb-1">Payment Date</label>
-                  <input
-                    type="date"
-                    value={payment.date ? payment.date.slice(0, 10) : ''}
-                    onChange={(e) => handlePaymentChange(index, 'date', e.target.value)}
-                    className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-700 mb-1">Submitted By <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={payment.submittedBy}
-                    onChange={(e) => handlePaymentChange(index, 'submittedBy', e.target.value)}
-                    className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                    placeholder="Enter Submitter Name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-700 mb-1">Remark</label>
-                  <input
-                    type="text"
-                    value={payment.remark}
-                    onChange={(e) => handlePaymentChange(index, 'remark', e.target.value)}
-                    className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                    placeholder="Enter Remark"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addPayment}
-            className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
-          >
-            Add Another Payment
-          </button>
-        </div>
-      </form>
+        </form>
 
       {/* Success Message */}
       {showSuccessMessage && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded shadow-md">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-md">
           {showSuccessMessage}
         </div>
       )}

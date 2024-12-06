@@ -316,7 +316,7 @@ const TransportPaymentEdit = () => {
 
       {/* Success Message */}
       {successMessage && (
-        <p className="text-green-500 text-center mb-4 text-xs">{successMessage}</p>
+        <p className="text-red-500 text-center mb-4 text-xs">{successMessage}</p>
       )}
 
       {/* Loading Skeletons */}
@@ -443,7 +443,7 @@ const TransportPaymentEdit = () => {
             <button
               type="button"
               onClick={addBilling}
-              className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
+              className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
             >
               Add Another Billing
             </button>
@@ -544,7 +544,7 @@ const TransportPaymentEdit = () => {
             <button
               type="button"
               onClick={addPayment}
-              className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
+              className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
             >
               Add Another Payment
             </button>

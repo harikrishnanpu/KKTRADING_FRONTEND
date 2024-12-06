@@ -62,6 +62,8 @@ export default function EditPurchaseScreen() {
   const [damagePrice, setDamagePrice] = useState("");
   const [transportCompanies, setTransportCompanies] = useState([]);
   const [isCustomCompany, setIsCustomCompany] = useState(false);
+  const [actLength, setActLength] = useState('');
+  const [actBreadth, setActBreadth] = useState('');
 
   // Other States
   const [currentStep, setCurrentStep] = useState(1);
@@ -96,6 +98,8 @@ export default function EditPurchaseScreen() {
   const itemBreadthRef = useRef();
   const itemSizeRef = useRef();
   const itemPsRatioRef = useRef();
+  const actLengthRef = useRef();
+  const actBreadthRef = useRef();
 
   // Effect to auto-hide messages after 3 seconds
   useEffect(() => {
@@ -301,7 +305,7 @@ export default function EditPurchaseScreen() {
   // Function to generate a new seller ID
   const generateSellerId = async () => {
     try {
-      const lastId = 'KKSELLER' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      const lastId = 'KKSELLER' + Date.now().toString();
       setSellerId(lastId);
     } catch (err) {
       setError("Error generating seller ID");
@@ -325,6 +329,8 @@ export default function EditPurchaseScreen() {
       psRatio === "" ||
       length === "" ||
       breadth === "" ||
+      actLength === "" ||
+      actBreadth === "" ||
       size === ""
     ) {
       setError("Please fill in all required fields before adding an item.");
@@ -422,6 +428,8 @@ export default function EditPurchaseScreen() {
     setLength("");
     setBreadth("");
     setSize("");
+    setActLength("");
+    setActBreadth("");
     setItemStock("0");
   };
 
@@ -449,6 +457,8 @@ export default function EditPurchaseScreen() {
         setSUnit(data.sUnit);
         setItemUnit(data.pUnit);
         setItemStock(data.countInStock);
+        setActLength(data.actLength);
+        setActBreadth(data.actBreadth);
         itemNameRef.current?.focus();
       } else {
         setError("Item not found.");
@@ -1359,7 +1369,7 @@ export default function EditPurchaseScreen() {
                   ref={itemBreadthRef}
                   placeholder="Enter Breadth"
                   value={breadth}
-                  onKeyDown={(e) => changeRef(e, itemSizeRef)}
+                  onKeyDown={(e) => changeRef(e, actLengthRef)}
                   onChange={(e) => setBreadth(e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
                   min="0"
@@ -1368,6 +1378,42 @@ export default function EditPurchaseScreen() {
               </div>
 
               <div className="flex flex-col">
+            <label className="text-xs text-gray-700 mb-1">Act Length</label>
+            <input
+              type="number"
+              ref={actLengthRef}
+              placeholder="Enter Act Length"
+              value={actLength}
+              onKeyDown={(e) => changeRef(e, actBreadthRef)}
+              onChange={(e) => setActLength(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-700 mb-1">Act Breadth</label>
+            <input
+              type="number"
+              ref={actBreadthRef}
+              placeholder="Enter Act Breadth"
+              value={actBreadth}
+              onKeyDown={(e) => changeRef(e, itemSizeRef)}
+              onChange={(e) => setActBreadth(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          
+            </div>
+
+            {/* Quantity and Prices */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+
+            <div className="flex flex-col">
                 <label className="text-xs text-gray-700 mb-1">Size</label>
                 <input
                   type="text"
@@ -1399,10 +1445,8 @@ export default function EditPurchaseScreen() {
                   <option value="GSQFT">GSQFT</option>
                 </select>
               </div>
-            </div>
 
-            {/* Quantity and Prices */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
               <div className="flex flex-col">
                 <label className="text-xs text-gray-700 mb-1">Quantity</label>
                 <input
@@ -1459,21 +1503,12 @@ export default function EditPurchaseScreen() {
                 />
               </div>
 
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 text-xs w-full md:w-auto"
-                >
-                  Add Item
-                </button>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Middle Section: Stock and GST Info */}
-        <div className="hidden lg:block w-44">
+       <div className="hidden lg:block w-44">
           <div className="bg-gray-100 p-6 h-full rounded-lg shadow-inner">
             <div className="">
             <div className="flex justify-between">
@@ -1485,7 +1520,16 @@ export default function EditPurchaseScreen() {
               <p className="text-xs">{items?.length}</p>
             </div>
             </div>
-            <div className="mt-16 bg-gray-300 p-5 rounded-lg">
+            <div className="flex my-2 mx-auto text-center">
+            <button
+              type="button"
+              onClick={addItem}
+              className="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 text-xs w-full md:w-auto"
+            >
+              Add Item
+            </button>
+          </div>
+            <div className="bg-gray-300 p-5 mt-4 rounded-lg">
             <div className="flex justify-between">
               <p className="text-xs font-bold">Current Item</p>
             </div>

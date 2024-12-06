@@ -43,6 +43,8 @@ export default function PurchasePage() {
   const [itemBillPrice, setItemBillPrice] = useState("");
   const [itemCashPrice, setItemCashPrice] = useState("");
   const [categories, setCategories] = useState([]);
+  const [actLength, setActLength] = useState('');
+  const [actBreadth, setActBreadth] = useState('');
 
   // Item Additional Information
   const [sUnit, setSUnit] = useState("NOS");
@@ -101,6 +103,8 @@ export default function PurchasePage() {
   const itemBreadthRef = useRef();
   const itemSizeRef = useRef();
   const itemPsRatioRef = useRef();
+  const actLengthRef = useRef();
+  const actBreadthRef = useRef();
 
   const unloadingRef = useRef();
   const insuranceRef = useRef();
@@ -219,7 +223,7 @@ export default function PurchasePage() {
   const generateSellerId = async () => {
     try {
       const lastId =
-        "KKSELLER" + Math.random().toString(36).substr(2, 9).toUpperCase();
+        "KKSELLER" + Date.now().toString();
       setSellerId(lastId);
     } catch (err) {
       setError("Error generating seller ID");
@@ -255,6 +259,8 @@ export default function PurchasePage() {
     const parsedCashPrice = parseFloat(itemCashPrice);
     const productLength = parseFloat(length);
     const productBreadth = parseFloat(breadth);
+    const productactLength = parseFloat(actLength);
+    const productActBreadth = parseFloat(actBreadth);
     const productSize = size;
     const productPsRatio = parseFloat(psRatio);
 
@@ -271,6 +277,10 @@ export default function PurchasePage() {
       isNaN(productBreadth) ||
       productBreadth <= 0 ||
       isNaN(productPsRatio) ||
+      isNaN(productactLength) ||
+      productactLength <= 0 ||
+      isNaN(productActBreadth) ||
+      productActBreadth <= 0 ||
       productPsRatio <= 0
     ) {
       setError(
@@ -321,6 +331,8 @@ export default function PurchasePage() {
       psRatio: productPsRatio,
       length: productLength,
       breadth: productBreadth,
+      actLength: productactLength,
+      actBreadth: productActBreadth,
       size: productSize,
       quantityInNumbers,
       billPriceInNumbers,
@@ -348,6 +360,8 @@ export default function PurchasePage() {
     setLength("");
     setBreadth("");
     setSize("");
+    setActLength("");
+    setActBreadth("");
     setItemStock("0");
   };
 
@@ -375,6 +389,8 @@ export default function PurchasePage() {
         setSUnit(data.sUnit);
         setItemUnit(data.pUnit);
         setItemStock(data.countInStock);
+        setActLength(data.actLength);
+        setActBreadth(data.actBreadth);
         itemNameRef.current?.focus();
       } else {
         setError("Item not found.");
@@ -576,6 +592,8 @@ export default function PurchasePage() {
         psRatio: item.psRatio,
         length: item.length,
         breadth: item.breadth,
+        actLength: item.actLength,
+        actBreadth: item.actBreadth,
         size: item.size,
         billPartPrice: item.billPrice,
         cashPartPrice: item.cashPrice,
@@ -1323,7 +1341,7 @@ export default function PurchasePage() {
               ref={itemBreadthRef}
               placeholder="Enter Breadth"
               value={breadth}
-              onKeyDown={(e) => changeRef(e, itemSizeRef)}
+              onKeyDown={(e) => changeRef(e, actLengthRef)}
               onChange={(e) => setBreadth(e.target.value)}
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               min="0"
@@ -1332,6 +1350,42 @@ export default function PurchasePage() {
           </div>
 
           <div className="flex flex-col">
+            <label className="text-xs text-gray-700 mb-1">Act Length</label>
+            <input
+              type="number"
+              ref={actLengthRef}
+              placeholder="Enter Act Length"
+              value={actLength}
+              onKeyDown={(e) => changeRef(e, actBreadthRef)}
+              onChange={(e) => setActLength(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-700 mb-1">Act Breadth</label>
+            <input
+              type="number"
+              ref={actBreadthRef}
+              placeholder="Enter Act Breadth"
+              value={actBreadth}
+              onKeyDown={(e) => changeRef(e, itemSizeRef)}
+              onChange={(e) => setActBreadth(e.target.value)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+
+        </div>
+
+        {/* Quantity and Prices */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+
+        <div className="flex flex-col">
             <label className="text-xs text-gray-700 mb-1">Size</label>
             <input
               type="text"
@@ -1344,7 +1398,7 @@ export default function PurchasePage() {
             />
           </div>
 
-          <div className="flex flex-col">
+        <div className="flex flex-col">
             <label className="text-xs text-gray-700 mb-1">P Unit</label>
             <select
               value={itemUnit}
@@ -1363,12 +1417,6 @@ export default function PurchasePage() {
               <option value="GSQFT">GSQFT</option>
             </select>
           </div>
-
-
-        </div>
-
-        {/* Quantity and Prices */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 
 
 
@@ -1431,15 +1479,6 @@ export default function PurchasePage() {
             />
           </div>
 
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={addItem}
-              className="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 text-xs w-full md:w-auto"
-            >
-              Add Item
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1457,7 +1496,16 @@ export default function PurchasePage() {
               <p className="text-xs">{items?.length}</p>
             </div>
             </div>
-            <div className="mt-16 bg-gray-300 p-5 rounded-lg">
+            <div className="flex my-2 mx-auto text-center">
+            <button
+              type="button"
+              onClick={addItem}
+              className="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600 text-xs w-full md:w-auto"
+            >
+              Add Item
+            </button>
+          </div>
+            <div className="bg-gray-300 p-5 mt-4 rounded-lg">
             <div className="flex justify-between">
               <p className="text-xs font-bold">Current Item</p>
             </div>

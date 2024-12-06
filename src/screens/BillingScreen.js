@@ -64,6 +64,7 @@ export default function BillingScreen() {
   const [customerSuggestions,setCustomerSuggestions] = useState([]);
   const [customerSuggesstionIndex,setCustomerSuggesstionIndex] = useState(-1);
   const [accounts,setAccounts] = useState([]);
+  const [fetchItemPrice, setFetchItemPrice] = useState([]);
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
@@ -336,6 +337,27 @@ export default function BillingScreen() {
     }
   },[unit]);
 
+ 
+  useEffect(()=>{ 
+    if(selectedProduct){
+    const parsedArea = parseFloat(selectedProduct.actLength ? parseFloat(selectedProduct.actLength) : 0  * selectedProduct.actBreadth ? parseFloat(selectedProduct.actLength) : 0)
+    if(selectedProduct.category === "TILES") {
+      if(unit === "SQFT") {
+      setSellingPrice((parseFloat((selectedProduct.price) / 0.80) / parsedArea).toFixed(2));
+      } else if(unit === "BOX") {
+        setSellingPrice((parseFloat((selectedProduct.price) / 0.80) * selectedProduct.psRatio).toFixed(2));
+      } else {
+        setSellingPrice(parseFloat(((selectedProduct.price) / 0.80).toFixed(2)));
+      }
+    }else if(selectedProduct.category === "GRANITE"){
+      setSellingPrice((parseFloat(selectedProduct.price) / 0.65).toFixed(2));
+    }else {
+      setSellingPrice((parseFloat(selectedProduct.price) / 0.70).toFixed(2));
+    }
+  }
+
+  },[unit]);
+
   // Fetch Suggestions for Item ID
   const itemIdChange = async (e) => {
     const newValue = e.target.value;
@@ -399,22 +421,22 @@ export default function BillingScreen() {
 
       setSelectedProduct(data);
       setQuantity(1);
-      
-      const parsedArea = parseFloat(data.length * data.breadth )
-      if(data.category === "TILES"){
-        if(unit === "SQFT"){
+      setItemId(data.item_id);
+      setFetchItemPrice(data.price);
+      const parsedArea = parseFloat(data.actLength ? parseFloat(data.actLength) : 0  * data.actBreadth ? parseFloat(data.actLength) : 0)
+      if(data.category === "TILES") {
+        if(unit === "SQFT") {
         setSellingPrice((parseFloat((data.price) / 0.80) / parsedArea).toFixed(2));
-        } else if(unit === "BOX"){
+        } else if(unit === "BOX") {
           setSellingPrice((parseFloat((data.price) / 0.80) * data.psRatio).toFixed(2));
         } else {
-          setSellingPrice(parseFloat((data.price).toFixed(2)));
+          setSellingPrice(parseFloat(((data.price) / 0.80).toFixed(2)));
         }
       }else if(data.category === "GRANITE"){
         setSellingPrice((parseFloat(data.price) / 0.65).toFixed(2));
       }else {
         setSellingPrice((parseFloat(data.price) / 0.70).toFixed(2));
       }
-      setItemId(data.item_id);
       setFetchQuantity(data.countInStock);
       setSuggestions([]);
       itemNameRef.current?.focus();
@@ -1722,8 +1744,8 @@ useEffect(() => {
               </div>
 
             {/* Total Amount Display */}
-              <div className="bg-gray-100 ml-2 w-60  items-center text-center rounded-lg p-4 h-full shadow-inner">
-                <div className="text-gray-600 mt-2">
+              <div className="bg-gray-100 ml-2 w-60  items-center text-center rounded-lg shadow-inner">
+                <div className="text-gray-600 mt-8">
                   <p className="text-sm font-bold">Total</p>
                   <p className="text-xs font-bold">Bill Amount:</p>
                 </div>

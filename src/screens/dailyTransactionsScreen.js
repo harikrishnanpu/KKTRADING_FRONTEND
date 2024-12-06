@@ -59,7 +59,7 @@ const DailyTransactions = () => {
       const [transRes, billingRes, purchaseRes, transportRes, catRes, accRes] = await Promise.all([
         api.get(`/api/daily/transactions`, { params: { date: selectedDate } }),
         api.get(`/api/daily/allbill/payments`, { params: { date: selectedDate } }),
-        api.get(`/api/sellerPayments/daily/payments`, { params: { date: selectedDate } }),
+        api.get(`/api/seller/daily/payments`, { params: { date: selectedDate } }),
         api.get(`/api/transportpayments/daily/payments`, { params: { date: selectedDate } }),
         api.get('/api/daily/transactions/categories'),
         api.get('/api/accounts/allaccounts'),

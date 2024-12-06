@@ -261,7 +261,7 @@ export default function TransportPaymentForm() {
 
         {/* Success Message */}
         {showSuccessMessage && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {showSuccessMessage}
           </div>
         )}
@@ -384,7 +384,7 @@ export default function TransportPaymentForm() {
           <button
             type="button"
             onClick={addBilling}
-            className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
+            className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
           >
             Add Another Billing
           </button>
@@ -486,7 +486,7 @@ export default function TransportPaymentForm() {
           <button
             type="button"
             onClick={addPayment}
-            className="bg-green-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-green-600"
+            className="bg-red-500 text-white text-xs font-semibold py-1 px-3 rounded-lg hover:bg-red-600"
           >
             Add Another Payment
           </button>
@@ -511,7 +511,7 @@ export default function TransportPaymentForm() {
 
       {/* Success Message */}
       {showSuccessMessage && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded shadow-md">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-md">
           {showSuccessMessage}
         </div>
       )}
