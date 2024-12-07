@@ -9,12 +9,13 @@ export default function CustomerAccountForm() {
 
   const [customerName, setCustomerName] = useState('');
   const [customerContactNumber, setCustomerContactNumber] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [customerId, setcustomerId] = useState('');
   const [bills, setBills] = useState([
     { invoiceNo: '', billAmount: '', invoiceDate: '' },
   ]);
   const [payments, setPayments] = useState([
-    { amount: '', date: '', submittedBy: '', remark: '' },
+    { amount: '', date: '', submittedBy: '', remark: '',  method: '', },
   ]);
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
   const [showErrorMessage, setShowErrorMessage] = useState('');
@@ -29,6 +30,7 @@ export default function CustomerAccountForm() {
   const customerNameRef = useRef();
   const customerNumberRef = useRef();
   const customerIdRef = useRef();
+  const customerAddressRef = useRef();
   const billRefs = useRef([]);
   const paymentRefs = useRef([]);
 
@@ -57,7 +59,7 @@ export default function CustomerAccountForm() {
 
   // Handler to add a new bill
   const addBill = () => {
-    setBills([...bills, { invoiceNo: '', billAmount: '', invoiceDate: '' }]);
+    setBills([...bills, { invoiceNo: '', billAmount: '', invoiceDate: ''}]);
   };
 
   // Handler to remove a bill
@@ -77,7 +79,7 @@ export default function CustomerAccountForm() {
   const addPayment = () => {
     setPayments([
       ...payments,
-      { amount: '', date: '', submittedBy: '', remark: '' },
+      { amount: '', date: '', submittedBy: '', remark: '', method: '', },
     ]);
   };
 
@@ -130,6 +132,10 @@ export default function CustomerAccountForm() {
         setShowErrorMessage(`Submitted By is required for Payment ${i + 1}.`);
         return false;
       }
+      if (!payment.invoiceNo.trim()) {
+        setShowErrorMessage(`Invoice No is required for Payment ${i + 1}.`);
+        return false;
+      }
       if (payment.date && isNaN(Date.parse(payment.date))) {
         setShowErrorMessage(`Valid Payment Date is required for Payment ${i + 1}.`);
         return false;
@@ -155,6 +161,7 @@ export default function CustomerAccountForm() {
       customerName: customerName.trim(),
       customerContactNumber: customerContactNumber.trim(),
       customerId: customerId.trim(),
+      customerAddress: customerAddress.trim(),
       bills: bills.map((bill) => ({
         invoiceNo: bill.invoiceNo.trim(),
         billAmount: parseFloat(bill.billAmount),
@@ -163,7 +170,9 @@ export default function CustomerAccountForm() {
       payments: payments.map((payment) => ({
         amount: parseFloat(payment.amount),
         date: payment.date ? new Date(payment.date) : new Date(),
-        submittedBy: payment.submittedBy.trim(),
+        submittedBy: userInfo._id,
+        method: payment.method,
+        invoiceNo: payment.invoiceNo,
         remark: payment.remark.trim(),
       })),
       userId: userInfo?._id,
@@ -177,8 +186,11 @@ export default function CustomerAccountForm() {
         setShowErrorMessage('');
         // Reset form
         setCustomerName('');
+        setcustomerId(''); //
+        setCustomerAddress('');
+        setCustomerContactNumber('');
         setBills([{ invoiceNo: '', billAmount: '', invoiceDate: '' }]);
-        setPayments([{ amount: '', date: '', submittedBy: '', remark: '' }]);
+        setPayments([{ amount: '', date: '', submittedBy: '', remark: '',  method: '' }]);
         // Optionally, navigate to another page after a delay
         setTimeout(() => {
           setShowSuccessMessage('');
@@ -274,6 +286,20 @@ export default function CustomerAccountForm() {
             ref={customerIdRef}
             value={customerId} 
             onChange={(e) => setcustomerId(e.target.value)}
+            onKeyDown={(e) => changeRef(e, customerAddressRef)}
+            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            placeholder="Enter Customer Name"
+            required
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-xs text-gray-700 mb-2">Customer Address <span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            ref={customerAddressRef}
+            value={customerAddress} 
+            onChange={(e) => setCustomerAddress(e.target.value)}
             onKeyDown={(e) => changeRef(e, billRefs.current[0])}
             className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
             placeholder="Enter Customer Name"
@@ -405,6 +431,7 @@ export default function CustomerAccountForm() {
   onChange={(e) => handlePaymentChange(index, 'method' , e.target.value)}
   className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
 >
+<option value="">Select Method</option>
 {accounts.map((acc) => (
 <option key={acc.accountId} value={acc.accountId}>
 {acc.accountName}
@@ -413,6 +440,20 @@ export default function CustomerAccountForm() {
 </select>
 
 </div>
+<div>
+                    <label className="block text-xs text-gray-700 mb-1">
+                      Invoice Number
+                    </label>
+                    <input
+                      type="text"
+                      value={payment.invoiceNo || ''}
+                      onChange={(e) =>
+                        handlePaymentChange(index, 'invoiceNo', e.target.value)
+                      }
+                      className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
+                      placeholder="Link to Invoice Number"
+                    />
+                  </div>
                 <div>
                   <label className="block text-xs text-gray-700 mb-1">Submitted By <span className="text-red-500">*</span></label>
                   <input

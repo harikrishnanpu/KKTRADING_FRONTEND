@@ -178,6 +178,11 @@ const CustomerAccountEdit = () => {
         setError(`Valid Payment Date is required for Payment ${i + 1}.`);
         return false;
       }
+
+      if (payment.method === '') {
+        setError(`Valid Payment Method is required for Payment ${i + 1}.`);
+        return false;
+      }
     }
 
     setError('');
@@ -212,7 +217,7 @@ const CustomerAccountEdit = () => {
         date: payment.date ? new Date(payment.date) : undefined,
         submittedBy: payment.submittedBy.trim(),
         remark: payment.remark ? payment.remark.trim() : '',
-        method: payment.method ? payment.method.trim() : 'Cash',
+        method: payment.method ? payment.method.trim(): 'Cash',
         invoiceNo: payment.invoiceNo ? payment.invoiceNo.trim() : undefined,
       })),
       userId: userInfo?._id,
@@ -435,7 +440,6 @@ const CustomerAccountEdit = () => {
                   <h4 className="text-xs font-semibold text-gray-600">
                     Payment {index + 1}
                   </h4>
-                  {payments.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removePayment(index)}
@@ -444,7 +448,6 @@ const CustomerAccountEdit = () => {
                     >
                       Remove
                     </button>
-                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
@@ -523,6 +526,7 @@ const CustomerAccountEdit = () => {
   onChange={(e) => handlePaymentChange(index, 'method' , e.target.value)}
   className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
 >
+  <option value="">Select Method</option>
 {accounts.map((acc) => (
 <option key={acc.accountId} value={acc.accountId}>
 {acc.accountName}
@@ -542,7 +546,7 @@ const CustomerAccountEdit = () => {
                         handlePaymentChange(index, 'invoiceNo', e.target.value)
                       }
                       className="w-full border border-gray-300 px-2 py-1 rounded-md text-xs"
-                      placeholder="Link to Invoice Number (optional)"
+                      placeholder="Link to Invoice Number"
                     />
                   </div>
                 </div>
