@@ -16,6 +16,7 @@ const ErrorModal = ({ message, onClose }) => (
 
 const DailyTransactions = () => {
   const navigate = useNavigate();
+
   const [transactions, setTransactions] = useState([]);
   const [billings, setBillings] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -26,15 +27,18 @@ const DailyTransactions = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+
+  // From and To date states
+  const [fromDate, setFromDate] = useState(new Date().toISOString().slice(0, 10));
+  const [toDate, setToDate] = useState(new Date().toISOString().slice(0, 10));
+
   const [activeTab, setActiveTab] = useState('all');
   const [totalIn, setTotalIn] = useState(0);
   const [totalOut, setTotalOut] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('in');
-  const [isAddingCategory, setIsAddingCategory] = useState(false); 
   const [transactionData, setTransactionData] = useState({
-    date: selectedDate,
+    date: new Date().toISOString().slice(0, 10),
     amount: '',
     paymentFrom: '',
     paymentTo: '',
@@ -46,8 +50,8 @@ const DailyTransactions = () => {
     transportId: '',
   });
 
-  const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showAddCategory, setShowAddCategory] = useState(false);
 
   const userSignin = useSelector((state) => state.userSignin);
   const { userInfo } = userSignin;
@@ -56,20 +60,26 @@ const DailyTransactions = () => {
     setLoading(true);
     setError('');
     try {
-      const [transRes, billingRes, purchaseRes, transportRes, catRes, accRes] = await Promise.all([
-        api.get(`/api/daily/transactions`, { params: { date: selectedDate } }),
-        api.get(`/api/daily/allbill/payments`, { params: { date: selectedDate } }),
-        api.get(`/api/seller/daily/payments`, { params: { date: selectedDate } }),
-        api.get(`/api/transportpayments/daily/payments`, { params: { date: selectedDate } }),
+      const [
+        catRes,
+        accRes,
+        dailyTransRes,
+        billingRes,
+        purchaseRes,
+        transportRes
+      ] = await Promise.all([
         api.get('/api/daily/transactions/categories'),
         api.get('/api/accounts/allaccounts'),
+        api.get('/api/daily/transactions', { params: { fromDate, toDate } }),
+        api.get('/api/daily/allbill/payments', { params: { fromDate, toDate } }),
+        api.get('/api/seller/daily/payments', { params: { fromDate, toDate } }),
+        api.get('/api/transportpayments/daily/payments', { params: { fromDate, toDate } }),
       ]);
 
       const { billingsRes: billingData, payments: paymentData, otherExpenses: expenseData } = billingRes.data;
 
-
-      setTransactions(transRes.data);
-      setBillings(billingRes); 
+      setTransactions(dailyTransRes.data);
+      setBillings(billingData);
       setPayments(paymentData);
       setOtherExpenses(expenseData);
       setPurchasePayments(purchaseRes.data.flatMap((seller) => seller.payments || []));
@@ -77,12 +87,8 @@ const DailyTransactions = () => {
       setCategories(catRes.data);
       setAccounts(accRes.data);
 
-
-
-      console.log(billingRes.data)
-
       calculateTotals(
-        transRes.data,
+        dailyTransRes.data,
         paymentData,
         expenseData,
         purchaseRes.data.flatMap((seller) => seller.payments || []),
@@ -99,19 +105,20 @@ const DailyTransactions = () => {
   const calculateTotals = (transactionsData, paymentData, expenseData, purchasePaymentsData, transportPaymentsData) => {
     let totalInAmount = 0;
     let totalOutAmount = 0;
-  
-    // Transactions (direct in/out)
+
+    // Transactions (direct in/out/transfer)
     transactionsData.forEach((trans) => {
       const amount = parseFloat(trans.amount) || 0;
       if (trans.type === 'in') {
         totalInAmount += amount;
       } else if (trans.type === 'out') {
         totalOutAmount += amount;
+      } else if (trans.type === 'transfer') {
+        // Transfer doesn't affect totalIn or totalOut as it's internal movement.
       }
     });
-  
-    // Billings (billing received counts as "in", expenses as "out")
-    // Payments (type "in")
+
+    // Payments (from billings) are type "in"
     paymentData.forEach((payment) => {
       totalInAmount += parseFloat(payment.amount) || 0;
     });
@@ -120,35 +127,32 @@ const DailyTransactions = () => {
     expenseData.forEach((expense) => {
       totalOutAmount += parseFloat(expense.amount) || 0;
     });
-  
+
     // Purchase Payments (all "out")
     purchasePaymentsData.forEach((payment) => {
       totalOutAmount += parseFloat(payment.amount) || 0;
     });
-  
+
     // Transport Payments (all "out")
     transportPaymentsData.forEach((payment) => {
       totalOutAmount += parseFloat(payment.amount) || 0;
     });
-  
+
     // Set totals with two decimal places
     setTotalIn(Number(totalInAmount.toFixed(2)));
     setTotalOut(Number(totalOutAmount.toFixed(2)));
   };
-  
 
   useEffect(() => {
     fetchTransactions();
-  }, [selectedDate]);
-
-  const handleDateChange = (e) => setSelectedDate(e.target.value);
+  }, [fromDate, toDate]);
 
   const handleTabChange = (tab) => setActiveTab(tab);
 
   const openModal = (type) => {
     setModalType(type);
     setTransactionData({
-      date: selectedDate,
+      date: new Date().toISOString().slice(0, 10),
       amount: '',
       paymentFrom: '',
       paymentTo: '',
@@ -212,7 +216,7 @@ const DailyTransactions = () => {
     }
 
     try {
-      // Handle adding new category
+      // Handle adding new category if showAddCategory is true
       if (showAddCategory) {
         if (!newCategoryName.trim()) {
           setError('Please enter a new category name.');
@@ -253,51 +257,42 @@ const DailyTransactions = () => {
   };
 
   const filteredTransactions = useMemo(() => {
-    let filtered = transactions.filter((trans) => {
-      if (activeTab === 'in') return trans.type === 'in';
-      if (activeTab === 'out') return trans.type === 'out';
-      return true;
-    });
-  
-    // Include billing payments (type "in")
- // Include payments (type "in")
- if (activeTab === 'in' || activeTab === 'all') {
-  payments.forEach((payment) => {
-    filtered.push({
-      _id: `payment-${payment.billingId}-${Date.now()}`,
-      date: payment.date,
-      amount: payment.amount,
-      paymentFrom: payment.paymentFrom || 'Unknown Customer',
-      category: 'Billing Payment',
-      method: payment.method || 'Cash',
-      remark: payment.remark || 'Payment received',
-      type: 'in',
-    });
-  });
-}
+    let filtered = [...transactions];
 
-// Include other expenses (type "out")
-if (activeTab === 'out' || activeTab === 'all') {
-  otherExpenses.forEach((expense) => {
-    filtered.push({
-      _id: `expense-${expense.billingId}-${Date.now()}`,
-      date: expense.date,
-      amount: expense.amount,
-      paymentTo: 'Other Expense',
-      category: 'Other Expense',
-      method: expense.method || 'Cash',
-      remark: expense.remark || 'Additional expense',
-      type: 'out',
-    });
-  });
+    // Add Billing Payments (type: in)
+    if (activeTab === 'in' || activeTab === 'all') {
+      payments.forEach((payment) => {
+        filtered.push({
+          _id: `payment-${payment.billingId}-${payment._id || Date.now()}`,
+          date: payment.date,
+          amount: payment.amount,
+          paymentFrom: payment.paymentFrom || 'Unknown Customer',
+          category: 'Billing Payment',
+          method: payment.method || 'Cash',
+          remark: payment.remark || 'Payment received',
+          type: 'in',
+        });
+      });
+    }
 
-}
+    // Add Other Expenses (type: out)
+    if (activeTab === 'out' || activeTab === 'all') {
+      otherExpenses.forEach((expense) => {
+        filtered.push({
+          _id: `expense-${expense.billingId}-${expense._id || Date.now()}`,
+          date: expense.date,
+          amount: expense.amount,
+          paymentTo: 'Other Expense',
+          category: 'Other Expense',
+          method: expense.method || 'Cash',
+          remark: expense.remark || 'Additional expense',
+          type: 'out',
+        });
+      });
+    }
 
-  
-
-  if (activeTab === 'out' || activeTab === 'all') {
-  
-      // Include purchase payments (type "out")
+    // Purchase payments (type: out)
+    if (activeTab === 'out' || activeTab === 'all') {
       purchasePayments.forEach((payment) => {
         filtered.push({
           _id: `purchase-${payment._id}`,
@@ -310,8 +305,10 @@ if (activeTab === 'out' || activeTab === 'all') {
           type: 'out',
         });
       });
-  
-      // Include transport payments (type "out")
+    }
+
+    // Transport payments (type: out)
+    if (activeTab === 'out' || activeTab === 'all') {
       transportPayments.forEach((payment) => {
         filtered.push({
           _id: `transport-${payment._id}`,
@@ -325,48 +322,31 @@ if (activeTab === 'out' || activeTab === 'all') {
         });
       });
     }
-  
-    // Sort by date in descending order
-    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  
-    return filtered;
-  }, [transactions, billings, purchasePayments, transportPayments, activeTab]);
-  
 
-
-  const handleAddNewCategory = async () => {
-    const newCategoryName = prompt("Enter new category name:");
-    if (newCategoryName) {
-      try {
-        // Post the new category to the backend
-        const response = await api.post("/api/daily/transactions/categories", {
-          name: newCategoryName,
-        });
-        const newCategory = response.data;
-
-        // Update categories list and set new category as selected
-        setCategories([...categories, newCategory]);
-        setTransactionData({ ...transactionData, category: newCategory.name });
-
-        alert("Category added successfully!");
-      } catch (error) {
-        console.error("Error adding category:", error);
-        alert(
-          error.response?.data?.message || "Failed to add category. Try again."
-        );
-      }
+    // Filter by tab
+    if (activeTab === 'in') {
+      filtered = filtered.filter((t) => t.type === 'in');
+    } else if (activeTab === 'out') {
+      filtered = filtered.filter((t) => t.type === 'out');
+    } else if (activeTab === 'transfer') {
+      filtered = filtered.filter((t) => t.type === 'transfer');
     }
+    
+    // Sort by date descending
+    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return filtered;
+  }, [transactions, payments, otherExpenses, purchasePayments, transportPayments, activeTab]);
+
+  const handleAddNewCategoryToggle = () => {
+    setShowAddCategory(!showAddCategory);
+    setNewCategoryName('');
   };
-
-
 
   return (
     <>
       <div className="flex items-center justify-between bg-gradient-to-l from-gray-200 via-gray-100 to-gray-50 shadow-md p-5 rounded-lg mb-4 relative">
-        <div
-          onClick={() => navigate('/')}
-          className="text-center cursor-pointer"
-        >
+        <div onClick={() => navigate('/')} className="text-center cursor-pointer">
           <h2 className="text-md font-bold text-red-600">KK TRADING</h2>
           <p className="text-gray-400 text-xs font-bold">
             Daily Transactions and Accounts
@@ -375,15 +355,29 @@ if (activeTab === 'out' || activeTab === 'all') {
         <i className="fa fa-list text-gray-500" />
       </div>
 
-      {/* Top Navigation */}
+      {/* Top Filters */}
       <div className="flex items-center justify-between bg-white p-4 shadow-md">
         <h2 className="text-sm font-bold text-gray-800">Daily Transactions</h2>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={handleDateChange}
-          className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-        />
+        <div className="flex space-x-2">
+          <div>
+            <label className="text-xs font-bold mb-1 block">From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold mb-1 block">To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -430,6 +424,14 @@ if (activeTab === 'out' || activeTab === 'all') {
           >
             Payment Out
           </button>
+          <button
+            onClick={() => handleTabChange('transfer')}
+            className={`px-4 py-1 text-xs rounded-full ${
+              activeTab === 'transfer' ? 'bg-white text-red-600 shadow-md' : 'text-gray-600'
+            }`}
+          >
+            Transfer
+          </button>
         </div>
       </div>
 
@@ -457,15 +459,35 @@ if (activeTab === 'out' || activeTab === 'all') {
                     <div>
                       <p className="text-xs font-bold text-gray-700">{trans.category}</p>
                       <p className="text-xs text-gray-500">
-                        {trans.type === 'in' ? 'From' : 'To'}: {trans.type === 'in' ? trans.paymentFrom : trans.paymentTo}
+                        {trans.type === 'in' 
+                          ? `From: ${trans.paymentFrom}` 
+                          : trans.type === 'out'
+                          ? `To: ${trans.paymentTo}`
+                          : trans.type === 'transfer'
+                          ? `Transfer: ${trans.paymentFrom} ➜ ${trans.paymentTo}`
+                          : ''}
                       </p>
                       <p className="text-xs text-gray-500">{trans.remark}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-bold ${trans.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
-                        {trans.type === 'in' ? '+' : '-'}₹{parseFloat(trans.amount).toFixed(2)}
+                      {trans.type === 'in' && (
+                        <p className="text-sm font-bold text-green-600">
+                          +₹{parseFloat(trans.amount).toFixed(2)}
+                        </p>
+                      )}
+                      {trans.type === 'out' && (
+                        <p className="text-sm font-bold text-red-600">
+                          -₹{parseFloat(trans.amount).toFixed(2)}
+                        </p>
+                      )}
+                      {trans.type === 'transfer' && (
+                        <p className="text-sm font-bold text-blue-600">
+                          ₹{parseFloat(trans.amount).toFixed(2)}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        {new Date(trans.date).toLocaleDateString()}
                       </p>
-                      <p className="text-xs text-gray-500">{new Date(trans.date).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}
@@ -488,7 +510,7 @@ if (activeTab === 'out' || activeTab === 'all') {
           onClick={() => openModal('transfer')}
           className="flex font-bold items-center justify-center bg-blue-500 text-white w-12 h-12 rounded-full shadow-lg"
         >
-          <i className='fa fa-money' />
+          <i className="fa fa-exchange" />
         </button>
 
         <button
@@ -612,32 +634,69 @@ if (activeTab === 'out' || activeTab === 'all') {
                   </select>
                 </>
               )}
-       <div className="mb-2">
-      <label className="block text-xs font-bold mb-1">Category</label>
-      <select
-        value={transactionData.category}
-        onChange={(e) => {
-          if (e.target.value === "add_new_category") {
-            handleAddNewCategory();
-          } else {
-            setTransactionData({
-              ...transactionData,
-              category: e.target.value,
-            });
-          }
-        }}
-        className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-        required
-      >
-        <option value="">Select Category</option>
-        {categories.map((cat) => (
-          <option key={cat._id} value={cat.name}>
-            {cat.name}
-          </option>
-        ))}
-        <option value="add_new_category">Add New Category</option>
-      </select>
-    </div>
+
+              <div className="mb-2">
+                <label className="block text-xs font-bold mb-1">Category</label>
+                {!showAddCategory ? (
+                  <select
+                    value={transactionData.category}
+                    onChange={(e) => {
+                      if (e.target.value === "add_new_category") {
+                        handleAddNewCategoryToggle();
+                      } else {
+                        setTransactionData({
+                          ...transactionData,
+                          category: e.target.value,
+                        });
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))}
+                    <option value="add_new_category">Add New Category</option>
+                  </select>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="New Category Name"
+                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500 mb-2"
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={handleAddNewCategoryToggle}
+                        className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-xs hover:bg-gray-300 transition-colors duration-200"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newCategoryName.trim()) {
+                            setError('Please enter a new category name.');
+                            return;
+                          }
+                          // We'll add the category on form submit, just set transactionData here
+                          setTransactionData({ ...transactionData, category: newCategoryName.trim() });
+                          setShowAddCategory(false);
+                        }}
+                        className="bg-green-500 text-white px-3 py-1 rounded-md text-xs hover:bg-green-600 transition-colors duration-200"
+                      >
+                        Set Category
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {modalType === 'out' && transactionData.category === 'Purchase Payment' && (
                 <div className="mb-2">
@@ -679,7 +738,7 @@ if (activeTab === 'out' || activeTab === 'all') {
                     <option value="">Select Transport</option>
                     {transportPayments.map((transport) => (
                       <option key={transport._id} value={transport._id}>
-                        {transport.transportName} - {transport.transportDate}
+                        {transport.transportName} - {new Date(transport.transportDate).toLocaleDateString()}
                       </option>
                     ))}
                   </select>
