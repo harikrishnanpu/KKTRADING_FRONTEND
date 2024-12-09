@@ -16,6 +16,8 @@ const ErrorModal = ({ message, onClose }) => (
 
 const DailyTransactions = () => {
   const navigate = useNavigate();
+  const userSignin = useSelector((state) => state.userSignin);
+  const { userInfo } = userSignin;
 
   const [transactions, setTransactions] = useState([]);
   const [billings, setBillings] = useState([]);
@@ -28,9 +30,10 @@ const DailyTransactions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // From and To date states
-  const [fromDate, setFromDate] = useState(new Date().toISOString().slice(0, 10));
-  const [toDate, setToDate] = useState(new Date().toISOString().slice(0, 10));
+  // If admin show from and to date, else show single date input
+  const today = new Date().toISOString().slice(0, 10);
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
 
   const [activeTab, setActiveTab] = useState('all');
   const [totalIn, setTotalIn] = useState(0);
@@ -38,7 +41,7 @@ const DailyTransactions = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('in');
   const [transactionData, setTransactionData] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: today,
     amount: '',
     paymentFrom: '',
     paymentTo: '',
@@ -52,9 +55,6 @@ const DailyTransactions = () => {
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
-
-  const userSignin = useSelector((state) => state.userSignin);
-  const { userInfo } = userSignin;
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -113,9 +113,8 @@ const DailyTransactions = () => {
         totalInAmount += amount;
       } else if (trans.type === 'out') {
         totalOutAmount += amount;
-      } else if (trans.type === 'transfer') {
-        // Transfer doesn't affect totalIn or totalOut as it's internal movement.
       }
+      // transfer doesn't affect totals
     });
 
     // Payments (from billings) are type "in"
@@ -222,13 +221,10 @@ const DailyTransactions = () => {
           setError('Please enter a new category name.');
           return;
         }
-        // Add the new category to the database
         const categoryRes = await api.post('/api/daily/transactions/categories', {
           name: newCategoryName.trim(),
         });
-        // Update the categories list
         setCategories([...categories, categoryRes.data]);
-        // Set the transactionData.category to the new category
         transactionData.category = newCategoryName.trim();
       }
 
@@ -257,81 +253,81 @@ const DailyTransactions = () => {
   };
 
   const filteredTransactions = useMemo(() => {
-    let filtered = [...transactions];
+    let filtered = [];
 
-    // Add Billing Payments (type: in)
-    if (activeTab === 'in' || activeTab === 'all') {
-      payments.forEach((payment) => {
-        filtered.push({
-          _id: `payment-${payment.billingId}-${payment._id || Date.now()}`,
-          date: payment.date,
-          amount: payment.amount,
-          paymentFrom: payment.paymentFrom || 'Unknown Customer',
-          category: 'Billing Payment',
-          method: payment.method || 'Cash',
-          remark: payment.remark || 'Payment received',
-          type: 'in',
-        });
-      });
+    // First filter main transactions based on activeTab
+    if (activeTab === 'all') {
+      filtered = [...transactions];
+    } else {
+      if (activeTab === 'in') {
+        filtered = transactions.filter((t) => t.type === 'in');
+      } else if (activeTab === 'out') {
+        filtered = transactions.filter((t) => t.type === 'out');
+      } else if (activeTab === 'transfer') {
+        filtered = transactions.filter((t) => t.type === 'transfer');
+      }
     }
 
-    // Add Other Expenses (type: out)
-    if (activeTab === 'out' || activeTab === 'all') {
-      otherExpenses.forEach((expense) => {
-        filtered.push({
-          _id: `expense-${expense.billingId}-${expense._id || Date.now()}`,
-          date: expense.date,
-          amount: expense.amount,
-          paymentTo: 'Other Expense',
-          category: 'Other Expense',
-          method: expense.method || 'Cash',
-          remark: expense.remark || 'Additional expense',
-          type: 'out',
-        });
-      });
+    // Add billing payments (in)
+    if (activeTab === 'all' || activeTab === 'in') {
+      const billingPayments = payments.map((payment,index) => ({
+        _id: payment._id || `payment-${index}`,
+        date: payment.date,
+        amount: payment.amount,
+        paymentFrom: payment.paymentFrom || 'Unknown Customer',
+        category: 'Billing Payment',
+        method: payment.method || 'Cash',
+        remark: payment.remark || 'Payment received',
+        type: 'in',
+      }));
+      filtered = [...filtered, ...billingPayments];
     }
 
-    // Purchase payments (type: out)
-    if (activeTab === 'out' || activeTab === 'all') {
-      purchasePayments.forEach((payment) => {
-        filtered.push({
-          _id: `purchase-${payment._id}`,
-          date: payment.date,
-          amount: payment.amount,
-          paymentTo: payment.paidTo || 'Vendor',
-          category: payment.category || 'Purchase Payment',
-          method: payment.method || 'Cash',
-          remark: payment.remark || 'Payment towards purchase',
-          type: 'out',
-        });
-      });
+    // Add other expenses (out)
+    if (activeTab === 'all' || activeTab === 'out') {
+      const expenses = otherExpenses.map((expense) => ({
+        _id: expense._id || `expense-${expense.billingId}`,
+        date: expense.date,
+        amount: expense.amount,
+        paymentTo: 'Other Expense',
+        category: 'Other Expense',
+        method: expense.method || 'Cash',
+        remark: expense.remark || 'Additional expense',
+        type: 'out',
+      }));
+      filtered = [...filtered, ...expenses];
     }
 
-    // Transport payments (type: out)
-    if (activeTab === 'out' || activeTab === 'all') {
-      transportPayments.forEach((payment) => {
-        filtered.push({
-          _id: `transport-${payment._id}`,
-          date: payment.date,
-          amount: payment.amount,
-          paymentTo: payment.paidTo || 'Transporter',
-          category: payment.category || 'Transport Payment',
-          method: payment.method || 'Cash',
-          remark: payment.remark || 'Payment towards transport',
-          type: 'out',
-        });
-      });
+    // Add purchase payments (out)
+    if (activeTab === 'all' || activeTab === 'out') {
+      const pPayments = purchasePayments.map((payment) => ({
+        _id: payment._id || `purchase-${payment.sellerId}`,
+        date: payment.date,
+        amount: payment.amount,
+        paymentTo: payment.paidTo || 'Vendor',
+        category: payment.category || 'Purchase Payment',
+        method: payment.method || 'Cash',
+        remark: payment.remark || 'Payment towards purchase',
+        type: 'out',
+      }));
+      filtered = [...filtered, ...pPayments];
     }
 
-    // Filter by tab
-    if (activeTab === 'in') {
-      filtered = filtered.filter((t) => t.type === 'in');
-    } else if (activeTab === 'out') {
-      filtered = filtered.filter((t) => t.type === 'out');
-    } else if (activeTab === 'transfer') {
-      filtered = filtered.filter((t) => t.type === 'transfer');
+    // Add transport payments (out)
+    if (activeTab === 'all' || activeTab === 'out') {
+      const tPayments = transportPayments.map((payment) => ({
+        _id: payment._id || `transport-${payment.transportId}`,
+        date: payment.date,
+        amount: payment.amount,
+        paymentTo: payment.paidTo || 'Transporter',
+        category: payment.category || 'Transport Payment',
+        method: payment.method || 'Cash',
+        remark: payment.remark || 'Payment towards transport',
+        type: 'out',
+      }));
+      filtered = [...filtered, ...tPayments];
     }
-    
+
     // Sort by date descending
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -358,26 +354,41 @@ const DailyTransactions = () => {
       {/* Top Filters */}
       <div className="flex items-center justify-between bg-white p-4 shadow-md">
         <h2 className="text-sm font-bold text-gray-800">Daily Transactions</h2>
-        <div className="flex space-x-2">
+        {userInfo && userInfo.isAdmin ? (
+          <div className="flex space-x-2">
+            <div>
+              <label className="text-xs font-bold mb-1 block">From Date</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold mb-1 block">To Date</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+          </div>
+        ) : (
           <div>
-            <label className="text-xs font-bold mb-1 block">From Date</label>
+            <label className="text-xs font-bold mb-1 block">Date</label>
             <input
               type="date"
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                setToDate(e.target.value);
+              }}
               className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
             />
           </div>
-          <div>
-            <label className="text-xs font-bold mb-1 block">To Date</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Error Message */}
@@ -451,16 +462,16 @@ const DailyTransactions = () => {
               </p>
             ) : (
               <div className="space-y-2">
-                {filteredTransactions.map((trans) => (
+                {filteredTransactions.map((trans, index) => (
                   <div
-                    key={trans._id}
+                    key={trans._id || index}
                     className="flex justify-between items-center p-2 bg-white shadow-sm rounded-lg"
                   >
                     <div>
                       <p className="text-xs font-bold text-gray-700">{trans.category}</p>
                       <p className="text-xs text-gray-500">
                         {trans.type === 'in' 
-                          ? `From: ${trans.paymentFrom}` 
+                          ? `From: ${trans.paymentFrom}`
                           : trans.type === 'out'
                           ? `To: ${trans.paymentTo}`
                           : trans.type === 'transfer'
@@ -510,7 +521,7 @@ const DailyTransactions = () => {
           onClick={() => openModal('transfer')}
           className="flex font-bold items-center justify-center bg-blue-500 text-white w-12 h-12 rounded-full shadow-lg"
         >
-          <i className="fa fa-exchange" />
+          <i className="fa fa-bank" />
         </button>
 
         <button
@@ -635,68 +646,76 @@ const DailyTransactions = () => {
                 </>
               )}
 
-              <div className="mb-2">
-                <label className="block text-xs font-bold mb-1">Category</label>
-                {!showAddCategory ? (
-                  <select
-                    value={transactionData.category}
-                    onChange={(e) => {
-                      if (e.target.value === "add_new_category") {
-                        handleAddNewCategoryToggle();
-                      } else {
-                        setTransactionData({
-                          ...transactionData,
-                          category: e.target.value,
-                        });
-                      }
-                    }}
-                    className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
-                    required
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat.name}>
-                        {cat.name}
-                      </option>
-                    ))}
-                    <option value="add_new_category">Add New Category</option>
-                  </select>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      placeholder="New Category Name"
-                      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500 mb-2"
-                    />
-                    <div className="flex space-x-2">
-                      <button
-                        type="button"
-                        onClick={handleAddNewCategoryToggle}
-                        className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-xs hover:bg-gray-300 transition-colors duration-200"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!newCategoryName.trim()) {
-                            setError('Please enter a new category name.');
-                            return;
-                          }
-                          // We'll add the category on form submit, just set transactionData here
-                          setTransactionData({ ...transactionData, category: newCategoryName.trim() });
-                          setShowAddCategory(false);
-                        }}
-                        className="bg-green-500 text-white px-3 py-1 rounded-md text-xs hover:bg-green-600 transition-colors duration-200"
-                      >
-                        Set Category
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+<div className="mb-2">
+  <label className="block text-xs font-bold mb-1">Category</label>
+  {!showAddCategory ? (
+    <select
+      value={transactionData.category}
+      onChange={(e) => {
+        if (e.target.value === "add_new_category") {
+          handleAddNewCategoryToggle();
+        } else {
+          setTransactionData({
+            ...transactionData,
+            category: e.target.value,
+          });
+        }
+      }}
+      className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500"
+      required
+    >
+      <option value="">Select Category</option>
+      {categories.map((cat) => (
+        <option key={cat._id} value={cat.name}>
+          {cat.name}
+        </option>
+      ))}
+      <option value="add_new_category">Add New Category</option>
+    </select>
+  ) : (
+    <>
+      <input
+        type="text"
+        value={newCategoryName}
+        onChange={(e) => setNewCategoryName(e.target.value)}
+        placeholder="New Category Name"
+        className="w-full border border-gray-300 rounded-md p-1 text-xs focus:ring-red-500 focus:border-red-500 mb-2"
+      />
+      {error && (
+        <div className="text-xs text-red-500 mb-2">
+          {error} {/* Display error message if there's an error */}
+        </div>
+      )}
+      <div className="flex space-x-2">
+        <button
+          type="button"
+          onClick={handleAddNewCategoryToggle}
+          className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-xs hover:bg-gray-300 transition-colors duration-200"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!newCategoryName.trim()) {
+              setError('Please enter a new category name.');
+              return;
+            }
+            const newCategory = { _id: Date.now(), name: newCategoryName.trim() };
+            setCategories([...categories, newCategory]); // Add the new category
+            setTransactionData({ ...transactionData, category: newCategoryName.trim() });
+            setShowAddCategory(false);
+            setError(''); // Clear error on successful submission
+          }}
+          className="bg-green-500 text-white px-3 py-1 rounded-md text-xs hover:bg-green-600 transition-colors duration-200"
+        >
+          Set Category
+        </button>
+      </div>
+    </>
+  )}
+</div>
+
 
               {modalType === 'out' && transactionData.category === 'Purchase Payment' && (
                 <div className="mb-2">
@@ -762,7 +781,7 @@ const DailyTransactions = () => {
                   placeholder="Enter amount in Rs."
                 />
               </div>
-              <div className="mb-2">
+             <div className="mb-2">
                 <label className="block text-xs font-bold mb-1">Payment Method</label>
                 <select
                   value={transactionData.method}
