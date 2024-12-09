@@ -394,71 +394,72 @@ const DriverBillingPage = () => {
       updatedBills[billIndex].showModal = false;
       return updatedBills;
     });
-
+  
     const bill = assignedBills[billIndex];
-
+  
     try {
       await getCurrentLocation(async (endLocation) => {
         if (endLocation) {
+          // Prepare deliveredProducts
           const deliveredProducts = bill.deliveredProducts.map((dp) => ({
             item_id: dp.item_id,
             deliveredQuantity: dp.deliveredQuantity,
           }));
-
-          // Calculate overall delivery status
-          const allDelivered = bill.deliveredProducts.every((dp) => dp.isDelivered);
-          const anyDelivered = bill.deliveredProducts.some(
-            (dp) => dp.isDelivered || dp.isPartiallyDelivered
-          );
-
-          let deliveryStatus = "Pending";
-          if (allDelivered) {
-            deliveryStatus = "Delivered";
-          } else if (anyDelivered) {
-            deliveryStatus = "Partially Delivered";
-          }
-
-          await api.post("/api/users/billing/end-delivery", {
+  
+          // Prepare updatedOtherExpenses
+          // Include only isNew or isEdited expenses
+          const updatedOtherExpenses = bill.otherExpenses
+            .filter(exp => exp.isNew || exp.isEdited)
+            .map(exp => ({
+              id: exp.id || null, // If no id, it's a new expense
+              amount: parseFloat(exp.amount) || 0,
+              remark: exp.remark,
+            }));
+  
+          const payload = {
             userId: userInfo._id,
             invoiceNo: bill.invoiceNo,
             driverName,
             endLocation: [endLocation.longitude, endLocation.latitude],
             deliveredProducts,
-            kmTravelled: bill.kmTravelled,
-            startingKm: bill.startingKm,
-            endKm: bill.endKm,
+            kmTravelled: parseFloat(bill.kmTravelled) || 0,
+            startingKm: parseFloat(bill.startingKm) || 0,
+            endKm: parseFloat(bill.endKm) || 0,
             deliveryId: bill.deliveryId,
             fuelCharge: parseFloat(bill.fuelCharge) || 0,
-            otherExpenses: bill.otherExpenses.map((expense) => ({
-              amount: parseFloat(expense.amount) || 0,
-              remark: expense.remark,
-            })),
-          });
-
-          setCurrentDelivered({invoiceNo: bill.invoiceNo, deliveryId: bill.deliveryId})
-
+            otherExpenses: updatedOtherExpenses, // send only updated/new expenses
+            method: bill.method || "", // Include payment method if chosen
+          };
+  
+          await api.post("/api/users/billing/end-delivery", payload);
+  
+          setCurrentDelivered({invoiceNo: bill.invoiceNo, deliveryId: bill.deliveryId});
+  
           // Remove the bill from assignedBills after successful submission
           setAssignedBills((prevBills) => {
             const updatedBills = [...prevBills];
             updatedBills.splice(billIndex, 1);
             return updatedBills;
           });
-
+  
           // If all bills are delivered or canceled, reset deliveryStarted
           if (assignedBills.length === 1) {
             setDeliveryStarted(false);
           }
-
+  
           setShowDeliveredModal(true);
           setTimeout(() => setShowSuccessModal(false), 3000);
         }
       });
     } catch (error) {
+      console.error("Error updating delivery status:", error);
       setError("Error updating delivery status.");
     } finally {
       setIsLoading(false);
     }
   };
+  
+  
 
   const handleOtherExpensesChange = (billIndex, index, field, value) => {
     setAssignedBills((prevBills) => {
@@ -504,45 +505,90 @@ const DriverBillingPage = () => {
   };
   
 
-  const handleUpdateDelivery = async () => {
-    try {
-      // Identify the new expense (assuming the last one in the array is new)
-      const newExpense = selectedDelivery.otherExpenses[selectedDelivery.otherExpenses.length - 1];
+// Inside DriverBillingPage.jsx
+
+const handleUpdateDelivery = async () => {
+  try {
+    // Filter updated/edited or new expenses
+    // Only include isNew or isEdited
+    const updatedOtherExpenses = selectedDelivery.otherExpenses // Include new or edited expenses
+    .map(exp => ({
+      id: exp.isNew ? null : exp.id, // Assign null for new, retain id for existing
+      amount: parseFloat(exp.amount) || 0, // Ensure amount is a valid float
+      remark: exp.remark || '', // Provide a default empty string if remark is undefined
+    }));
   
-      // Prepare the request payload
-      const payload = {
-        deliveryId: selectedDelivery.deliveryId,
-        startingKm: selectedDelivery.startingKm,
-        endKm: selectedDelivery.endKm,
-        kmTravelled: selectedDelivery.kmTravelled,
-        fuelCharge: selectedDelivery.fuelCharge,
-        newOtherExpense: {
-          amount: newExpense.amount,
-          remark: newExpense.remark,
-        },
-        // Include other fields if necessary
-      };
-  
-      // Make the PUT request to the backend
-      const response = await api.put('/api/billing/update-delivery/update', payload);
-  
-      if (response.status === 200) {
-        // Handle successful update (e.g., refresh data, close modal)
-        // Refresh the billing data or update the state accordingly
-        setShowDeliveryModal(false);
-        setSelectedDelivery(null);
-        alert("successfully updated")
-        // Optionally, trigger a data refresh here
-      } else {
-        // Handle errors returned from the backend
-        alert('Update failed:', response.data.message);
-        // Optionally, display an error message to the user
-      }
-    } catch (error) {
-      alert('Error updating delivery:', error);
-      // Optionally, display an error message to the user
+
+    // Include deliveredProducts (send all for simplicity)
+    const deliveredProducts = selectedDelivery.productsDelivered.map(dp => ({
+      item_id: dp.item_id,
+      deliveredQuantity: dp.deliveredQuantity || 0,
+    }));
+
+    const payload = {
+      deliveryId: selectedDelivery.deliveryId,
+      startingKm: parseFloat(selectedDelivery.startingKm) || 0,
+      endKm: parseFloat(selectedDelivery.endKm) || 0,
+      fuelCharge: parseFloat(selectedDelivery.fuelCharge) || 0,
+      method: selectedDelivery.method || "",
+      updatedOtherExpenses,
+      deliveredProducts,
+    };
+
+    const response = await api.put('/api/billing/update-delivery/update', payload);
+
+    if (response.status === 200) {
+      alert("Successfully updated");
+      setShowDeliveryModal(false);
+      setSelectedDelivery(null);
+      // Optionally refresh data here (e.g., re-fetch deliveries)
+    } else {
+      alert('Update failed: ' + response.data.message);
     }
-  };
+  } catch (error) {
+    console.error("Error updating delivery:", error);
+    alert('Error updating delivery: ' + error.message);
+  }
+};
+
+
+
+const handleDeleteDelivery = async (deliveryId) => {
+  if (!window.confirm("Are you sure you want to delete this delivery? This action cannot be undone.")) {
+    return;
+  }
+
+  try {
+    setIsLoading(true);
+    const response = await api.delete(`/api/billing/deliveries/${deliveryId}`);
+
+    if (response.status === 200) {
+      alert("Delivery deleted successfully.");
+      // Refresh the deliveries list
+      // Option 1: Re-fetch all deliveries
+      const params = new URLSearchParams();
+      params.append("driverName", driverName);
+      if (searchInvoiceNo) {
+        params.append("invoiceNo", searchInvoiceNo);
+      }
+      if (userInfo?._id) {
+        params.append("userId", userInfo._id);
+      }
+      const url = `/api/billing/deliveries/all?${params.toString()}`;
+      const updatedDeliveries = await api.get(url);
+      setMyDeliveries(updatedDeliveries.data);
+    } else {
+      alert("Failed to delete delivery: " + response.data.message);
+    }
+  } catch (error) {
+    console.error("Error deleting delivery:", error);
+    alert("Error deleting delivery. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  
   
 
   return (
@@ -1028,154 +1074,176 @@ const DriverBillingPage = () => {
                                 </>
                               )}
 
-                              {bill.modalStep === 2 && (
-                                <>
-                                  {/* Additional Inputs Section */}
-                                  <h5 className="mb-4 text-sm font-bold text-red-500">
-                                    Additional Details
-                                  </h5>
-                                  <div className="flex flex-col gap-4">
-                                    {/* Starting KM */}
-                                    <div>
-                                      <label className="block text-xs text-gray-400">
-                                        Starting KM
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={bill.startingKm}
-                                        onChange={(e) =>
-                                          setAssignedBills((prevBills) => {
-                                            const updatedBills = [...prevBills];
-                                            updatedBills[billIndex].startingKm = e.target.value;
-                                            updatedBills[billIndex].kmTravelled =
-                                              updatedBills[billIndex].endKm - e.target.value;
-                                            return updatedBills;
-                                          })
-                                        }
-                                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                      />
-                                    </div>
-                                    {/* Ending KM */}
-                                    <div>
-                                      <label className="block text-xs text-gray-400">
-                                        Ending KM
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={bill.endKm}
-                                        onChange={(e) =>
-                                          setAssignedBills((prevBills) => {
-                                            const updatedBills = [...prevBills];
-                                            updatedBills[billIndex].endKm = e.target.value;
-                                            updatedBills[billIndex].kmTravelled =
-                                              e.target.value - updatedBills[billIndex].startingKm;
+{bill.modalStep === 2 && (
+  <>
+    <h5 className="mb-4 text-sm font-bold text-red-500">
+      Additional Details
+    </h5>
+    <div className="flex flex-col gap-4">
+      {/* Starting KM */}
+      <div>
+        <label className="block text-xs text-gray-400">
+          Starting KM
+        </label>
+        <input
+          type="number"
+          value={bill.startingKm}
+          onChange={(e) =>
+            setAssignedBills((prevBills) => {
+              const updatedBills = [...prevBills];
+              const val = parseFloat(e.target.value) || 0;
+              updatedBills[billIndex].startingKm = val;
+              updatedBills[billIndex].kmTravelled =
+                (parseFloat(updatedBills[billIndex].endKm) || 0) - val;
+              return updatedBills;
+            })
+          }
+          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+        />
+      </div>
 
-                                              updatedBills[billIndex].fuelCharge = ((parseFloat(updatedBills[billIndex].kmTravelled) / 10 ) * 96).toFixed(2)
-                                            return updatedBills;
-                                          })
-                                        }
-                                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                      />
-                                    </div>
-                                    {/* Distance Travelled */}
-                                    <div>
-                                      <label className="block text-xs font-bold text-gray-400">
-                                        Distance Travelled (km)
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={bill.kmTravelled}
-                                        readOnly
-                                        className="w-full border bg-gray-100 border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                      />
-                                    </div>
-                                    {/* Fuel Charge */}
-                                    <div>
-                                      <label className="block text-xs font-bold text-gray-400">
-                                        Fuel Charge
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={bill.fuelCharge}
-                                        onChange={(e) =>
-                                          setAssignedBills((prevBills) => {
-                                            const updatedBills = [...prevBills];
-                                            updatedBills[billIndex].fuelCharge = e.target.value;
-                                            return updatedBills;
-                                          })
-                                        }
-                                        className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                      />
-                                    </div>
-                                    {/* Other Expenses */}
-                                    <div className="mt-4">
-                                      <h6 className="text-xs font-bold text-gray-500 mb-1">
-                                        Add Other Expenses
-                                      </h6>
-                                      {bill.otherExpenses.map((expense, index) => (
-                                        <div key={index} className="flex gap-2 mb-2">
-                                          <input
-                                            type="number"
-                                            value={expense.amount}
-                                            onChange={(e) =>
-                                              handleOtherExpensesChange(
-                                                billIndex,
-                                                index,
-                                                "amount",
-                                                e.target.value
-                                              )
-                                            }
-                                            placeholder="Amount"
-                                            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                          />
-                                          <input
-                                            type="text"
-                                            value={expense.remark}
-                                            onChange={(e) =>
-                                              handleOtherExpensesChange(
-                                                billIndex,
-                                                index,
-                                                "remark",
-                                                e.target.value
-                                              )
-                                            }
-                                            placeholder="Remark"
-                                            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
-                                          />
-                                        </div>
-                                      ))}
-                                      <button
-                                        onClick={() => handleAddExpense(billIndex)}
-                                        className="text-xs font-bold text-blue-500 hover:text-blue-700 mt-2"
-                                      >
-                                        + Add Expense
-                                      </button>
-                                    </div>
-                                  </div>
+      {/* Ending KM */}
+      <div>
+        <label className="block text-xs text-gray-400">
+          Ending KM
+        </label>
+        <input
+          type="number"
+          value={bill.endKm}
+          onChange={(e) =>
+            setAssignedBills((prevBills) => {
+              const updatedBills = [...prevBills];
+              const newEndKm = parseFloat(e.target.value) || 0;
+              updatedBills[billIndex].endKm = newEndKm;
+              updatedBills[billIndex].kmTravelled =
+                newEndKm - (parseFloat(updatedBills[billIndex].startingKm) || 0);
 
-                                  {/* Submit and Back Buttons */}
-                                  <div className="flex justify-right mt-6 gap-4">
-                                    <button
-                                      className="bg-gray-400 hover:bg-gray-500 text-white font-bold text-xs px-4 py-2 rounded-lg w-1/2"
-                                      onClick={() =>
-                                        setAssignedBills((prevBills) => {
-                                          const updatedBills = [...prevBills];
-                                          updatedBills[billIndex].modalStep = 1;
-                                          return updatedBills;
-                                        })
-                                      }
-                                    >
-                                      Back
-                                    </button>
-                                    <button
-                                      className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2 rounded-lg w-full"
-                                      onClick={() => handleSubmit(billIndex)}
-                                    >
-                                      Submit
-                                    </button>
-                                  </div>
-                                </>
-                              )}
+              updatedBills[billIndex].fuelCharge = ((parseFloat(updatedBills[billIndex].kmTravelled) / 10) * 96).toFixed(2);
+              return updatedBills;
+            })
+          }
+          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+        />
+      </div>
+
+      {/* Distance Travelled */}
+      <div>
+        <label className="block text-xs font-bold text-gray-400">
+          Distance Travelled (km)
+        </label>
+        <input
+          type="number"
+          value={bill.kmTravelled}
+          readOnly
+          className="w-full border bg-gray-100 border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+        />
+      </div>
+
+      {/* Fuel Charge */}
+      <div>
+        <label className="block text-xs font-bold text-gray-400">
+          Fuel Charge
+        </label>
+        <input
+          type="number"
+          value={bill.fuelCharge}
+          onChange={(e) =>
+            setAssignedBills((prevBills) => {
+              const updatedBills = [...prevBills];
+              updatedBills[billIndex].fuelCharge = parseFloat(e.target.value) || 0;
+              return updatedBills;
+            })
+          }
+          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+        />
+      </div>
+
+      {/* Other Expenses */}
+      <div className="mt-4">
+        <h6 className="text-xs font-bold text-gray-500 mb-1">
+          Add Other Expenses
+        </h6>
+        {bill.otherExpenses.map((expense, idx) => (
+          <div key={idx} className="flex gap-2 mb-2">
+            <input
+              type="number"
+              value={expense.amount}
+              onChange={(e) =>
+                handleOtherExpensesChange(billIndex, idx, "amount", e.target.value)
+              }
+              placeholder="Amount"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            />
+            <input
+              type="text"
+              value={expense.remark}
+              onChange={(e) =>
+                handleOtherExpensesChange(billIndex, idx, "remark", e.target.value)
+              }
+              placeholder="Remark"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            />
+          </div>
+        ))}
+        <button
+          onClick={() => handleAddExpense(billIndex)}
+          className="text-xs font-bold text-blue-500 hover:text-blue-700 mt-2"
+        >
+          + Add Expense
+        </button>
+      </div>
+
+      {/* Expense Payment Method */}
+      <div>
+        <label className="block text-xs font-bold text-gray-400">
+          Expense Payment Method
+        </label>
+        <select
+          value={bill.method || ""}
+          onChange={(e) =>
+            setAssignedBills((prevBills) => {
+              const updatedBills = [...prevBills];
+              updatedBills[billIndex].method = e.target.value;
+              return updatedBills;
+            })
+          }
+          className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+        >
+          <option value="">Select method</option>
+          {accounts.map((acc) => (
+            <option key={acc.accountId} value={acc.accountId}>
+              {acc.accountName}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+
+    {/* Submit and Back Buttons */}
+    <div className="flex justify-right mt-6 gap-4">
+      <button
+        className="bg-gray-400 hover:bg-gray-500 text-white font-bold text-xs px-4 py-2 rounded-lg w-1/2"
+        onClick={() =>
+          setAssignedBills((prevBills) => {
+            const updatedBills = [...prevBills];
+            updatedBills[billIndex].modalStep = 1;
+            return updatedBills;
+          })
+        }
+      >
+        Back
+      </button>
+      <button
+        className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2 rounded-lg w-full"
+        onClick={() => handleSubmit(billIndex)}
+      >
+        Submit
+      </button>
+    </div>
+  </>
+)}
+
+
                             </div>
                           </div>
                         )}
@@ -1308,52 +1376,63 @@ const DriverBillingPage = () => {
             <LowStockPreview driverPage={true} />
           } 
 
-          {/* My Deliveries Section */}
-        {activeSection == "my" &&  <div className="my-deliveries-section mt-8">
-            <h2 className="text-xl font-bold text-gray-600 mb-4">My Deliveries</h2>
+        {/* My Deliveries Section */}
+        {activeSection == "my" && (
+            <div className="my-deliveries-section mt-8">
+              <h2 className="text-xl font-bold text-gray-600 mb-4">My Deliveries</h2>
 
-            {/* Search Input */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Search by Invoice Number"
-                value={searchInvoiceNo}
-                onChange={(e) => setSearchInvoiceNo(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
-              />
-            </div>
+              {/* Search Input */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Search by Invoice Number"
+                  value={searchInvoiceNo}
+                  onChange={(e) => setSearchInvoiceNo(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
+                />
+              </div>
 
-            {/* Deliveries List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {myDeliveries.map((delivery, index) => (
-                <div
-                  key={index}
-                  className="bg-white shadow-md rounded-lg p-4 cursor-pointer"
+              {/* Deliveries List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {myDeliveries.map((delivery) => (
+                  <div
                   onClick={() => {
                     setSelectedDelivery(delivery);
                     setShowDeliveryModal(true);
                   }}
-                >
-                  <h3 className="text-md font-bold text-gray-600">
-                    Invoice No: {delivery.invoiceNo}
-                  </h3>
-                  <p className="text-xs text-gray-500">Customer: {delivery.customerName}</p>
-                  <p className="text-xs text-gray-500">
-                    Billing Amount: ₹ {delivery.grandTotal}
-                  </p>
-                  <p className="text-xs text-gray-500">Payment Status: {delivery.paymentStatus}</p>
-                  <p className="text-xs text-gray-500">
-                    Delivery Status: {delivery.deliveryStatus}
-                  </p>
-                </div>
-              ))}
+                    key={delivery.deliveryId} // Use unique deliveryId as key
+                    className="bg-white cursor-pointer shadow-md rounded-lg p-4 relative"
+                  >
+                    {/* Delete Button */}
+                    <button
+                      className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                      onClick={() => handleDeleteDelivery(delivery.deliveryId)}
+                      title="Delete Delivery"
+                    >
+                      <i className="fa fa-trash"></i>
+                    </button>
+
+                    <h3 className="text-md font-bold text-gray-600">
+                      Invoice No: {delivery.invoiceNo}
+                    </h3>
+                    <p className="text-xs text-gray-500">Customer: {delivery.customerName}</p>
+                    <p className="text-xs text-gray-500">
+                      Billing Amount: ₹ {delivery.grandTotal}
+                    </p>
+                    <p className="text-xs text-gray-500">Payment Status: {delivery.paymentStatus}</p>
+                    <p className="text-xs text-gray-500">
+                      Delivery Status: {delivery.deliveryStatus}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div> }
+          )}
 
           {/* Delivery Modal */}
           {showDeliveryModal && selectedDelivery && (
-  <div className="fixed overflow-auto inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-    <div className="bg-white rounded-lg w-full max-w-lg shadow-lg p-6 relative">
+  <div className="fixed animate-slide-up overflow-auto inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="bg-white top-1/4 rounded-lg w-full max-w-lg shadow-lg p-6 relative">
       {/* Close Button */}
       <button
         className="absolute top-4 right-4 text-gray-600 hover:text-gray-600"
@@ -1365,27 +1444,16 @@ const DriverBillingPage = () => {
         &times;
       </button>
 
-      {/* Delivery Details and Editing Form */}
+      {/* Delivery Details */}
       <h5 className="mb-4 text-sm font-bold text-gray-600">
         Edit Delivery Details - Invoice No: {selectedDelivery.invoiceNo}
       </h5>
-      {/* Delivery Details */}
       <div className="text-xs text-gray-600 space-y-2">
-        <p>
-          <span className="font-bold">Customer:</span> {selectedDelivery.customerName}
-        </p>
-        <p>
-          <span className="font-bold">Address:</span> {selectedDelivery.customerAddress}
-        </p>
-        <p>
-          <span className="font-bold">Billing Amount:</span> ₹ {selectedDelivery.grandTotal}
-        </p>
-        <p>
-          <span className="font-bold">Payment Status:</span> {selectedDelivery.paymentStatus}
-        </p>
-        <p>
-          <span className="font-bold">Delivery Status:</span> {selectedDelivery.deliveryStatus}
-        </p>
+        <p><span className="font-bold">Customer:</span> {selectedDelivery.customerName}</p>
+        <p><span className="font-bold">Address:</span> {selectedDelivery.customerAddress}</p>
+        <p><span className="font-bold">Billing Amount:</span> ₹ {selectedDelivery.grandTotal}</p>
+        <p><span className="font-bold">Payment Status:</span> {selectedDelivery.paymentStatus}</p>
+        <p><span className="font-bold">Delivery Status:</span> {selectedDelivery.deliveryStatus}</p>
       </div>
 
       {/* Editable Fields */}
@@ -1395,100 +1463,113 @@ const DriverBillingPage = () => {
           <label className="block text-xs font-bold text-gray-400">Starting KM</label>
           <input
             type="number"
-            value={selectedDelivery.startingKm}
+            value={selectedDelivery.startingKm || 0}
             onChange={(e) =>
               setSelectedDelivery((prev) => ({
                 ...prev,
-                startingKm: +e.target.value,
-                kmTravelled: prev.endKm - +e.target.value,
+                startingKm: parseFloat(e.target.value) || 0,
+                kmTravelled: (parseFloat(prev.endKm) || 0) - (parseFloat(e.target.value) || 0),
               }))
             }
-            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            className="w-full border border-gray-300 px-3 py-2 rounded-md text-xs"
           />
         </div>
+
         {/* Ending KM */}
         <div>
           <label className="block text-xs font-bold text-gray-400">Ending KM</label>
           <input
             type="number"
-            value={selectedDelivery.endKm}
+            value={selectedDelivery.endKm || 0}
             onChange={(e) =>
-              setSelectedDelivery((prev) => ({
-                ...prev,
-                endKm: +e.target.value,
-                kmTravelled: +e.target.value - prev.startingKm,
-              }))
+              setSelectedDelivery((prev) => {
+                const newEndKm = parseFloat(e.target.value) || 0;
+                return {
+                  ...prev,
+                  endKm: newEndKm,
+                  kmTravelled: newEndKm - (parseFloat(prev.startingKm) || 0),
+                };
+              })
             }
-            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            className="w-full border border-gray-300 px-3 py-2 rounded-md text-xs"
           />
         </div>
+
         {/* Distance Travelled */}
         <div>
-          <label className="block text-xs font-bold text-gray-400">
-            Distance Travelled (km)
-          </label>
+          <label className="block text-xs font-bold text-gray-400">Distance Travelled (km)</label>
           <input
             type="number"
-            value={selectedDelivery.kmTravelled}
+            value={selectedDelivery.kmTravelled || 0}
             readOnly
-            className="w-full border-gray-300 px-3 py-2 mt-1 rounded-md bg-gray-100"
+            className="w-full border-gray-300 px-3 py-2 mt-1 rounded-md bg-gray-100 text-xs"
           />
         </div>
+
         {/* Fuel Charge */}
         <div>
           <label className="block text-xs font-bold text-gray-400">Fuel Charge</label>
           <input
             type="number"
-            value={selectedDelivery.fuelCharge}
+            value={selectedDelivery.fuelCharge || 0}
             onChange={(e) =>
               setSelectedDelivery((prev) => ({
                 ...prev,
-                fuelCharge: +e.target.value,
+                fuelCharge: parseFloat(e.target.value) || 0,
               }))
             }
-            className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+            className="w-full border border-gray-300 px-3 py-2 rounded-md text-xs"
           />
         </div>
+
         {/* Other Expenses */}
         <div className="mt-4">
           <h6 className="text-xs font-bold text-gray-500 mb-1">Other Expenses</h6>
           {selectedDelivery.otherExpenses.map((expense, index) => (
-  <div key={index} className="flex gap-2 mb-2">
-    <input
-      type="number"
-      value={expense.amount}
-      onChange={(e) => {
-        const updatedExpenses = [...selectedDelivery.otherExpenses];
-        updatedExpenses[index].amount = parseFloat(e.target.value) || 0; // Parse as a number
-        setSelectedDelivery((prev) => ({
-          ...prev,
-          otherExpenses: updatedExpenses,
-        }));
-      }}
-      placeholder="Amount"
-      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
-    />
-    <input
-      type="text"
-      value={expense.remark}
-      onChange={(e) => {
-        const updatedExpenses = [...selectedDelivery.otherExpenses];
-        updatedExpenses[index].remark = e.target.value;
-        setSelectedDelivery((prev) => ({
-          ...prev,
-          otherExpenses: updatedExpenses,
-        }));
-      }}
-      placeholder="Remark"
-      className="w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-red-300 focus:ring-red-300"
-    />
-  </div>
-))}
+            <div key={index} className="flex gap-2 mb-2">
+              <input
+                type="number"
+                value={expense.amount || 0}
+                onChange={(e) => {
+                  const updatedExpenses = [...selectedDelivery.otherExpenses];
+                  updatedExpenses[index] = {
+                    ...updatedExpenses[index],
+                    amount: parseFloat(e.target.value) || 0,
+                    isEdited: true, // Mark as edited
+                  };
+                  setSelectedDelivery((prev) => ({
+                    ...prev,
+                    otherExpenses: updatedExpenses,
+                  }));
+                }}
+                placeholder="Amount"
+                className="w-1/2 p-2 border border-gray-300 rounded-md text-xs"
+              />
+              <input
+                type="text"
+                value={expense.remark || ""}
+                onChange={(e) => {
+                  const updatedExpenses = [...selectedDelivery.otherExpenses];
+                  updatedExpenses[index] = {
+                    ...updatedExpenses[index],
+                    remark: e.target.value,
+                    isEdited: true,
+                  };
+                  setSelectedDelivery((prev) => ({
+                    ...prev,
+                    otherExpenses: updatedExpenses,
+                  }));
+                }}
+                placeholder="Remark"
+                className="w-1/2 p-2 border border-gray-300 rounded-md text-xs"
+              />
+            </div>
+          ))}
           <button
             onClick={() => {
               setSelectedDelivery((prev) => ({
                 ...prev,
-                otherExpenses: [...prev.otherExpenses, { amount: 0, remark: "" }],
+                otherExpenses: [...prev.otherExpenses, { amount: 0, remark: "", isNew: true }],
               }));
             }}
             className="text-xs font-bold text-blue-500 hover:text-blue-700 mt-2"
@@ -1496,18 +1577,53 @@ const DriverBillingPage = () => {
             + Add Expense
           </button>
         </div>
+
+        {/* Expense Payment Method */}
+        <div>
+          <label className="block text-xs font-bold text-gray-500 mb-1">Expense Payment Method</label>
+          <select
+            value={selectedDelivery.method || ""}
+            onChange={(e) =>
+              setSelectedDelivery((prev) => ({
+                ...prev,
+                method: e.target.value,
+              }))
+            }
+            className="w-full border border-gray-300 px-3 py-2 rounded-md text-xs"
+          >
+            <option value="">Select Method</option>
+            {accounts.map((acc) => (
+              <option key={acc.accountId} value={acc.accountId}>
+                {acc.accountName}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Delivered Products */}
       <div className="mt-6">
         <h6 className="font-bold text-gray-700">Delivered Products:</h6>
-        <ul className="list-disc list-inside text-xs text-gray-700 mt-2">
-          {selectedDelivery.productsDelivered.map((dp) => (
-            <li key={dp.item_id}>
-              Item ID: {dp.item_id}, Delivered Quantity: {dp.deliveredQuantity}
-            </li>
+        <div className="space-y-4 mt-2">
+          {selectedDelivery.productsDelivered.map((dp, index) => (
+            <div key={dp.item_id} className="border-b pb-2">
+              <p className="text-xs font-bold">Item ID: {dp.item_id}</p>
+              <label className="block text-xs font-bold text-gray-400 mt-2">Delivered Quantity</label>
+              <input
+                type="number"
+                min="0"
+                value={dp.deliveredQuantity || 0}
+                onChange={(e) => {
+                  const updated = [...selectedDelivery.productsDelivered];
+                  updated[index].deliveredQuantity = parseFloat(e.target.value) || 0;
+                  updated[index].isEdited = true;
+                  setSelectedDelivery((prev) => ({ ...prev, productsDelivered: updated }));
+                }}
+                className="w-full border border-gray-300 px-3 py-1 rounded-md text-xs"
+              />
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
 
       {/* Save and Close Buttons */}
@@ -1531,6 +1647,8 @@ const DriverBillingPage = () => {
     </div>
   </div>
 )}
+
+
 
         </div>
       </div>
