@@ -632,8 +632,8 @@ useEffect(() => {
   // Calculate per-item discount
   const calculatedPerItemDiscount =
     totalQtyProducts > 0 ? parsedDiscount / totalQtyProducts : 0;
-
-  setPerItemDiscount(parseFloat((Math.ceil(parseFloat(calculatedPerItemDiscount) * 10) / 10).toPrecision(8)));
+      
+      setPerItemDiscount(calculatedPerItemDiscount.toFixed(2));
 
   // Calculate total amount after applying per-item discount
   const totalProductAmount = products.reduce((acc, product) => {
