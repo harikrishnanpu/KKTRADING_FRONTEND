@@ -121,6 +121,7 @@ export default function DamageBillPage() {
       setShowSuccessMessage('Damage bill submitted successfully!');
       setTimeout(() => setShowSuccessMessage(''), 3000);
       setUserName('');
+      setRemark('');
       setDamagedItems([]);
     } catch (error) {
       setError('There was an error submitting the damage bill. Please try again.');
@@ -177,7 +178,7 @@ export default function DamageBillPage() {
             onChange={(e) => setRemark(e.target.value)}
             onKeyDown={(e) => changeRef(e, itemIdRef)}
             className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
-            placeholder="Enter Biller Name"
+            placeholder="Enter Damage Remarks"
           />
         </div>
 
