@@ -1484,6 +1484,7 @@ const handleDeleteDelivery = async (deliveryId) => {
             onChange={(e) =>
               setSelectedDelivery((prev) => {
                 const newEndKm = parseFloat(e.target.value) || 0;
+                prev.fuelCharge = ((parseFloat((newEndKm - (parseFloat(prev.startingKm) || 0))) / 10) * 96).toFixed(2)
                 return {
                   ...prev,
                   endKm: newEndKm,

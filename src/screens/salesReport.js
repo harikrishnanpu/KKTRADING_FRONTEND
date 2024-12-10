@@ -228,9 +228,9 @@ const SalesReport = () => {
         new Date(billing.invoiceDate).toLocaleDateString(),
         billing.salesmanName,
         billing.customerName,
-        `Rs. ${billing.billingAmount.toFixed(2)}`,
+        `Rs. ${billing.grandTotal.toFixed(2)}`,
         `Rs. ${billing.discount.toFixed(2)}`,
-        `Rs. ${(billing.billingAmount - billing.discount).toFixed(2)}`,
+        `Rs. ${(billing.billingAmount).toFixed(2)}`,
         billing.paymentStatus,
         billing.deliveryStatus,
       ];
@@ -467,13 +467,13 @@ const SalesReport = () => {
                         <td className="px-2 py-1">{billing.salesmanName}</td>
                         <td className="px-2 py-1">{billing.customerName}</td>
                         <td className="px-2 py-1">
-                          Rs. {billing.billingAmount.toFixed(2)}
+                          Rs. {billing.grandTotal.toFixed(2)}
                         </td>
                         <td className="px-2 py-1">
                           Rs. {billing.discount.toFixed(2)}
                         </td>
                         <td className="px-2 py-1">
-                          Rs. {(billing.billingAmount - billing.discount).toFixed(2)}
+                          Rs. {(billing.billingAmount).toFixed(2)}
                         </td>
                         <td className="px-2 py-1">{billing.paymentStatus}</td>
                         <td className="px-2 py-1">{billing.deliveryStatus}</td>
@@ -512,11 +512,11 @@ const SalesReport = () => {
                     </p>
                     <div className="flex justify-between mt-2">
                       <p className="text-gray-600 text-xs font-bold">
-                        Billing Amount: Rs. {billing.billingAmount.toFixed(2)}
+                        Billing Amount: Rs. {billing.grandTotal.toFixed(2)}
                       </p>
                       <p className="text-gray-600 text-xs font-bold">
                         Net Amount: Rs.{' '}
-                        {(billing.billingAmount - billing.discount).toFixed(2)}
+                        {(billing.billingAmount).toFixed(2)}
                       </p>
                     </div>
                   </div>

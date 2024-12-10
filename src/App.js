@@ -72,6 +72,10 @@ import PurchaseReport from './screens/purchaseReportPage';
 import TransportPaymentEdit from './screens/editTransportAccounts';
 import TransportPaymentForm from './screens/createTransportAccounts';
 import TransportPaymentList from './screens/transportPaymentsList';
+import StockRegistry from './screens/stockRegistryScreen';
+import StockUpdatePage from './screens/stockUpdateScreen';
+import LeaveApplicationForm from './screens/leaveApplicationForm';
+import AllLeavesPage from './screens/allLeaveListScreen';
 
 
 function App() {
@@ -191,6 +195,10 @@ useEffect(() => {
             <Route path="/all-transport-payments" element={<TransportPaymentList />}></Route>
             <Route path="/create-transport-payments" element={<TransportPaymentForm />}></Route>
             <Route path="/transport-payments/edit/:id" element={<TransportPaymentEdit />}></Route>
+            <Route path="/stock-logs" element={<StockRegistry />}></Route>
+            <Route path="/update-stock" element={<StockUpdatePage />}></Route>
+            <Route path="/leave" element={<LeaveApplicationForm />}></Route>
+            <Route path="/all-leaves" element={<AllLeavesPage />}></Route>
             <Route
               path="/orderhistory"
               element={<OrderHistoryScreen />}

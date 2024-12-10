@@ -59,63 +59,57 @@ const BillingList = () => {
 
   const generatePDF = async (bill) => {
     setPdfLoading(true);
-
-    const cgst = (
-      (parseFloat(bill.billingAmount) - parseFloat(bill.billingAmount / 1.18)) /
-      2
-    ).toFixed(2);
-    const sgst = (
-      (parseFloat(bill.billingAmount) - parseFloat(bill.billingAmount / 1.18)) /
-      2
-    ).toFixed(2);
-    const discount = parseFloat(bill.discount) || 0;
-    const subTotal = (
-      parseFloat(bill.billingAmount) -
-      parseFloat(cgst) -
-      parseFloat(sgst)
-    ).toFixed(2);
-
-    const formData = {
-      invoiceNo: bill.invoiceNo,
-      customerName: bill.customerName,
-      customerAddress: bill.customerAddress,
-      customerContactNumber: bill.customerContactNumber,
-      marketedBy: bill.marketedBy,
-      salesmanName: bill.salesmanName,
-      invoiceDate: bill.invoiceDate,
-      expectedDeliveryDate: bill.expectedDeliveryDate,
-      deliveryStatus: bill.deliveryStatus,
-      paymentStatus: bill.paymentStatus,
-      paymentAmount: bill.billingAmountReceived,
-      subTotal,
-      cgst,
-      sgst,
-      discount,
-      products: bill.products,
-      billingAmount: bill.billingAmount,
-    };
-
     try {
+      // Transform products to include boxes and pieces based on psRatio
+      const transformedProducts = bill.products.map((product) => {
+        const { quantity, psRatio = '1', deliveredQuantity = 0 } = product;
+        return {
+          ...product,
+          quantity,
+          psRatio,
+          deliveredQuantity,
+        };
+      });
+  
+      // Prepare data for the loading slip
+      const formData = {
+        invoiceNo: bill.invoiceNo,
+        customerName: bill.customerName,
+        customerAddress: bill.customerAddress,
+        customerContactNumber: bill.customerContactNumber,
+        marketedBy: bill.marketedBy,
+        salesmanName: bill.salesmanName,
+        invoiceDate: bill.invoiceDate,
+        expectedDeliveryDate: bill.expectedDeliveryDate,
+        deliveryStatus: bill.deliveryStatus,
+        billingAmountReceived: bill.billingAmountReceived || 0,
+        payments: bill.payments || [],
+        deliveries: bill.deliveries || [],
+        products: transformedProducts
+      };
+  
       const response = await api.post(
-        'https://kktrading-backend.vercel.app/generate-pdf', 
+        '/api/print/generate-loading-slip-pdf',
         formData,
         {
-          responseType: 'blob',
+          responseType: 'blob'
         }
       );
-
+  
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `Invoice_${bill.invoiceNo}.pdf`;
+      link.download = `LoadingSlip_${bill.invoiceNo}.pdf`;
       link.click();
     } catch (error) {
-      console.error('Error generating invoice:', error);
+      console.error('Error generating loading slip PDF:', error);
       alert('Failed to generate PDF. Please try again.');
     } finally {
       setPdfLoading(false);
     }
   };
+  
+  
 
 
   function printInvoice(bill) {
@@ -286,7 +280,7 @@ const BillingList = () => {
             onClick={() => generatePDF(billing)}
             className="bg-red-500 text-white px-3 font-bold py-1 rounded hover:bg-red-600 flex items-center"
           >
-            <i className="fa fa-file-pdf-o mr-2"></i> PDF
+            <i className="fa fa-truck mr-2"></i> 
           </button>
         )}
         <button
@@ -534,7 +528,7 @@ const BillingList = () => {
                                 onClick={() => generatePDF(billing)}
                                 className="bg-red-500 text-white px-2 font-bold py-1 rounded hover:bg-red-600 flex items-center"
                               >
-                                <i className="fa fa-file-pdf-o mr-1"></i> PDF
+                                <i className="fa fa-truck mr-1"></i>
                               </button>
                             )}
                             <button

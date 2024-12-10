@@ -6,6 +6,7 @@ export default function DamageBillPage() {
   const navigate = useNavigate();
 
   const [userName, setUserName] = useState('');
+  const [remark, setRemark] = useState('');
   const [itemId, setItemId] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -20,6 +21,7 @@ export default function DamageBillPage() {
   // Refs for input fields to enable Enter navigation
   const userNameRef = useRef();
   const itemIdRef = useRef();
+  const remarkRef = useRef();
   const itemQuantityRef = useRef();
 
   useEffect(() => {
@@ -106,6 +108,7 @@ export default function DamageBillPage() {
     }
     const damageData = {
       userName,
+      remark,
       damagedItems: damagedItems.map(({ item_id, name, price, quantity }) => ({
         item_id,
         name,
@@ -159,6 +162,19 @@ export default function DamageBillPage() {
             ref={userNameRef}
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
+            onKeyDown={(e) => changeRef(e, remarkRef)}
+            className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
+            placeholder="Enter Biller Name"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-xs text-gray-700">Damage Remark</label>
+          <input
+            type="text"
+            ref={remarkRef}
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
             onKeyDown={(e) => changeRef(e, itemIdRef)}
             className="w-full border-gray-300 px-4 py-2 border rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none"
             placeholder="Enter Biller Name"

@@ -151,9 +151,18 @@ export default function HomeScreen() {
             <ActionButton href="/all-transport-payments" title="Transportation Accounts" />
             </CardSection>
 
+            <CardSection title="Stock">
+            <ActionButton href="/stock-logs" title="Stock Registry" />
+            <ActionButton href="/update-stock" title="Update Stock" />
+            </CardSection>
+
+            <CardSection title="Leave Application">
+            <ActionButton href="/leave" title="Add Leave" />
+            <ActionButton href="/all-leaves" title="All Leaves" />
+            </CardSection>
+
             <CardSection title="Accounts">
-            <ActionButton href="/create-account" title="Create Account" />
-            <ActionButton href="/payment-accounts" title="Accounts" />
+            <ActionButton href="/stock-logs" title="Stock Registry" />
             <ActionButton href="/daily-transactions" title="Daily Transactions" />
             </CardSection>
 

@@ -9,6 +9,7 @@ export default function SupplierAccountForm() {
   const [sellerId, setsellerId] = useState('');
   const [sellerName, setsellerName] = useState('');
   const [sellerAddress, setsellerAddress] = useState('');
+  const [sellerGst, setsellerGst] = useState('');
   const [bills, setBills] = useState([{}]);
   const [payments, setPayments] = useState([{}]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export default function SupplierAccountForm() {
   const sellerIdRef = useRef();
   const sellerNameRef = useRef();
   const supplierContactRef = useRef();
+  const sellerGstRef = useRef();
   const billRefs = useRef([]);
   const paymentRefs = useRef([]);
 
@@ -109,7 +111,12 @@ export default function SupplierAccountForm() {
     }
 
     if (!sellerAddress.trim()) {
-      setShowErrorMessage('Supplier Contact Number is required.');
+      setShowErrorMessage('Supplier Address is required.');
+      return false;
+    }
+
+    if (!sellerGst.trim()) {
+      setShowErrorMessage('Supplier GST is required.');
       return false;
     }
 
@@ -181,6 +188,7 @@ export default function SupplierAccountForm() {
       sellerId: sellerId.trim(),
       sellerName: sellerName.trim(),
       sellerAddress: sellerAddress.trim(),
+      sellerGst: sellerGst.trim(),
       bills: bills.map((bill) => ({
         invoiceNo: bill.invoiceNo.trim(),
         billAmount: parseFloat(bill.billAmount),
@@ -206,6 +214,7 @@ export default function SupplierAccountForm() {
         setsellerId('');
         setsellerName('');
         setsellerAddress('');
+        setsellerGst('');
         setBills([{ invoiceNo: '', billAmount: '', invoiceDate: '' }]);
         setPayments([{ amount: '', date: '', submittedBy: '', remark: '' }]);
         // Optionally, navigate to another page after a delay
@@ -301,6 +310,22 @@ export default function SupplierAccountForm() {
               ref={supplierContactRef}
               value={sellerAddress}
               onChange={(e) => setsellerAddress(e.target.value)}
+              onKeyDown={(e) => changeRef(e, sellerGstRef)}
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
+              placeholder="Enter Supplier Addresss"
+              required
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs text-gray-700 mb-2">
+              Supplier Gst <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              ref={sellerGstRef}
+              value={sellerGst}
+              onChange={(e) => setsellerGst(e.target.value)}
               onKeyDown={(e) => changeRef(e, billRefs.current[0])}
               className="w-full border border-gray-300 px-3 py-2 rounded-md focus:border-red-200 focus:ring-red-500 focus:outline-none text-xs"
               placeholder="Enter Supplier Addresss"

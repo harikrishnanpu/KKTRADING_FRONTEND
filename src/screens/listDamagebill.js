@@ -70,6 +70,7 @@ export default function DamagedDataScreen() {
     doc.setFontSize(12);
     doc.text(`Report Date: ${reportDate.toLocaleDateString()}`, 14, 40);
     doc.text(`Reported By: ${damage.userName}`, 14, 50);
+    doc.text(`Remark: ${damage.remark}`, 14, 60);
 
     // Damaged items table
     doc.autoTable({
@@ -146,6 +147,7 @@ export default function DamagedDataScreen() {
                     <tr>
                       <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Item ID</th>
                       <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Item Name</th>
+                      <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Remark</th>
                       <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Quantity</th>
                       <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Price</th>
                       <th className="px-4 py-2 text-xs text-left text-gray-700 font-semibold">Actions</th>
@@ -157,8 +159,9 @@ export default function DamagedDataScreen() {
                         <tr key={index} className="hover:bg-gray-50 transition">
                           <td className="border-t font-bold text-xs px-4 py-2 text-gray-600">{item.item_id}</td>
                           <td className="border-t text-xs px-4 py-2 text-gray-600">{item.name}</td>
+                          <td className="border-t text-xs px-4 py-2 text-gray-600">{damage.remark}</td>
                           <td className="border-t text-xs px-4 py-2 text-gray-600">{item.quantity}</td>
-                          <td className="border-t text-xs px-4 py-2 text-gray-600">{item.price ? `$${item.price.toFixed(2)}` : 'N/A'}</td>
+                          <td className="border-t text-xs px-4 py-2 text-gray-600">{item.price ? `${item.price.toFixed(2)}` : 'N/A'}</td>
                           <td className="border-t px-4 py-2">
                             <div className="flex text-xs space-x-2">
                               <button
@@ -194,6 +197,7 @@ export default function DamagedDataScreen() {
                   damage.damagedItems.map((item, index) => (
                     <div key={index} className="bg-white p-4 rounded-lg shadow-md">
                       <h3 className="text-sm font-bold text-red-600 mb-2">{item.name}</h3>
+                      <h3 className="text-sm font-bold text-red-600 mb-2">{damage.remark}</h3>
                       <p className='text-xs font-bold mb-1 text-gray-500'><strong>Item ID:</strong> {item.item_id}</p>
                       <p className='text-xs font-bold mb-1 text-gray-500'><strong>Quantity:</strong> {item.quantity}</p>
                       <p className='text-xs font-bold mb-1 text-gray-500'><strong>Biller Name:</strong> {damage.userName}</p>
@@ -238,6 +242,7 @@ export default function DamagedDataScreen() {
               </button>
 
               <h2 className="text-sm font-bold mb-4">Item Details</h2>
+              <p className='text-xs mt-1'><strong>Item ID:</strong> {selectedItem.item_id}</p>
               <p className='text-xs mt-1'><strong>Item ID:</strong> {selectedItem.item_id}</p>
               <p className='text-xs mt-1'><strong>Name:</strong> {selectedItem.name}</p>
               <p className='text-xs mt-1'><strong>Quantity:</strong> {selectedItem.quantity}</p>
