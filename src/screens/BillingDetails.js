@@ -88,19 +88,23 @@ const BillingList = () => {
         products: transformedProducts
       };
   
-      const response = await api.post(
-        '/api/print/generate-loading-slip-pdf',
-        formData,
-        {
-          responseType: 'blob'
-        }
-      );
-  
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `LoadingSlip_${bill.invoiceNo}.pdf`;
-      link.click();
+
+      // Make a request to the backend HTML generation endpoint
+      const response = await api.post('/api/print/generate-loading-slip-pdf', formData, {
+        responseType: 'text', // Expect HTML response
+      });
+
+      const htmlContent = response.data; // HTML content returned from backend
+
+      // Open the HTML content in a new popup window
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        // The window.onload in the returned HTML will trigger the print dialog
+      } else {
+        alert('Popup blocked! Please allow popups for this website.');
+      }
     } catch (error) {
       console.error('Error generating loading slip PDF:', error);
       alert('Failed to generate PDF. Please try again.');

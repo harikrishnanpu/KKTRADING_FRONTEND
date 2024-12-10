@@ -99,18 +99,20 @@ const AllLeavesPage = () => {
   
       // Make a request to the backend PDF generation endpoint
       const response = await api.post('/api/print/generate-leave-application-pdf', formData, {
-        responseType: 'blob', // Important for receiving binary data
+        responseType: 'text', // Expect HTML response
       });
-  
-      // Create a blob from the response data
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-  
-      // Create a temporary link to download the blob
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `Leave_${leave._id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(link.href); // Clean up URL object
+
+      const htmlContent = response.data; // HTML content returned from backend
+
+      // Open the HTML content in a new popup window
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        // The window.onload in the returned HTML will trigger the print dialog
+      } else {
+        alert('Popup blocked! Please allow popups for this website.');
+      }
     } catch (error) {
       console.error('Error generating leave application PDF:', error);
       alert('Failed to generate PDF. Please try again.');
