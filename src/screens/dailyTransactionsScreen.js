@@ -62,14 +62,12 @@ const DailyTransactions = () => {
     try {
       const [
         catRes,
-        accRes,
         dailyTransRes,
         billingRes,
         purchaseRes,
         transportRes
       ] = await Promise.all([
         api.get('/api/daily/transactions/categories'),
-        api.get('/api/accounts/allaccounts'),
         api.get('/api/daily/transactions', { params: { fromDate, toDate } }),
         api.get('/api/daily/allbill/payments', { params: { fromDate, toDate } }),
         api.get('/api/seller/daily/payments', { params: { fromDate, toDate } }),
@@ -85,7 +83,6 @@ const DailyTransactions = () => {
       setPurchasePayments(purchaseRes.data.flatMap((seller) => seller.payments || []));
       setTransportPayments(transportRes.data.flatMap((transport) => transport.payments || []));
       setCategories(catRes.data);
-      setAccounts(accRes.data);
 
       calculateTotals(
         dailyTransRes.data,
