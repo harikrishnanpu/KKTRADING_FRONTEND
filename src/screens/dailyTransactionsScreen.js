@@ -285,8 +285,8 @@ const DailyTransactions = () => {
 
     // Add other expenses (out)
     if (activeTab === 'all' || activeTab === 'out') {
-      const expenses = otherExpenses.map((expense) => ({
-        _id: expense._id || `expense-${expense.billingId}`,
+      const expenses = otherExpenses.map((expense, index) => ({
+        _id: expense._id || `expense-${index}`,
         date: expense.date,
         amount: expense.amount,
         paymentTo: 'Other Expense',

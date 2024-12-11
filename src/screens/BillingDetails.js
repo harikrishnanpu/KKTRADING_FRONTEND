@@ -59,7 +59,6 @@ const BillingList = () => {
 
   const generatePDF = async (bill) => {
     setPdfLoading(true);
-    try {
       // Transform products to include boxes and pieces based on psRatio
       const transformedProducts = bill.products.map((product) => {
         const { quantity, psRatio = '1', deliveredQuantity = 0 } = product;
@@ -90,27 +89,28 @@ const BillingList = () => {
   
 
       // Make a request to the backend HTML generation endpoint
-      const response = await api.post('/api/print/generate-loading-slip-pdf', formData, {
-        responseType: 'text', // Expect HTML response
-      });
-
-      const htmlContent = response.data; // HTML content returned from backend
-
-      // Open the HTML content in a new popup window
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      if (printWindow) {
+      const response = await api.post('/api/print/generate-loading-slip-pdf', formData).then((response)=>{
+        const htmlContent = response.data; // Extract the HTML content
+        const printWindow = window.open('', '', 'height=800,width=600');
         printWindow.document.write(htmlContent);
         printWindow.document.close();
+        setPdfLoading(false)
+    }).catch(err =>{
+      alert(err.error)
+    })
+
+
+      // const htmlContent = response.data; // HTML content returned from backend
+
+      // // Open the HTML content in a new popup window
+      // const printWindow = window.open('', '_blank', 'width=800,height=600');
+      // if (printWindow) {
+      //   printWindow.document.write(htmlContent);
+      //   printWindow.document.close();
         // The window.onload in the returned HTML will trigger the print dialog
-      } else {
-        alert('Popup blocked! Please allow popups for this website.');
-      }
-    } catch (error) {
-      console.error('Error generating loading slip PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setPdfLoading(false);
-    }
+      // } else {
+      //   alert('Popup blocked! Please allow popups for this website.');
+      // }
   };
   
   
